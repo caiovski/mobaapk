@@ -1,7 +1,7 @@
 import { useState, useContext, useEffect } from 'react';
 import { Alert, Platform, Share } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { AuthContext } from '../../../contexts/AuthContext';
 import { useUserMenu } from '../../../contexts/UserMenuContext';
 import { supabase } from '../../../../data/datasources/supabase/client';
@@ -81,21 +81,61 @@ export function useSettingsScreen() {
     try {
       const { data, error } = await supabase.rpc('export_user_data');
       if (error) {
-        Alert.alert('Erro', 'Não foi possível exportar seus dados. Tente novamente.');
+        Alert.alert('Erro', error.message || 'Não foi possível exportar seus dados.');
         return;
       }
       if (!data?.success) {
         Alert.alert('Erro', data?.error || 'Erro ao exportar dados.');
         return;
       }
-      const json = JSON.stringify(data, null, 2);
-      const fileName = `meus-dados-${user?.id?.slice(0, 8)}.json`;
+      const profile = data.profile || {};
+      const orders = data.orders || [];
+      const payments = data.payments || [];
+      const lines: string[] = [];
+      lines.push('=== MEUS DADOS ===');
+      lines.push(`Exportado em: ${data.exported_at || new Date().toISOString()}`);
+      lines.push('');
+      lines.push('--- PERFIL ---');
+      lines.push(`Nome: ${profile.name || ''}`);
+      lines.push(`Email: ${profile.email || ''}`);
+      lines.push(`Telefone: ${profile.phone || ''}`);
+      lines.push(`Endereço: ${profile.address || ''}`);
+      lines.push(`Cidade: ${profile.city || ''}`);
+      lines.push(`CEP: ${profile.cep || ''}`);
+      lines.push('');
+      lines.push('--- PEDIDOS ---');
+      if (orders.length === 0) {
+        lines.push('Nenhum pedido encontrado.');
+      } else {
+        for (const item of orders) {
+          const o = item.order || {};
+          lines.push(`Pedido #${o.id || ''} - ${o.status || ''} - R$ ${o.total || '0,00'}`);
+          if (o.created_at) lines.push(`  Data: ${o.created_at}`);
+          if (o.delivery_type) lines.push(`  Entrega: ${o.delivery_type}`);
+          if (o.payment_method) lines.push(`  Pagamento: ${o.payment_method}`);
+          const itemsList = item.items || [];
+          for (const prod of itemsList) {
+            lines.push(`  - ${prod.name || 'Produto'} x${prod.quantity || 1} = R$ ${(prod.unit_price * prod.quantity).toFixed(2)}`);
+          }
+          lines.push('');
+        }
+      }
+      lines.push('--- PAGAMENTOS ---');
+      if (payments.length === 0) {
+        lines.push('Nenhum pagamento encontrado.');
+      } else {
+        for (const pt of payments) {
+          lines.push(`Transação: ${pt.id || ''} - ${pt.status || ''} - R$ ${pt.amount || '0,00'}`);
+        }
+      }
+      const text = lines.join('\n');
+      const fileName = `meus-dados-${user?.id?.slice(0, 8)}.txt`;
       const filePath = `${FileSystem.cacheDirectory}${fileName}`;
-      await FileSystem.writeAsStringAsync(filePath, json);
-      await Share.share({ message: json, url: Platform.OS === 'ios' ? filePath : undefined });
+      await FileSystem.writeAsStringAsync(filePath, text);
+      await Share.share({ message: text, url: Platform.OS === 'ios' ? filePath : undefined });
       Alert.alert('Dados Exportados', `Arquivo "${fileName}" gerado com seus dados pessoais.`);
-    } catch {
-      Alert.alert('Erro', 'Ocorreu um erro ao exportar seus dados.');
+    } catch (e: any) {
+      Alert.alert('Erro', e?.message || 'Ocorreu um erro ao exportar seus dados.');
     } finally {
       setExportLoading(false);
     }

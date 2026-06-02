@@ -107,7 +107,7 @@ BEGIN
   END IF;
 
   UPDATE public.orders
-  SET status = p_new_status,
+  SET status = p_new_status::order_status,
       updated_at = timezone('utc'::text, now())
   WHERE id = p_order_id;
 

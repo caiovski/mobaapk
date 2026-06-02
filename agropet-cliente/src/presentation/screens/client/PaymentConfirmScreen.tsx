@@ -30,7 +30,7 @@ import OpcoesLabel8 from '../../assets/tela8/barra/OpcoesLabel.svg';
 
 export default function PaymentConfirmScreen({ route, navigation }: any) {
   const { toggleMenu } = useUserMenu();
-  const { isDarkMode } = useTheme();
+  const { isDarkMode, colors } = useTheme();
   const { user } = useContext(AuthContext);
   const { orderId, paymentMethod } = route.params || {};
   const isPix = paymentMethod === 'pix';
@@ -154,8 +154,8 @@ export default function PaymentConfirmScreen({ route, navigation }: any) {
   }, []);
 
   return (
-    <View style={[styles.mainContainer, { backgroundColor: isDarkMode ? '#121212' : '#F5F5F5' }]}>
-      <StatusBar backgroundColor={isDarkMode ? '#121212' : '#1C2434'} barStyle="light-content" />
+    <View style={[styles.mainContainer, { backgroundColor: colors.backgroundLight }]}>
+      <StatusBar backgroundColor={colors.headerBackground} barStyle="light-content" />
 
       {/* Header Unificado */}
       <CatalogHeader 

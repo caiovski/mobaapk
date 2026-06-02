@@ -24,195 +24,201 @@ export default function SettingsScreen() {
         onSearchChange={h.setSearchText}
       />
 
-      <View style={[styles.outerCard, { backgroundColor: h.isDarkMode ? '#2E2E38' : '#E3E4EB' }]}>
-        <Text style={[styles.mainTitle, { color: h.colors.textDark }]}>Configurações do Aplicativo</Text>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 120 }}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={[styles.outerCard, { backgroundColor: h.isDarkMode ? '#2E2E38' : '#E3E4EB' }]}>
+          <Text style={[styles.mainTitle, { color: h.colors.textDark }]}>Configurações do Aplicativo</Text>
 
-        <View style={[styles.darkCard, { backgroundColor: h.isDarkMode ? '#1E1E24' : '#1C2434' }]}>
-          <View style={styles.fieldSection}>
-            <Text style={styles.fieldLabel}>E-mail</Text>
-            <View style={[styles.fieldInput, { backgroundColor: h.isDarkMode ? '#2E2E38' : '#C0CADE' }]}>
-              <Text style={[styles.fieldValue, { color: h.isDarkMode ? '#FFFFFF' : '#1C2434' }]} numberOfLines={1}>{h.userEmail}</Text>
-              {h.emailStatus === 'validar' ? (
-                <TouchableOpacity
-                  onPress={() => h.setShowEmailModal(true)}
-                  style={[styles.alterarBtnInside, { flexDirection: 'row', alignItems: 'center' }]}
-                >
-                  <Text style={{ color: '#FFC107', fontSize: 16, marginRight: 4, fontWeight: 'bold' }}>!</Text>
-                  <Text style={{ color: '#FFC107', fontWeight: 'bold', fontSize: 13 }}>Validar</Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity onPress={() => { h.setEmailInput(h.userEmail); h.setEmailError(''); h.setShowEmailModal(true); }} style={styles.alterarBtnInside}>
+          <View style={[styles.darkCard, { backgroundColor: h.isDarkMode ? '#1E1E24' : '#1C2434' }]}>
+            <View style={styles.fieldSection}>
+              <Text style={styles.fieldLabel}>E-mail</Text>
+              <View style={[styles.fieldInput, { backgroundColor: h.isDarkMode ? '#2E2E38' : '#C0CADE' }]}>
+                <Text style={[styles.fieldValue, { color: h.isDarkMode ? '#FFFFFF' : '#1C2434' }]} numberOfLines={1}>{h.userEmail}</Text>
+                {h.emailStatus === 'validar' ? (
+                  <TouchableOpacity
+                    onPress={() => h.setShowEmailModal(true)}
+                    style={[styles.alterarBtnInside, { flexDirection: 'row', alignItems: 'center' }]}
+                  >
+                    <Text style={{ color: '#FFC107', fontSize: 16, marginRight: 4, fontWeight: 'bold' }}>!</Text>
+                    <Text style={{ color: '#FFC107', fontWeight: 'bold', fontSize: 13 }}>Validar</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity onPress={() => { h.setEmailInput(h.userEmail); h.setEmailError(''); h.setShowEmailModal(true); }} style={styles.alterarBtnInside}>
+                    <Text style={[styles.alterarTextLink, { color: h.isDarkMode ? '#5B86E5' : '#042A7D' }]}>Alterar</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+
+            <View style={styles.fieldSection}>
+              <Text style={styles.fieldLabel}>Senha</Text>
+              <View style={[styles.fieldInput, { backgroundColor: h.isDarkMode ? '#2E2E38' : '#C0CADE' }]}>
+                <Text style={[styles.fieldValue, { color: h.isDarkMode ? '#FFFFFF' : '#1C2434' }]}>••••••••••••••</Text>
+                <TouchableOpacity onPress={() => {
+                  h.setCurrentPassword('');
+                  h.setNewPassword('');
+                  h.setConfirmNewPassword('');
+                  h.setPasswordCode('');
+                  h.setExpectedPasswordCode('');
+                  h.setPasswordError('');
+                  h.setShowPasswordModal(true);
+                }} style={styles.alterarBtnInside}>
                   <Text style={[styles.alterarTextLink, { color: h.isDarkMode ? '#5B86E5' : '#042A7D' }]}>Alterar</Text>
                 </TouchableOpacity>
-              )}
+              </View>
             </View>
-          </View>
 
-          <View style={styles.fieldSection}>
-            <Text style={styles.fieldLabel}>Senha</Text>
-            <View style={[styles.fieldInput, { backgroundColor: h.isDarkMode ? '#2E2E38' : '#C0CADE' }]}>
-              <Text style={[styles.fieldValue, { color: h.isDarkMode ? '#FFFFFF' : '#1C2434' }]}>••••••••••••••</Text>
-              <TouchableOpacity onPress={() => {
-                h.setCurrentPassword('');
-                h.setNewPassword('');
-                h.setConfirmNewPassword('');
-                h.setPasswordCode('');
-                h.setExpectedPasswordCode('');
-                h.setPasswordError('');
-                h.setShowPasswordModal(true);
-              }} style={styles.alterarBtnInside}>
-                <Text style={[styles.alterarTextLink, { color: h.isDarkMode ? '#5B86E5' : '#042A7D' }]}>Alterar</Text>
-              </TouchableOpacity>
+            <View style={styles.fieldSection}>
+              <Text style={styles.fieldLabel}>Cadastrar Celular</Text>
+              <View style={[styles.fieldInput, { backgroundColor: h.isDarkMode ? '#2E2E38' : '#C0CADE' }]}>
+                <Text style={[styles.fieldValue, h.phone ? (h.isDarkMode ? { color: '#FFFFFF' } : { color: '#000000' }) : { color: '#919191' }]} numberOfLines={1}>
+                  {h.phone || 'Digite seu número...'}
+                </Text>
+
+                {h.phoneStatus === 'cadastrar' && (
+                  <TouchableOpacity onPress={() => { h.setPhoneInput(''); h.setShowPhoneModal(true); }} style={styles.alterarBtnInside}>
+                    <Text style={[styles.alterarTextLink, { color: '#00C853' }]}>Cadastrar</Text>
+                  </TouchableOpacity>
+                )}
+                {h.phoneStatus === 'validar' && (
+                  <TouchableOpacity onPress={() => h.setShowPhoneModal(true)} style={[styles.alterarBtnInside, { flexDirection: 'row', alignItems: 'center' }]}>
+                    <Text style={{ color: '#FFC107', fontSize: 16, marginRight: 4, fontWeight: 'bold' }}>!</Text>
+                    <Text style={{ color: '#FFC107', fontWeight: 'bold', fontSize: 13 }}>Validar</Text>
+                  </TouchableOpacity>
+                )}
+                {h.phoneStatus === 'alterar' && (
+                  <TouchableOpacity onPress={() => { h.setPhoneInput(h.phone); h.setShowPhoneModal(true); }} style={styles.alterarBtnInside}>
+                    <Text style={[styles.alterarTextLink, { color: h.isDarkMode ? '#5B86E5' : '#042A7D' }]}>Alterar</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
-          </View>
 
-          <View style={styles.fieldSection}>
-            <Text style={styles.fieldLabel}>Cadastrar Celular</Text>
-            <View style={[styles.fieldInput, { backgroundColor: h.isDarkMode ? '#2E2E38' : '#C0CADE' }]}>
-              <Text style={[styles.fieldValue, h.phone ? (h.isDarkMode ? { color: '#FFFFFF' } : { color: '#000000' }) : { color: '#919191' }]} numberOfLines={1}>
-                {h.phone || 'Digite seu número...'}
-              </Text>
-
-              {h.phoneStatus === 'cadastrar' && (
-                <TouchableOpacity onPress={() => { h.setPhoneInput(''); h.setShowPhoneModal(true); }} style={styles.alterarBtnInside}>
-                  <Text style={[styles.alterarTextLink, { color: '#00C853' }]}>Cadastrar</Text>
-                </TouchableOpacity>
-              )}
-              {h.phoneStatus === 'validar' && (
-                <TouchableOpacity onPress={() => h.setShowPhoneModal(true)} style={[styles.alterarBtnInside, { flexDirection: 'row', alignItems: 'center' }]}>
-                  <Text style={{ color: '#FFC107', fontSize: 16, marginRight: 4, fontWeight: 'bold' }}>!</Text>
-                  <Text style={{ color: '#FFC107', fontWeight: 'bold', fontSize: 13 }}>Validar</Text>
-                </TouchableOpacity>
-              )}
-              {h.phoneStatus === 'alterar' && (
-                <TouchableOpacity onPress={() => { h.setPhoneInput(h.phone); h.setShowPhoneModal(true); }} style={styles.alterarBtnInside}>
-                  <Text style={[styles.alterarTextLink, { color: h.isDarkMode ? '#5B86E5' : '#042A7D' }]}>Alterar</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
-
-          <View style={styles.toggleRow}>
-            <Animated.View style={[styles.iconBoxAnim, { transform: [{ rotate: h.themeRotateInterpolate }, { scale: h.themeIconScale }] }]}>
-              <Feather
-                name={h.isDarkMode ? 'moon' : 'sun'}
-                size={22}
-                color={h.isDarkMode ? '#FFC107' : '#EA841E'}
-              />
-            </Animated.View>
-            <Text style={styles.optionLabel}>Tema escuro</Text>
-            <View style={styles.toggleSpacer} />
-            <CustomSwitch
-              active={h.isDarkMode}
-              onPress={h.handleToggleTheme}
-              colorActive={h.colors.primary}
-              animValue={h.themeSwitchAnim}
-            />
-          </View>
-
-          <View style={styles.toggleRow}>
-            <Animated.View style={[styles.iconBoxAnim, { transform: [{ rotate: h.notifRotateInterpolate }] }]}>
-              <Feather
-                name={h.notificationsEnabled ? 'bell' : 'bell-off'}
-                size={22}
-                color={h.isDarkMode ? '#FFD700' : '#E3E4EB'}
-              />
-            </Animated.View>
-            <Text style={styles.optionLabel}>Notificação</Text>
-            <View style={styles.toggleSpacer} />
-            <CustomSwitch
-              active={h.notificationsEnabled}
-              onPress={h.handleToggleNotifications}
-              colorActive="#25BE36"
-              animValue={h.notifSwitchAnim}
-            />
-          </View>
-
-          <View style={{ gap: 4 }}>
             <View style={styles.toggleRow}>
-              <Animated.View style={[styles.iconBoxAnim, { transform: [{ rotate: h.greetingRotateInterpolate }, { scale: h.greetingIconScale }] }]}>
+              <Animated.View style={[styles.iconBoxAnim, { transform: [{ rotate: h.themeRotateInterpolate }, { scale: h.themeIconScale }] }]}>
                 <Feather
-                  name="clock"
+                  name={h.isDarkMode ? 'moon' : 'sun'}
                   size={22}
                   color={h.isDarkMode ? '#FFC107' : '#EA841E'}
                 />
               </Animated.View>
-              <Text style={styles.optionLabel}>Saudação e Horário</Text>
+              <Text style={styles.optionLabel}>Tema escuro</Text>
               <View style={styles.toggleSpacer} />
               <CustomSwitch
-                active={h.showGreeting}
-                onPress={h.handleToggleGreeting}
+                active={h.isDarkMode}
+                onPress={h.handleToggleTheme}
                 colorActive={h.colors.primary}
-                animValue={h.greetingSwitchAnim}
+                animValue={h.themeSwitchAnim}
               />
             </View>
-            <Text style={[styles.toggleSubtitle, { color: h.isDarkMode ? '#A8A8B3' : '#A2AAB8' }]}>
-              Exibe a barra de saudações e funcionamento no catálogo
-            </Text>
-          </View>
 
-          <View style={styles.toggleRow}>
-            <Animated.View style={[styles.iconBoxAnim, { transform: [{ scale: h.permIconScale }] }]}>
-              <Feather
-                name="shield"
-                size={22}
-                color={h.isDarkMode ? '#FFC107' : '#4A90E2'}
+            <View style={styles.toggleRow}>
+              <Animated.View style={[styles.iconBoxAnim, { transform: [{ rotate: h.notifRotateInterpolate }] }]}>
+                <Feather
+                  name={h.notificationsEnabled ? 'bell' : 'bell-off'}
+                  size={22}
+                  color={h.isDarkMode ? '#FFD700' : '#E3E4EB'}
+                />
+              </Animated.View>
+              <Text style={styles.optionLabel}>Notificação</Text>
+              <View style={styles.toggleSpacer} />
+              <CustomSwitch
+                active={h.notificationsEnabled}
+                onPress={h.handleToggleNotifications}
+                colorActive="#25BE36"
+                animValue={h.notifSwitchAnim}
               />
-            </Animated.View>
-            <Text style={styles.optionLabel}>Permissão</Text>
-            <View style={styles.toggleSpacer} />
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={h.handleOpenPermissions}
-              style={styles.chevronButton}
-            >
-              <Feather
-                name="chevron-right"
-                size={22}
-                color="#FFFFFF"
-              />
-            </TouchableOpacity>
-          </View>
+            </View>
 
-          <View style={{ borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)', paddingTop: 16 }}>
-            <Text style={[styles.fieldLabel, { fontSize: 15, marginBottom: 12 }]}>Privacidade (LGPD)</Text>
-
-            <TouchableOpacity
-              onPress={h.handleExportData}
-              disabled={h.exportLoading}
-              style={[styles.fieldInput, { backgroundColor: h.isDarkMode ? '#2E2E38' : '#C0CADE', marginTop: 0 }]}
-            >
-              <Feather name="download" size={18} color={h.isDarkMode ? '#5B86E5' : '#042A7D'} />
-              <Text style={[styles.fieldValue, { color: h.isDarkMode ? '#FFFFFF' : '#1C2434' }]}>
-                {h.exportLoading ? 'Exportando...' : 'Baixar meus dados'}
+            <View style={{ gap: 4 }}>
+              <View style={styles.toggleRow}>
+                <Animated.View style={[styles.iconBoxAnim, { transform: [{ rotate: h.greetingRotateInterpolate }, { scale: h.greetingIconScale }] }]}>
+                  <Feather
+                    name="clock"
+                    size={22}
+                    color={h.isDarkMode ? '#FFC107' : '#EA841E'}
+                  />
+                </Animated.View>
+                <Text style={styles.optionLabel}>Saudação e Horário</Text>
+                <View style={styles.toggleSpacer} />
+                <CustomSwitch
+                  active={h.showGreeting}
+                  onPress={h.handleToggleGreeting}
+                  colorActive={h.colors.primary}
+                  animValue={h.greetingSwitchAnim}
+                />
+              </View>
+              <Text style={[styles.toggleSubtitle, { color: h.isDarkMode ? '#A8A8B3' : '#A2AAB8' }]}>
+                Exibe a barra de saudações e funcionamento no catálogo
               </Text>
-            </TouchableOpacity>
+            </View>
 
-            {h.deletedAt ? (
+            <View style={styles.toggleRow}>
+              <Animated.View style={[styles.iconBoxAnim, { transform: [{ scale: h.permIconScale }] }]}>
+                <Feather
+                  name="shield"
+                  size={22}
+                  color={h.isDarkMode ? '#FFC107' : '#4A90E2'}
+                />
+              </Animated.View>
+              <Text style={styles.optionLabel}>Permissão</Text>
+              <View style={styles.toggleSpacer} />
               <TouchableOpacity
-                onPress={h.handleReactivateAccount}
-                style={[styles.fieldInput, { backgroundColor: h.isDarkMode ? '#2E2E38' : '#C0CADE', marginTop: 8 }]}
+                activeOpacity={0.7}
+                onPress={h.handleOpenPermissions}
+                style={styles.chevronButton}
               >
-                <Feather name="rotate-ccw" size={18} color="#00C853" />
+                <Feather
+                  name="chevron-right"
+                  size={22}
+                  color="#FFFFFF"
+                />
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)', paddingTop: 16 }}>
+              <Text style={[styles.fieldLabel, { fontSize: 15, marginBottom: 12 }]}>Privacidade (LGPD)</Text>
+
+              <TouchableOpacity
+                onPress={h.handleExportData}
+                disabled={h.exportLoading}
+                style={[styles.fieldInput, { backgroundColor: h.isDarkMode ? '#2E2E38' : '#C0CADE', marginTop: 0 }]}
+              >
+                <Feather name="download" size={18} color={h.isDarkMode ? '#5B86E5' : '#042A7D'} />
                 <Text style={[styles.fieldValue, { color: h.isDarkMode ? '#FFFFFF' : '#1C2434' }]}>
-                  Reativar conta
+                  {h.exportLoading ? 'Exportando...' : 'Baixar meus dados'}
                 </Text>
               </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                onPress={h.handleDeleteAccount}
-                disabled={h.deleteLoading}
-                style={[styles.fieldInput, { backgroundColor: h.isDarkMode ? '#2E2E38' : '#C0CADE', marginTop: 8 }]}
-              >
-                <Feather name="trash-2" size={18} color="#FF3B30" />
-                <Text style={[styles.fieldValue, { color: '#FF3B30' }]}>
-                  {h.deleteLoading ? 'Excluindo...' : 'Excluir conta'}
-                </Text>
-              </TouchableOpacity>
-            )}
+
+              {h.deletedAt ? (
+                <TouchableOpacity
+                  onPress={h.handleReactivateAccount}
+                  style={[styles.fieldInput, { backgroundColor: h.isDarkMode ? '#2E2E38' : '#C0CADE', marginTop: 8 }]}
+                >
+                  <Feather name="rotate-ccw" size={18} color="#00C853" />
+                  <Text style={[styles.fieldValue, { color: h.isDarkMode ? '#FFFFFF' : '#1C2434' }]}>
+                    Reativar conta
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  onPress={h.handleDeleteAccount}
+                  disabled={h.deleteLoading}
+                  style={[styles.fieldInput, { backgroundColor: h.isDarkMode ? '#2E2E38' : '#C0CADE', marginTop: 8 }]}
+                >
+                  <Feather name="trash-2" size={18} color="#FF3B30" />
+                  <Text style={[styles.fieldValue, { color: '#FF3B30' }]}>
+                    {h.deleteLoading ? 'Excluindo...' : 'Excluir conta'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         </View>
-      </View>
+      </ScrollView>
 
       <EmailModal
         visible={h.showEmailModal}

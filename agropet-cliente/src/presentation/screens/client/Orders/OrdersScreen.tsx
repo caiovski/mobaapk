@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, ScrollView, RefreshControl, ActivityIndicator, Text, TouchableOpacity } from 'react-native';
+import { View, ScrollView, RefreshControl, ActivityIndicator, Text, TouchableOpacity, StatusBar } from 'react-native';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { CatalogHeader } from '../../../components/CatalogHeader';
 import { Ionicons } from '@expo/vector-icons';
@@ -98,7 +98,8 @@ export default function OrdersScreen({ navigation }: any) {
   );
 
   return (
-    <View style={[styles.mainContainer, { backgroundColor: colors.background }]}>
+    <View style={[styles.mainContainer, { backgroundColor: colors.backgroundLight }]}>
+      <StatusBar backgroundColor={colors.headerBackground} barStyle="light-content" />
       <CatalogHeader title="Histórico de Pedidos" searchText={searchText} onSearchChange={setSearchText} />
 
       <ScrollView

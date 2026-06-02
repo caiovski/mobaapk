@@ -18,7 +18,7 @@ function generateIdempotencyKey(): string {
 
 export function usePaymentScreen() {
   const { toggleMenu } = useUserMenu();
-  const { isDarkMode } = useTheme();
+  const { isDarkMode, colors } = useTheme();
   const { cart, total, clearCart, removeFromCart } = useContext(CartContext);
   const { user } = useContext(AuthContext);
 
@@ -188,7 +188,7 @@ export function usePaymentScreen() {
   };
 
   return {
-    toggleMenu, isDarkMode, cart, grandTotal, searchText, setSearchText,
+    toggleMenu, isDarkMode, colors, cart, grandTotal, searchText, setSearchText,
     paymentMethod, setPaymentMethod, isDropdownOpen, setIsDropdownOpen,
     loading, deliveryActive, handleCreateOrder,
   };

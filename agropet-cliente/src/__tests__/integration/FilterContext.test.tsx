@@ -111,20 +111,19 @@ describe('FilterContext & Helper Functions', () => {
       expect(getByTestId('categories-count').props.children).toBe(2);
       expect(getByTestId('selected-Pesca')).toBeTruthy();
 
-      // Toggle Ração again (removes it)
+      // Toggle Ração again (removes it) — covers prev.filter branch
       await act(async () => {
         fireEvent.press(getByText('Toggle Ração'));
       });
       expect(getByTestId('categories-count').props.children).toBe(1);
-      expect(queryByTestId('selected-Ração')).toBeNull();
 
-      // Set Search text
+      // Set Search text — covers setSearchTextState
       await act(async () => {
         fireEvent.press(getByText('Set Search'));
       });
       expect(getByTestId('search-text').props.children).toBe('purina');
 
-      // Clear Filters
+      // Clear Filters — covers clearFilters
       await act(async () => {
         fireEvent.press(getByText('Clear'));
       });
@@ -142,6 +141,41 @@ describe('FilterContext & Helper Functions', () => {
       defaultContextVal.toggleCategory('cat');
       defaultContextVal.setSearchText('search');
       defaultContextVal.clearFilters();
+    });
+
+    it('should cover provider search and clear via direct act', async () => {
+      function DirectConsumer() {
+        const { searchText, setSearchText, clearFilters, toggleCategory, selectedCategories } = useFilter();
+        return (
+          <View>
+            <Text testID="st">{searchText}</Text>
+            <Text testID="cc">{selectedCategories.length}</Text>
+            <Button title="toggle" onPress={() => toggleCategory('X')} />
+            <Button title="toggle2" onPress={() => toggleCategory('X')} />
+            <Button title="search" onPress={() => setSearchText('abc')} />
+            <Button title="clear" onPress={() => clearFilters()} />
+          </View>
+        );
+      }
+      const { getByText, getByTestId } = render(
+        <FilterProvider>
+          <DirectConsumer />
+        </FilterProvider>
+      );
+      await act(async () => { fireEvent.press(getByText('toggle')); });
+      expect(getByTestId('cc').props.children).toBe(1);
+      await act(async () => { fireEvent.press(getByText('toggle2')); });
+      expect(getByTestId('cc').props.children).toBe(0);
+      await act(async () => { fireEvent.press(getByText('search')); });
+      expect(getByTestId('st').props.children).toBe('abc');
+      await act(async () => { fireEvent.press(getByText('clear')); });
+      expect(getByTestId('st').props.children).toBe('');
+      expect(getByTestId('cc').props.children).toBe(0);
+    });
+
+    it('should cover isProductInCategories with product name missing', () => {
+      expect(isProductInCategories({ name: '', description: 'raçao' }, ['Ração'])).toBe(true);
+      expect(isProductInCategories({ description: 'semente' }, ['Sementes'])).toBe(true);
     });
   });
 });

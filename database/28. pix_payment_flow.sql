@@ -210,7 +210,7 @@ DECLARE
   v_insufficient JSONB := '[]'::JSONB;
   v_cached JSONB;
   v_result JSONB;
-  v_order_status TEXT;
+  v_order_status order_status;
 BEGIN
   -- ==========================================================
   -- ETAPA 0: Verificar idempotência
@@ -281,9 +281,9 @@ BEGIN
   -- PIX → processing, demais → confirmed
   -- ==========================================================
   IF p_payment_method = 'pix' THEN
-    v_order_status := 'processing';
+    v_order_status := 'processing'::order_status;
   ELSE
-    v_order_status := 'confirmed';
+    v_order_status := 'confirmed'::order_status;
   END IF;
 
   -- ==========================================================

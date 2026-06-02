@@ -93,7 +93,7 @@ export class NotificationService {
     status: string
   ): Promise<void> {
     try {
-      const { supabase } = require('../../data/datasources/supabase/client');
+      const { supabase } = require('../data/datasources/supabase/client');
       const { data } = await supabase
         .from('users')
         .select('push_token')

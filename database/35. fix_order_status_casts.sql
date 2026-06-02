@@ -1,13 +1,10 @@
 -- =============================================================
--- Migration: Proteção de Edição Concorrente (Item #6)
--- Descrição: Adiciona NOWAIT + lock_timeout + ordenação de locks
---   no RPC finalizar_pedido e proteção contra deadlock no
---   trigger handle_order_cancellation.
+-- Fix: Cast explícito de order_status em RPCs
+-- Correção: v_order_status agora é order_status (não TEXT)
+-- e UPDATE usa ::order_status
 -- =============================================================
 
--- =============================================================
--- 1. finalizar_pedido — Lock com NOWAIT e timeout
--- =============================================================
+-- 1. finalizar_pedido
 DROP FUNCTION IF EXISTS public.finalizar_pedido;
 
 CREATE OR REPLACE FUNCTION public.finalizar_pedido(
@@ -34,9 +31,6 @@ DECLARE
   v_order_status order_status;
   v_sorted_items JSONB;
 BEGIN
-  -- ==========================================================
-  -- ETAPA 0: Verificar autenticação e ownership
-  -- ==========================================================
   IF auth.uid() IS NULL THEN
     RAISE EXCEPTION 'NAO_AUTENTICADO';
   END IF;
@@ -45,14 +39,8 @@ BEGIN
     RAISE EXCEPTION 'ACESSO_NEGADO';
   END IF;
 
-  -- ==========================================================
-  -- ETAPA 0.5: Configurar lock_timeout
-  -- ==========================================================
   SET LOCAL lock_timeout = '5000';
 
-  -- ==========================================================
-  -- ETAPA 1: Verificar idempotência
-  -- ==========================================================
   IF p_idempotency_key IS NOT NULL THEN
     SELECT response INTO v_cached
     FROM public.idempotency_keys
@@ -63,9 +51,6 @@ BEGIN
     END IF;
   END IF;
 
-  -- ==========================================================
-  -- ETAPA 2: Validar estoque (com trava FOR UPDATE NOWAIT)
-  -- ==========================================================
   v_sorted_items := (
     SELECT jsonb_agg(el ORDER BY el->>'product_id')
     FROM jsonb_array_elements(p_items) el
@@ -114,9 +99,6 @@ BEGIN
     RAISE EXCEPTION 'ESTOQUE_INSUFICIENTE:%', v_insufficient::TEXT;
   END IF;
 
-  -- ==========================================================
-  -- ETAPA 3: Calcular total
-  -- ==========================================================
   FOR v_item IN SELECT * FROM jsonb_array_elements(p_items)
   LOOP
     v_total := v_total + (
@@ -124,18 +106,12 @@ BEGIN
     );
   END LOOP;
 
-  -- ==========================================================
-  -- ETAPA 4: Definir status inicial do pedido
-  -- ==========================================================
   IF p_payment_method = 'pix' THEN
     v_order_status := 'processing'::order_status;
   ELSE
     v_order_status := 'confirmed'::order_status;
   END IF;
 
-  -- ==========================================================
-  -- ETAPA 5: Criar o pedido
-  -- ==========================================================
   INSERT INTO public.orders (
     user_id, status, total, delivery_type,
     payment_method, delivery_address, needs_change
@@ -146,9 +122,6 @@ BEGIN
   )
   RETURNING id INTO v_order_id;
 
-  -- ==========================================================
-  -- ETAPA 6: Criar itens e decrementar estoque
-  -- ==========================================================
   FOR v_item IN SELECT * FROM jsonb_array_elements(p_items)
   LOOP
     INSERT INTO public.order_items (order_id, product_id, quantity, unit_price)
@@ -164,17 +137,11 @@ BEGIN
     WHERE id = (v_item->>'product_id')::UUID;
   END LOOP;
 
-  -- ==========================================================
-  -- ETAPA 7: Se PIX, criar transaction pendente
-  -- ==========================================================
   IF p_payment_method = 'pix' THEN
     INSERT INTO public.payment_transactions (order_id, payment_method, amount, status)
     VALUES (v_order_id, 'pix', v_total, 'pending');
   END IF;
 
-  -- ==========================================================
-  -- ETAPA 8: Construir resultado e cache
-  -- ==========================================================
   v_result := jsonb_build_object(
     'success', true,
     'order_id', v_order_id,
@@ -194,49 +161,60 @@ BEGIN
 END;
 $$;
 
--- =============================================================
--- 2. handle_order_cancellation — Proteção contra deadlock
--- =============================================================
-CREATE OR REPLACE FUNCTION public.handle_order_cancellation()
-RETURNS TRIGGER AS $$
+-- 2. update_order_status
+CREATE OR REPLACE FUNCTION public.update_order_status(
+  p_order_id UUID,
+  p_new_status TEXT
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
 DECLARE
-  v_item RECORD;
-  v_error_context TEXT;
+  v_current_status TEXT;
+  v_user_id UUID;
 BEGIN
-  IF NEW.status = 'cancelled' AND OLD.status <> 'cancelled' THEN
-    FOR v_item IN
-      SELECT product_id, quantity
-      FROM public.order_items
-      WHERE order_id = NEW.id
-    LOOP
-      LOOP
-        BEGIN
-          UPDATE public.products
-          SET stock = stock + v_item.quantity
-          WHERE id = v_item.product_id;
-          EXIT;
-        EXCEPTION
-          WHEN deadlock_detected THEN
-            v_error_context := jsonb_build_object(
-              'trigger', 'handle_order_cancellation',
-              'product_id', v_item.product_id,
-              'order_id', NEW.id,
-              'error', SQLERRM
-            )::TEXT;
-
-            INSERT INTO public.audit_logs (
-              user_id, action, resource, resource_id, details
-            ) VALUES (
-              auth.uid(), 'deadlock_retry', 'products',
-              v_item.product_id::TEXT, v_error_context
-            );
-
-            PERFORM pg_sleep(0.1);
-        END;
-      END LOOP;
-    END LOOP;
+  IF auth.uid() IS NULL THEN
+    RETURN jsonb_build_object('success', false, 'error', 'NAO_AUTENTICADO');
   END IF;
 
-  RETURN NEW;
+  IF NOT public.is_admin() THEN
+    RETURN jsonb_build_object('success', false, 'error', 'ACESSO_NEGADO');
+  END IF;
+
+  SELECT status, user_id INTO v_current_status, v_user_id
+  FROM public.orders WHERE id = p_order_id;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Pedido não encontrado');
+  END IF;
+
+  IF NOT (
+    (v_current_status = 'processing' AND p_new_status = 'confirmed') OR
+    (v_current_status = 'confirmed' AND p_new_status = 'preparing') OR
+    (v_current_status = 'confirmed' AND p_new_status = 'cancelled') OR
+    (v_current_status = 'preparing' AND p_new_status = 'delivering') OR
+    (v_current_status = 'preparing' AND p_new_status = 'cancelled') OR
+    (v_current_status = 'delivering' AND p_new_status = 'completed')
+  ) THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Transição inválida');
+  END IF;
+
+  UPDATE public.orders
+  SET status = p_new_status::order_status,
+      updated_at = timezone('utc'::text, now())
+  WHERE id = p_order_id;
+
+  INSERT INTO public.audit_logs (user_id, action, resource, resource_id, details)
+  VALUES (auth.uid(), 'update_order_status', 'orders', p_order_id::TEXT,
+    jsonb_build_object('from', v_current_status, 'to', p_new_status)
+  );
+
+  RETURN jsonb_build_object(
+    'success', true,
+    'order_id', p_order_id,
+    'new_status', p_new_status,
+    'user_id', v_user_id
+  );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$$;

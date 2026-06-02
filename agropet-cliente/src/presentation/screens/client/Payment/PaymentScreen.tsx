@@ -34,8 +34,8 @@ export default function PaymentScreen({ navigation }: any) {
   const h = usePaymentScreen();
 
   return (
-    <View style={[styles.mainContainer, { backgroundColor: h.isDarkMode ? '#121212' : '#F5F5F5' }]}>
-      <StatusBar backgroundColor={h.isDarkMode ? '#121212' : '#1C2434'} barStyle="light-content" />
+    <View style={[styles.mainContainer, { backgroundColor: h.colors.backgroundLight }]}>
+      <StatusBar backgroundColor={h.colors.headerBackground} barStyle="light-content" />
 
       <CatalogHeader
         title="Checkout"
@@ -152,7 +152,7 @@ export default function PaymentScreen({ navigation }: any) {
           )}
 
           <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('ClientTabs', { screen: 'Carrinho' })}>
-            <View style={h.isDarkMode ? { backgroundColor: '#FFFFFF', width: 51, height: 41, borderRadius: 15, alignItems: 'center', justifyContent: 'center' } : [styles.iconBg, { backgroundColor: '#E3DAD9', borderWidth: 1.5, borderColor: '#8A7268' }]}>
+            <View style={h.isDarkMode ? { backgroundColor: '#2E2E38', width: 51, height: 41, borderRadius: 15, alignItems: 'center', justifyContent: 'center' } : [styles.iconBg, { backgroundColor: '#E3DAD9' }]}>
               {h.isDarkMode ? <CartIcon8Dark width={32} height={32} fill="#FFD700" stroke="#FFD700" /> : <CartIcon8 width={32} height={32} />}
             </View>
             {h.isDarkMode ? <CarrinhoLabel8 width={52} height={10} fill="#FFD700" stroke="#FFD700" /> : <CarrinhoLabel8 width={52} height={10} />}

@@ -183,7 +183,7 @@ export default function CartScreen() {
 
       </ScrollView>
 
-      <View style={styles.buttonsContainer}>
+      <View style={[styles.buttonsContainer, { backgroundColor: h.colors.backgroundLight }]}>
         {h.checkoutError && (
           <Text style={{ color: '#FF3B30', fontSize: 13, fontWeight: 'bold', marginBottom: 8, textAlign: 'center' }}>
             {h.checkoutError}
