@@ -9,10 +9,10 @@ import { useAdminDashboardCharts } from './useAdminDashboardCharts';
 import { useAdminDashboardPdv } from './useAdminDashboardPdv';
 
 export const CATEGORY_KEYWORDS: Record<string, string[]> = {
-  'Ração': ['ração', 'racao', 'dog chow', 'pedigree', 'besser', 'purina', 'whiskas', 'granplus', 'premium', 'cão', 'cães', 'gato', 'gatos', 'vaca', 'porco'],
-  'Pesca': ['pesca', 'vara', 'anzol', 'linha', 'molinete', 'boia', 'bóia', 'isca', 'carretilha'],
-  'Sementes': ['semente', 'semeadura', 'sementes', 'girassol', 'milho', 'alpiste'],
-  'Adubo': ['adubo', 'fertilizante', 'terra', 'substrato', 'humus', 'húmus', 'calpiso', 'calcario']
+  'Ração': ['ração', 'cachorro', 'cachorros', 'canino', 'caninos', 'felino', 'felinos', 'racao', 'dog chow', 'pedigree', 'besser', 'purina', 'whiskas', 'granplus', 'premium', 'cão', 'cães', 'gato', 'gatos', 'vaca', 'porco', 'frango', 'galinha', 'galinhas'],
+  'Pesca': ['pesca', 'vara', 'anzol', 'linha', 'molinete', 'boia', 'bóia', 'isca', 'carretilha', 'pescaria'],
+  'Sementes': ['semente', 'semeadura', 'sementes', 'girassol', 'milho', 'alpiste', 'grão', 'grãos', 'erva', 'ervas', 'erva-doce', 'ervadoce'],
+  'Adubo': ['adubo', 'fertilizante', 'terra', 'substrato', 'humus', 'húmus', 'calpiso', 'calcario'],
 };
 
 export function getFirstImageUrl(url: string | null | undefined): string | null {
@@ -28,15 +28,13 @@ export function getFirstImageUrl(url: string | null | undefined): string | null 
 }
 
 export const isProductInCategories = (product: any, categories: string[]) => {
-  if (categories.length === 0) return true;
+  if (!categories || categories.length === 0) return true;
+  if (!product) return false;
   const name = (product.name || '').toLowerCase();
   const description = (product.description || '').toLowerCase();
   return categories.some(category => {
-    const keywords = CATEGORY_KEYWORDS[category] || [];
-    return keywords.some(keyword =>
-      name.includes(keyword.toLowerCase()) ||
-      description.includes(keyword.toLowerCase())
-    );
+    const keywords = CATEGORY_KEYWORDS[category] || [category.toLowerCase()];
+    return keywords.some(keyword => name.includes(keyword.toLowerCase()) || description.includes(keyword.toLowerCase()));
   });
 };
 

@@ -173,41 +173,37 @@ export default function AdminOrderDetailScreen({ route, navigation }: any) {
           </Text>
         </View>
 
-        { /* istanbul ignore next */ h.nextStatus() && (
-          <TouchableOpacity
-            onPress={h.handleAdvanceStatus}
-            style={{
-              backgroundColor: '#042A7D',
-              borderRadius: 12,
-              paddingVertical: 14,
-              alignItems: 'center',
-              marginBottom: 8,
-            }}
-            activeOpacity={0.7}
-          >
-            <Text style={{ color: '#FFFFFF', fontWeight: 'bold', fontSize: 16 }}>
-              {h.nextStatusLabel()}
-            </Text>
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity
+          onPress={h.isButtonDisabled() ? undefined : h.handleAdvanceStatus}
+          style={{
+            backgroundColor: h.getButtonColor(),
+            borderRadius: 12,
+            paddingVertical: 14,
+            alignItems: 'center',
+            marginBottom: 8,
+          }}
+          activeOpacity={h.isButtonDisabled() ? 1 : 0.7}
+        >
+          <Text style={{ color: '#FFFFFF', fontWeight: 'bold', fontSize: 16 }}>
+            {h.nextStatusLabel()}
+          </Text>
+        </TouchableOpacity>
 
-        { /* istanbul ignore next */ (h.order.status === 'confirmed' || h.order.status === 'preparing') && (
-          <TouchableOpacity
-            onPress={h.handleCancelOrder}
-            style={{
-              backgroundColor: '#FF3B30',
-              borderRadius: 12,
-              paddingVertical: 12,
-              alignItems: 'center',
-              marginBottom: 8,
-            }}
-            activeOpacity={0.7}
-          >
-            <Text style={{ color: '#FFFFFF', fontWeight: 'bold', fontSize: 14 }}>
-              Cancelar Pedido
-            </Text>
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity
+          onPress={h.handleCancelOrder}
+          style={{
+            backgroundColor: '#FF3B30',
+            borderRadius: 12,
+            paddingVertical: 12,
+            alignItems: 'center',
+            marginBottom: 8,
+          }}
+          activeOpacity={0.7}
+        >
+          <Text style={{ color: '#FFFFFF', fontWeight: 'bold', fontSize: 14 }}>
+            Cancelar Pedido
+          </Text>
+        </TouchableOpacity>
 
       </ScrollView>
 

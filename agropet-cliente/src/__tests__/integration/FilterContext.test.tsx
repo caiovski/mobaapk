@@ -174,7 +174,7 @@ describe('FilterContext & Helper Functions', () => {
     });
 
     it('should cover isProductInCategories with product name missing', () => {
-      expect(isProductInCategories({ name: '', description: 'raçao' }, ['Ração'])).toBe(true);
+      expect(isProductInCategories({ name: '', description: 'ração' }, ['Ração'])).toBe(true);
       expect(isProductInCategories({ description: 'semente' }, ['Sementes'])).toBe(true);
     });
   });

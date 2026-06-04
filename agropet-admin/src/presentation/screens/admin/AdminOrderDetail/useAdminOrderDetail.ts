@@ -1,10 +1,11 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { Animated, Alert } from 'react-native';
+import * as Location from 'expo-location';
 import { supabase } from '../../../../data/datasources/supabase/client';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { NotificationService } from '../../../../services/notificationService';
 
-/* istanbul ignore next */ function getFirstImageUrl(url: string | null | undefined): string | null {
+function getFirstImageUrl(url: string | null | undefined): string | null {
   if (!url) return null;
   const trimmed = url.trim();
   if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
@@ -16,17 +17,44 @@ import { NotificationService } from '../../../../services/notificationService';
   return url;
 }
 
+const PROXIMITY_THRESHOLD_M = 200;
+
+function haversineDistance(
+  lat1: number, lon1: number,
+  lat2: number, lon2: number
+): number {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 export function useAdminOrderDetail({ route, navigation }: any) {
-  const { order } = route.params;
+  const { order: initialOrder } = route.params;
   const { colors, isDarkMode } = useTheme();
 
+  const [order, setOrder] = useState(initialOrder);
   const [orderItems, setOrderItems] = useState(route.params?.order?.order_items || []);
+  const [enRouteTriggered, setEnRouteTriggered] = useState(false);
+  const [departed, setDeparted] = useState(
+    order.status === 'delivering' && order.delivering_at &&
+    new Date(order.delivering_at).getTime() > new Date(order.created_at).getTime() + 1000
+  );
+  const [completedView, setCompletedView] = useState(order.status === 'completed');
+
   const orderTotal = order.total || 0;
   const userData = order.users || {};
 
   const glowAnim = useRef(new Animated.Value(0.3)).current;
+  const locationSubscriptionRef = useRef<any>(null);
+  const enRouteCalledRef = useRef(false);
 
-  /* istanbul ignore next */ useEffect(() => {
+  useEffect(() => {
     const fetchImages = async () => {
       const productIds = orderItems.map((item: any) => item.product_id).filter(Boolean);
       if (productIds.length > 0) {
@@ -35,7 +63,7 @@ export function useAdminOrderDetail({ route, navigation }: any) {
             .from('products')
             .select('id, image_url')
             .in('id', productIds);
-          
+
           if (data && !error) {
             const imageMap = new Map();
             data.forEach((p: any) => imageMap.set(p.id, p.image_url));
@@ -72,14 +100,68 @@ export function useAdminOrderDetail({ route, navigation }: any) {
     ).start();
   }, [glowAnim]);
 
-  /* istanbul ignore next */ const orderDateObj = new Date(order.created_at);
+  const stopLocationWatch = useCallback(() => {
+    if (locationSubscriptionRef.current) {
+      locationSubscriptionRef.current.remove();
+      locationSubscriptionRef.current = null;
+    }
+  }, []);
+
+  const startProximityMonitoring = useCallback(async (clientLat: number, clientLng: number) => {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') return;
+
+    const sub = await Location.watchPositionAsync(
+      { accuracy: Location.Accuracy.High, timeInterval: 5000, distanceInterval: 10 },
+      async (loc) => {
+        if (enRouteCalledRef.current) return;
+
+        const dist = haversineDistance(
+          loc.coords.latitude, loc.coords.longitude,
+          clientLat, clientLng
+        );
+
+        if (dist < PROXIMITY_THRESHOLD_M) {
+          enRouteCalledRef.current = true;
+          setEnRouteTriggered(true);
+
+          try {
+            const { data, error } = await supabase.rpc('mark_en_route', {
+              p_order_id: order.id,
+            });
+
+            if (data?.user_id) {
+              await NotificationService.sendOrderStatusNotification(
+                data.user_id, order.id, 'en_route'
+              );
+            }
+          } catch (e) {
+            console.error('Erro ao marcar à caminho:', e);
+          }
+
+          stopLocationWatch();
+        }
+      }
+    );
+    locationSubscriptionRef.current = sub;
+  }, [order.id, stopLocationWatch]);
+
+  useEffect(() => {
+    return () => {
+      stopLocationWatch();
+    };
+  }, [stopLocationWatch]);
+
+  const orderDateObj = new Date(order.created_at);
   const formattedDate = `${orderDateObj.getDate().toString().padStart(2, '0')}/${(orderDateObj.getMonth() + 1).toString().padStart(2, '0')}/${orderDateObj.getFullYear()}`;
 
   const isPhysicalPDV = order.delivery_address === 'Venda Física PDV';
   const isDelivered = order.status === 'completed';
   const isCancelled = order.status === 'cancelled';
+  const isPixPending = order.payment_method === 'pix' && order.status === 'processing';
+  const isCompletedView = completedView;
 
-  /* istanbul ignore next */ let lineColor = '#FF8A80';
+  let lineColor = '#FF8A80';
   let textColor = '#D32F2F';
   let statusText = 'Pendente';
   let isRightAligned = false;
@@ -99,36 +181,72 @@ export function useAdminOrderDetail({ route, navigation }: any) {
     textColor = '#757575';
     statusText = 'Cancelado';
     isRightAligned = false;
+  } else if (order.status === 'preparing') {
+    lineColor = '#FFA726';
+    textColor = '#FFA726';
+    statusText = 'Preparando';
+  } else if (departed) {
+    lineColor = '#E9A527';
+    textColor = '#E9A527';
+    statusText = 'Saiu para entrega';
   }
 
-  /* istanbul ignore next */ const clientAddress = isPhysicalPDV ? 'Venda Física (PDV)' : [
+  const clientAddress = isPhysicalPDV ? 'Venda Física (PDV)' : [
     userData.rua,
     userData.numero ? `N° ${userData.numero}` : null,
     userData.bairro,
     userData.cep,
   ].filter(Boolean).join(', ');
 
-  const handleGoBack = () => navigation.goBack();
+  const handleGoBack = () => {
+    stopLocationWatch();
+    navigation.goBack();
+  };
 
-  /* istanbul ignore next */ const nextStatus = useCallback((): string | null => {
+  const nextStatus = useCallback((): string | null => {
     const s = order.status;
-    if (s === 'processing') return 'confirmed';
     if (s === 'confirmed') return 'preparing';
     if (s === 'preparing') return 'delivering';
-    if (s === 'delivering') return 'completed';
+    if (s === 'delivering' && departed) return 'completed';
     return null;
-  }, [order.status]);
+  }, [order.status, departed]);
 
-  /* istanbul ignore next */ const nextStatusLabel = useCallback((): string => {
+  const nextStatusLabel = useCallback((): string => {
     const s = order.status;
-    if (s === 'processing') return 'Confirmar Pedido';
-    if (s === 'confirmed') return 'Iniciar Preparação';
-    if (s === 'preparing') return 'Sair para Entrega';
-    if (s === 'delivering') return 'Concluir Entrega';
+    if (s === 'cancelled') return 'Pedido Cancelado';
+    if (s === 'confirmed') return 'Iniciar preparação';
+    if (s === 'preparing') return 'Pedido preparado!';
+    if (s === 'delivering' && departed) return 'Concluir entrega';
+    if (s === 'delivering') return 'Saiu para entrega';
+    if (s === 'completed') return 'Entregue!';
     return '';
-  }, [order.status]);
+  }, [order.status, departed]);
 
-  /* istanbul ignore next */ const handleAdvanceStatus = useCallback(async () => {
+  const getButtonColor = useCallback((): string => {
+    const s = order.status;
+    if (s === 'cancelled' || s === 'completed') return '#A0A0A0';
+    if (isPixPending) return '#A0A0A0';
+    if (s === 'delivering' && departed) return '#00BFA5';
+    if (s === 'delivering') return '#2E7D32';
+    if (s === 'preparing') return '#042A7D';
+    if (s === 'confirmed') return '#042A7D';
+    return '#042A7D';
+  }, [order.status, departed, isPixPending]);
+
+  const isButtonDisabled = useCallback((): boolean => {
+    if (isPixPending) return true;
+    if (order.status === 'cancelled' || order.status === 'completed') return true;
+    return false;
+  }, [isPixPending, order.status]);
+
+  const handleAdvanceStatus = useCallback(async () => {
+    if (isPixPending || order.status === 'completed') return;
+
+    if (order.status === 'delivering' && !departed) {
+      await handleDeliveryDeparture();
+      return;
+    }
+
     const target = nextStatus();
     if (!target) return;
 
@@ -147,14 +265,48 @@ export function useAdminOrderDetail({ route, navigation }: any) {
         await NotificationService.sendOrderStatusNotification(data.user_id, order.id, target);
       }
 
+      setOrder(prev => ({ ...prev, status: target }));
+
+      if (target === 'completed') {
+        setCompletedView(true);
+      }
+
       Alert.alert('Sucesso', `Status alterado para "${target}".`);
-      navigation.goBack();
     } catch {
       Alert.alert('Erro', 'Ocorreu um erro ao atualizar o status.');
     }
-  }, [order.id, order.status, nextStatus, navigation]);
+  }, [order.id, order.status, nextStatus, isPixPending, departed, handleDeliveryDeparture]);
 
-  /* istanbul ignore next */ const handleCancelOrder = useCallback(async () => {
+  const handleDeliveryDeparture = useCallback(async () => {
+    try {
+      const { data, error } = await supabase.rpc('mark_delivery_departure', {
+        p_order_id: order.id,
+      });
+
+      if (error || !data?.success) {
+        Alert.alert('Erro', data?.error || 'Não foi possível registrar a saída.');
+        return;
+      }
+
+      if (data.user_id) {
+        await NotificationService.sendOrderStatusNotification(
+          data.user_id, order.id, 'saiu_para_entrega'
+        );
+      }
+
+      setDeparted(true);
+
+      if (userData.lat && userData.lng) {
+        startProximityMonitoring(userData.lat, userData.lng);
+      }
+
+      Alert.alert('Sucesso', 'Saída para entrega registrada!');
+    } catch {
+      Alert.alert('Erro', 'Ocorreu um erro ao processar a entrega.');
+    }
+  }, [order.id, userData.lat, userData.lng, startProximityMonitoring]);
+
+  const handleCancelOrder = useCallback(async () => {
     Alert.alert(
       'Cancelar Pedido',
       'Tem certeza que deseja cancelar este pedido?',
@@ -179,8 +331,9 @@ export function useAdminOrderDetail({ route, navigation }: any) {
                 await NotificationService.sendOrderStatusNotification(data.user_id, order.id, 'cancelled');
               }
 
+              stopLocationWatch();
+              setOrder(prev => ({ ...prev, status: 'cancelled' }));
               Alert.alert('Pedido Cancelado', 'O pedido foi cancelado com sucesso.');
-              navigation.goBack();
             } catch {
               Alert.alert('Erro', 'Ocorreu um erro ao cancelar.');
             }
@@ -188,7 +341,7 @@ export function useAdminOrderDetail({ route, navigation }: any) {
         },
       ]
     );
-  }, [order.id, navigation]);
+  }, [order.id, stopLocationWatch]);
 
   return {
     colors,
@@ -202,6 +355,10 @@ export function useAdminOrderDetail({ route, navigation }: any) {
     isPhysicalPDV,
     isDelivered,
     isCancelled,
+    isPixPending,
+    departed,
+    enRouteTriggered,
+    isCompletedView,
     lineColor,
     textColor,
     statusText,
@@ -210,6 +367,8 @@ export function useAdminOrderDetail({ route, navigation }: any) {
     handleGoBack,
     nextStatus,
     nextStatusLabel,
+    getButtonColor,
+    isButtonDisabled,
     handleAdvanceStatus,
     handleCancelOrder,
     getFirstImageUrl,

@@ -93,7 +93,7 @@ export class NotificationService {
     status: string
   ): Promise<void> {
     /* istanbul ignore next */ try {
-      /* istanbul ignore next */ const { supabase } = require('../../data/datasources/supabase/client');
+      /* istanbul ignore next */ const { supabase } = require('../data/datasources/supabase/client');
       /* istanbul ignore next */ const { data } = await supabase
         .from('users')
         .select('push_token')

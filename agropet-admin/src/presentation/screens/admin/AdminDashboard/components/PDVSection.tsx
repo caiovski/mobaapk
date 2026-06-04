@@ -7,6 +7,7 @@ import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
 import CheckIcon from '../../../../assets/tela7/registrar/Adicionar/Remover/Check.svg';
 import { getFirstImageUrl } from '../../../../../utils/imageUtils';
+import { isProductInCategories } from '../useAdminDashboard';
 
 interface PDVSectionProps {
   pdvSearchText: string;
@@ -112,10 +113,11 @@ export default function PDVSection({
       ) : (
         pdvProducts
           .filter(p => {
+            if (!isProductInCategories(p, pdvActiveCategories)) return false;
+            if (!pdvSearchText) return true;
             const query = pdvSearchText.toLowerCase();
-            /* istanbul ignore next */ const nameMatches = (p.name || '').toLowerCase().includes(query);
-            const descMatches = (p.description || '').toLowerCase().includes(query);
-            return !pdvSearchText || nameMatches || descMatches;
+            const nameMatches = (p.name || '').toLowerCase().includes(query);
+            return nameMatches;
           })
           .map(item => {
             const inCart = pdvCart[item.id] || { qty: 1, checked: false };

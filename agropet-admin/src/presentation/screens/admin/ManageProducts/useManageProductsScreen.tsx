@@ -5,17 +5,21 @@ import { supabase } from '../../../../data/datasources/supabase/client';
 import { useTheme } from '../../../contexts/ThemeContext';
 
 export const CATEGORY_KEYWORDS: Record<string, string[]> = {
-  'Ração': ['ração', 'racao', 'dog chow', 'pedigree', 'besser', 'purina', 'whiskas', 'granplus', 'premium', 'cão', 'cães', 'gato', 'gatos', 'vaca', 'porco'],
-  'Pesca': ['pesca', 'vara', 'anzol', 'linha', 'molinete', 'boia', 'bóia', 'isca', 'carretilha'],
-  'Sementes': ['semente', 'semeadura', 'sementes', 'girassol', 'milho', 'alpiste'],
+  'Ração': ['ração', 'cachorro', 'cachorros', 'canino', 'caninos', 'felino', 'felinos', 'racao', 'dog chow', 'pedigree', 'besser', 'purina', 'whiskas', 'granplus', 'premium', 'cão', 'cães', 'gato', 'gatos', 'vaca', 'porco', 'frango', 'galinha', 'galinhas'],
+  'Pesca': ['pesca', 'vara', 'anzol', 'linha', 'molinete', 'boia', 'bóia', 'isca', 'carretilha', 'pescaria'],
+  'Sementes': ['semente', 'semeadura', 'sementes', 'girassol', 'milho', 'alpiste', 'grão', 'grãos', 'erva', 'ervas', 'erva-doce', 'ervadoce'],
   'Adubo': ['adubo', 'fertilizante', 'terra', 'substrato', 'humus', 'húmus', 'calpiso', 'calcario'],
 };
 
-/* istanbul ignore next */ const isProductInCategories = (product: any, categories: string[]) => {
-  if (categories.length === 0) return true;
+const isProductInCategories = (product: any, categories: string[]) => {
+  if (!categories || categories.length === 0) return true;
+  /* istanbul ignore next */ if (!product) return false;
   const name = (product.name || '').toLowerCase();
-  const desc = (product.description || '').toLowerCase();
-  return categories.some(cat => (CATEGORY_KEYWORDS[cat] || []).some(kw => name.includes(kw) || desc.includes(kw)));
+  const description = (product.description || '').toLowerCase();
+  return categories.some(cat => {
+    const keywords = CATEGORY_KEYWORDS[cat] || [cat.toLowerCase()];
+    return keywords.some(kw => name.includes(kw.toLowerCase()) || description.includes(kw.toLowerCase()));
+  });
 };
 
 export function getFirstImageUrl(url: string | null | undefined): string | null {
@@ -110,9 +114,13 @@ export function useManageProductsScreen() {
     if (alertYellowFilter || alertRedFilter) {
       const isRed = stock < 10;
       const isYellow = stock >= 10 && stock <= 29;
-      if (alertYellowFilter && alertRedFilter && !isRed && !isYellow) return false;
-      if (alertRedFilter && !isRed) return false;
-      if (alertYellowFilter && !isYellow) return false;
+      if (alertYellowFilter && alertRedFilter) {
+        if (!isRed && !isYellow) return false;
+      } else if (alertRedFilter && !isRed) {
+        return false;
+      } else if (alertYellowFilter && !isYellow) {
+        return false;
+      }
     }
     return matchesSearch && matchesCategory;
   });

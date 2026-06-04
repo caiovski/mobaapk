@@ -15,7 +15,7 @@ export default function SettingsScreen() {
   const h = useSettingsScreen();
 
   return (
-    <View style={[styles.mainContainer, { backgroundColor: h.colors.background }]}>
+    <View style={[styles.mainContainer, { backgroundColor: h.colors.backgroundLight }]}>
       <StatusBar backgroundColor={h.colors.headerBackground} barStyle="light-content" />
 
       <CatalogHeader

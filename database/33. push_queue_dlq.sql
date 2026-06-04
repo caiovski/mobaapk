@@ -10,7 +10,7 @@ ALTER TABLE public.notification_queue ADD COLUMN IF NOT EXISTS failed_at TIMESTA
 ALTER TABLE public.notification_queue ADD COLUMN IF NOT EXISTS retry_count INTEGER DEFAULT 0;
 
 -- View para dead letter queue (notificações que falharam permanentemente)
-CREATE OR REPLACE VIEW public.dlq_notifications AS
+CREATE OR REPLACE VIEW public.dlq_notifications WITH (security_invoker = true) AS
 SELECT *
 FROM public.notification_queue
 WHERE status = 'failed'

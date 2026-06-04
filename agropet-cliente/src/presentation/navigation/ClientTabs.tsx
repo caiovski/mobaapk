@@ -89,8 +89,9 @@ export default function ClientTabs() {
     (global as any).refreshDeliveryTabs = fetchDeliveryStatus;
 
     // Sincronização em tempo real (Supabase Realtime)
+    const channelName = `store_settings_tabs_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const channel = supabase
-      .channel('store_settings_tabs')
+      .channel(channelName)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'store_settings' },

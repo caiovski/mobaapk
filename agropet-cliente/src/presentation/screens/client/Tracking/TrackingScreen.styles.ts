@@ -8,7 +8,7 @@ export const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 30,
-    paddingBottom: 120,
+    paddingBottom: 160,
   },
   stepRow: {
     flexDirection: 'row',
@@ -50,6 +50,12 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'flex-end',
     marginLeft: 5,
+  },
+  horarioLabel: {
+    position: 'absolute',
+    top: 9,
+    fontSize: 13,
+    fontWeight: 'bold',
   },
   rightTimeBox: {
     width: 75,

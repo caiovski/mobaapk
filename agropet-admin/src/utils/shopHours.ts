@@ -205,3 +205,9 @@ export function getShopStatus(now: Date): ShopStatus {
     };
   }
 }
+
+export function canBypassStoreHours(userRole?: string, bypassStoreHours?: boolean): boolean {
+  if (userRole === 'admin') return true;
+  if (bypassStoreHours) return true;
+  return false;
+}

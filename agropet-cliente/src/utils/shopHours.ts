@@ -116,7 +116,6 @@ export function getShopStatus(now: Date): ShopStatus {
   const pad = (num: number) => String(num).padStart(2, '0');
 
   if (isOpenToday && nowInSeconds >= openInSeconds && nowInSeconds < closeInSeconds) {
-    // Loja aberta! Contador regressivo de fechamento
     const secondsRemaining = closeInSeconds - nowInSeconds;
     const hours = Math.floor(secondsRemaining / 3600);
     const minutes = Math.floor((secondsRemaining % 3600) / 60);
@@ -133,8 +132,6 @@ export function getShopStatus(now: Date): ShopStatus {
       secondsRemaining
     };
   } else {
-    // Loja fechada! Vamos encontrar a próxima reabertura
-    // Se hoje é dia de abertura, mas ainda não abriu (está antes das 08h)
     if (isOpenToday && nowInSeconds < openInSeconds) {
       const secondsRemaining = openInSeconds - nowInSeconds;
       const hours = Math.floor(secondsRemaining / 3600);
@@ -153,7 +150,6 @@ export function getShopStatus(now: Date): ShopStatus {
       };
     }
 
-    // Caso contrário, ela abrirá em algum dia no futuro (dias seguintes)
     let targetDate = new Date(now);
     let targetHours = getStoreHoursForDate(targetDate);
     let daysDiff = 0;
@@ -204,4 +200,10 @@ export function getShopStatus(now: Date): ShopStatus {
       secondsRemaining: diffSeconds
     };
   }
+}
+
+export function canBypassStoreHours(userRole?: string, bypassStoreHours?: boolean): boolean {
+  if (userRole === 'admin') return true;
+  if (bypassStoreHours) return true;
+  return false;
 }

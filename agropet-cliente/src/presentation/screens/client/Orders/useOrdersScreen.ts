@@ -3,7 +3,7 @@ import { Alert } from 'react-native';
 import { AuthContext } from '../../../contexts/AuthContext';
 import { useConnectivity } from '../../../contexts/ConnectivityContext';
 import { supabase } from '../../../../data/datasources/supabase/client';
-import { getShopStatus } from '../../../../utils/shopHours';
+import { getShopStatus, canBypassStoreHours } from '../../../../utils/shopHours';
 
 function getFirstImageUrl(url: string | null | undefined): string | null {
   if (!url) return null;
@@ -25,6 +25,8 @@ export function useOrdersScreen({ navigation }: any) {
   const [orders, setOrders] = useState<any[]>([]);
   const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null);
   const [activeCancelDropdownId, setActiveCancelDropdownId] = useState<string | null>(null);
+  const [activePayDropdownId, setActivePayDropdownId] = useState<string | null>(null);
+  const [activeDetailsDropdownId, setActiveDetailsDropdownId] = useState<string | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
   const [showDeliveryOnly, setShowDeliveryOnly] = useState(false);
@@ -147,27 +149,35 @@ export function useOrdersScreen({ navigation }: any) {
   }, [fetchOrders]);
 
   const toggleDropdown = useCallback(async (orderId: string) => {
-    const shop = getShopStatus(new Date());
-    if (!shop.isOpen) {
-      if (shop.isSundayOrHoliday) {
-        Alert.alert(
-          'Aviso',
-          'Você não pode rastrear produtos hoje pois é Domingo (ou Feriado)'
-        );
-      } else {
-        setTrackingErrors(prev => ({
-          ...prev,
-          [orderId]: 'Você não pode rastrear fora do horário de funcionamento!'
-        }));
-        setTimeout(() => {
-          setTrackingErrors(prev => {
-            const next = { ...prev };
-            delete next[orderId];
-            return next;
-          });
-        }, 5000);
+    const { data: userData } = await supabase
+      .from('users')
+      .select('role, bypass_store_hours')
+      .eq('id', user?.id)
+      .single();
+
+    if (!canBypassStoreHours(userData?.role, userData?.bypass_store_hours)) {
+      const shop = getShopStatus(new Date());
+      if (!shop.isOpen) {
+        if (shop.isSundayOrHoliday) {
+          Alert.alert(
+            'Aviso',
+            'Você não pode rastrear produtos hoje pois é Domingo (ou Feriado)'
+          );
+        } else {
+          setTrackingErrors(prev => ({
+            ...prev,
+            [orderId]: 'Você não pode rastrear fora do horário de funcionamento!'
+          }));
+          setTimeout(() => {
+            setTrackingErrors(prev => {
+              const next = { ...prev };
+              delete next[orderId];
+              return next;
+            });
+          }, 5000);
+        }
+        return;
       }
-      return;
     }
 
     try {
@@ -192,6 +202,7 @@ export function useOrdersScreen({ navigation }: any) {
     } else {
       setActiveDropdownId(orderId);
       setActiveCancelDropdownId(null);
+      setActivePayDropdownId(null);
     }
   }, [activeDropdownId]);
 
@@ -201,17 +212,42 @@ export function useOrdersScreen({ navigation }: any) {
     } else {
       setActiveCancelDropdownId(orderId);
       setActiveDropdownId(null);
+      setActivePayDropdownId(null);
     }
   }, [activeCancelDropdownId]);
 
+  const togglePayDropdown = useCallback((orderId: string) => {
+    if (activePayDropdownId === orderId) {
+      setActivePayDropdownId(null);
+    } else {
+      setActivePayDropdownId(orderId);
+      setActiveDropdownId(null);
+      setActiveCancelDropdownId(null);
+    }
+  }, [activePayDropdownId]);
+
+  const closeAllDropdowns = useCallback(() => {
+    setActiveDropdownId(null);
+    setActiveCancelDropdownId(null);
+    setActivePayDropdownId(null);
+    setActiveDetailsDropdownId(null);
+  }, []);
+
   const handleCancelOrder = useCallback(async (orderId: string) => {
     try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ status: 'cancelled' })
-        .eq('id', orderId);
+      const order = orders.find(o => o.id === orderId);
+      const isPixProcessing = order?.payment_method === 'pix' && order?.status === 'processing';
 
-      if (error) throw error;
+      if (isPixProcessing) {
+        const { error } = await supabase.rpc('cancel_pix_order', { p_order_id: orderId });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('orders')
+          .update({ status: 'cancelled' })
+          .eq('id', orderId);
+        if (error) throw error;
+      }
 
       showAlert('Sucesso', 'Entrega cancelada com sucesso.');
       fetchOrders();
@@ -222,13 +258,14 @@ export function useOrdersScreen({ navigation }: any) {
       setShowCancelModal(false);
       setCancellingOrderId(null);
     }
-  }, [showAlert, fetchOrders]);
+  }, [showAlert, fetchOrders, orders]);
 
-  const activeOrders = orders.filter(op => op.status === 'confirmed');
+  const pendingPaymentOrders = orders.filter(op => op.status === 'processing');
+  const deliveryOrders = orders.filter(op => op.status === 'confirmed' || op.status === 'preparing' || op.status === 'delivering');
   const pastOrders = orders.filter(op => op.status === 'completed');
 
   const deliveryItems: any[] = [];
-  activeOrders.forEach(order => {
+  deliveryOrders.forEach(order => {
     if (order.order_items) {
       order.order_items.forEach((item: any) => {
         deliveryItems.push({
@@ -249,6 +286,8 @@ export function useOrdersScreen({ navigation }: any) {
     orders,
     activeDropdownId, setActiveDropdownId,
     activeCancelDropdownId, setActiveCancelDropdownId,
+    activePayDropdownId, setActivePayDropdownId,
+    activeDetailsDropdownId, setActiveDetailsDropdownId,
     showCancelModal, setShowCancelModal,
     cancellingOrderId, setCancellingOrderId,
     showDeliveryOnly, setShowDeliveryOnly,
@@ -263,8 +302,11 @@ export function useOrdersScreen({ navigation }: any) {
     onRefresh,
     toggleDropdown,
     toggleCancelDropdown,
+    togglePayDropdown,
+    closeAllDropdowns,
     handleCancelOrder,
-    activeOrders,
+    pendingPaymentOrders,
+    deliveryOrders,
     pastOrders,
     deliveryItems,
     getFirstImageUrl,

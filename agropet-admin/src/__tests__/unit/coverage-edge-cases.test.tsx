@@ -713,6 +713,11 @@ describe('useAdminDashboard pure functions - edge branches', () => {
     const product = { name: null, description: null };
     expect(isProductInCategories(product, ['unknown'])).toBe(false);
   });
+
+  it('isProductInCategories null product guard (line 32)', () => {
+    const { isProductInCategories } = require('../../presentation/screens/admin/AdminDashboard/useAdminDashboard');
+    expect(isProductInCategories(null, ['Ração'])).toBe(false);
+  });
 });
 
 describe('useAdminDashboard hook - onChangeDate edge branches', () => {

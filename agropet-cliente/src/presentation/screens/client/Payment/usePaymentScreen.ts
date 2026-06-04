@@ -159,7 +159,7 @@ export function usePaymentScreen() {
         if (user?.id) {
           NotificationService.sendOrderStatusNotification(user.id, orderId, dbPaymentMethod === 'pix' ? 'processing' : 'confirmed');
         }
-        navigation.replace('PaymentConfirmScreen', { orderId, paymentMethod: dbPaymentMethod });
+        navigation.replace('PaymentConfirmScreen', { orderId, paymentMethod: dbPaymentMethod, total: grandTotal });
       } catch (err: any) {
         if (err.message && err.message.includes('RECURSO_OCUPADO') && attempt < maxRetries) {
           const delay = Math.pow(2, attempt - 1) * 1000;

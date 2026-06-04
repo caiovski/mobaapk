@@ -2,6 +2,7 @@ import { useState, useContext, useEffect } from 'react';
 import { Alert, Platform, Share } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { AuthContext } from '../../../contexts/AuthContext';
 import { useUserMenu } from '../../../contexts/UserMenuContext';
 import { supabase } from '../../../../data/datasources/supabase/client';
@@ -89,51 +90,111 @@ export function useSettingsScreen() {
         return;
       }
       const profile = data.profile || {};
-      const orders = data.orders || [];
-      const payments = data.payments || [];
+      const auditLogs = data.audit_logs || [];
       const lines: string[] = [];
-      lines.push('=== MEUS DADOS ===');
-      lines.push(`Exportado em: ${data.exported_at || new Date().toISOString()}`);
+      const separator = '='.repeat(60);
+      const subSeparator = '-'.repeat(40);
+
+      lines.push(separator);
+      lines.push('  RELATORIO DE DADOS PESSOAIS - LGPD');
+      lines.push(separator);
+      lines.push('  Exportado em: ' + (data.exported_at || new Date().toISOString()));
+      lines.push('  ID do usuario: ' + (profile.id || ''));
+      lines.push('  Tipo de conta: ' + (profile.role === 'admin' ? 'Administrador' : profile.role === 'partner' ? 'Parceiro' : 'Cliente'));
+      lines.push(separator);
       lines.push('');
-      lines.push('--- PERFIL ---');
-      lines.push(`Nome: ${profile.name || ''}`);
-      lines.push(`Email: ${profile.email || ''}`);
-      lines.push(`Telefone: ${profile.phone || ''}`);
-      lines.push(`Endereço: ${profile.address || ''}`);
-      lines.push(`Cidade: ${profile.city || ''}`);
-      lines.push(`CEP: ${profile.cep || ''}`);
+
+      lines.push(subSeparator);
+      lines.push(' 1. INFORMACOES PESSOAIS');
+      lines.push(subSeparator);
       lines.push('');
-      lines.push('--- PEDIDOS ---');
-      if (orders.length === 0) {
-        lines.push('Nenhum pedido encontrado.');
+      lines.push('  Nome completo:   ' + (profile.name || '(nao informado)'));
+      lines.push('  Nome de usuario: ' + (profile.username || '(nao informado)'));
+      lines.push('  Email:           ' + (profile.email || '(nao informado)'));
+      lines.push('  Telefone:        ' + (profile.phone || '(nao informado)'));
+      lines.push('  Conta criada em: ' + (profile.created_at || '(nao informado)'));
+      lines.push('');
+
+      lines.push(subSeparator);
+      lines.push(' 2. ENDERECO PRINCIPAL');
+      lines.push(subSeparator);
+      lines.push('');
+      lines.push('  Logradouro: ' + (profile.rua || '(nao informado)'));
+      lines.push('  Numero:     ' + (profile.numero || '(nao informado)'));
+      lines.push('  Bairro:     ' + (profile.bairro || '(nao informado)'));
+      lines.push('  Cidade:     ' + (profile.city || '(nao informado)'));
+      lines.push('  CEP:        ' + (profile.cep || '(nao informado)'));
+      lines.push('  Endereco completo: ' + (profile.address || '(nao informado)'));
+      if (profile.lat && profile.lng) {
+        lines.push('  Coordenadas: ' + profile.lat + ', ' + profile.lng);
+      }
+      lines.push('');
+
+      lines.push(subSeparator);
+      lines.push(' 3. REGISTROS DE ATIVIDADE');
+      lines.push(subSeparator);
+      lines.push('');
+      if (auditLogs.length === 0) {
+        lines.push('  Nenhum registro de atividade encontrado.');
       } else {
-        for (const item of orders) {
-          const o = item.order || {};
-          lines.push(`Pedido #${o.id || ''} - ${o.status || ''} - R$ ${o.total || '0,00'}`);
-          if (o.created_at) lines.push(`  Data: ${o.created_at}`);
-          if (o.delivery_type) lines.push(`  Entrega: ${o.delivery_type}`);
-          if (o.payment_method) lines.push(`  Pagamento: ${o.payment_method}`);
-          const itemsList = item.items || [];
-          for (const prod of itemsList) {
-            lines.push(`  - ${prod.name || 'Produto'} x${prod.quantity || 1} = R$ ${(prod.unit_price * prod.quantity).toFixed(2)}`);
+        for (const log of auditLogs) {
+          const actionLabel = {
+            export_user_data: 'Exportacao de dados (LGPD)',
+            request_account_deletion: 'Solicitacao de exclusao de conta',
+            cancel_account_deletion: 'Cancelamento de exclusao de conta',
+            update_email: 'Alteracao de email',
+            update_password: 'Alteracao de senha',
+            update_phone: 'Alteracao de telefone',
+            update_profile: 'Alteracao de perfil',
+          }[log.action] || log.action;
+          lines.push('  - ' + actionLabel);
+          lines.push('    Data: ' + (log.created_at || ''));
+          if (log.details) {
+            lines.push('    Detalhes: ' + (typeof log.details === 'object' ? JSON.stringify(log.details) : log.details));
           }
           lines.push('');
         }
       }
-      lines.push('--- PAGAMENTOS ---');
-      if (payments.length === 0) {
-        lines.push('Nenhum pagamento encontrado.');
-      } else {
-        for (const pt of payments) {
-          lines.push(`Transação: ${pt.id || ''} - ${pt.status || ''} - R$ ${pt.amount || '0,00'}`);
-        }
-      }
+
+      lines.push(separator);
+      lines.push('  FIM DO RELATORIO');
+      lines.push(separator);
+
       const text = lines.join('\n');
-      const fileName = `meus-dados-${user?.id?.slice(0, 8)}.txt`;
-      const filePath = `${FileSystem.cacheDirectory}${fileName}`;
-      await FileSystem.writeAsStringAsync(filePath, text);
-      await Share.share({ message: text, url: Platform.OS === 'ios' ? filePath : undefined });
-      Alert.alert('Dados Exportados', `Arquivo "${fileName}" gerado com seus dados pessoais.`);
+      const fileName = 'meus-dados-' + (user?.id?.slice(0, 8) || 'usuario') + '.txt';
+
+      await new Promise<void>((resolve) => {
+        Alert.alert(
+          'Download de Dados',
+          'Tem certeza que deseja fazer o download dos seus dados?',
+          [
+            { text: 'Cancelar', style: 'cancel', onPress: () => resolve() },
+            {
+              text: 'Sim', onPress: async () => {
+                try {
+                  const filePath = FileSystem.cacheDirectory + fileName;
+                  await FileSystem.writeAsStringAsync(filePath, text, { encoding: FileSystem.EncodingType.UTF8 });
+
+                  const isSharingAvailable = await Sharing.isAvailableAsync();
+                  if (isSharingAvailable) {
+                    await Sharing.shareAsync(filePath, { mimeType: 'text/plain' });
+                  } else {
+                    if (Platform.OS === 'android') {
+                      const contentUri = await FileSystem.getContentUriAsync(filePath);
+                      await Share.share({ message: contentUri });
+                    } else {
+                      await Share.share({ url: filePath });
+                    }
+                  }
+                } catch (e: any) {
+                  Alert.alert('Erro', e?.message || 'Ocorreu um erro ao exportar seus dados.');
+                }
+                resolve();
+              }
+            },
+          ]
+        );
+      });
     } catch (e: any) {
       Alert.alert('Erro', e?.message || 'Ocorreu um erro ao exportar seus dados.');
     } finally {

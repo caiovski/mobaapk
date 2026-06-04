@@ -32,7 +32,7 @@ const baseCart = {
 const createProps = (overrides = {}) => ({
   pdvSearchText: '',
   onSearchChange: jest.fn(),
-  pdvActiveCategories: ['Ração'],
+  pdvActiveCategories: [],
   onCategoryToggle: jest.fn(),
   pdvSelectMode: false,
   pdvCart: baseCart,
@@ -173,5 +173,29 @@ describe('PDVSection', () => {
   it('should render in dark mode', () => {
     const { getByText } = render(<PDVSection {...createProps({ isDarkMode: true })} />);
     expect(getByText('Test Product')).toBeTruthy();
+  });
+
+  it('should render selected category in dark mode (line 71-74 isSelected=true, isDarkMode=true)', () => {
+    const { getByText } = render(<PDVSection {...createProps({ isDarkMode: true, pdvActiveCategories: ['Ração'] })} />);
+    expect(getByText('Ração')).toBeTruthy();
+  });
+
+  it('should render selected category in light mode (line 71-74 isSelected=true, isDarkMode=false)', () => {
+    const { getByText } = render(<PDVSection {...createProps({ isDarkMode: false, pdvActiveCategories: ['Ração'] })} />);
+    expect(getByText('Ração')).toBeTruthy();
+  });
+
+  it('should cover null name match branch (line 119 || fallback)', () => {
+    const nullNameProduct = { id: 'p-null', name: null as any, price: 10, stock: 5 };
+    const { queryByText } = render(
+      <PDVSection
+        {...createProps({
+          pdvProducts: [nullNameProduct],
+          pdvSearchText: 'whatever',
+          pdvCart: { 'p-null': { qty: 1, checked: false } },
+        })}
+      />
+    );
+    expect(queryByText('R$ 10,00')).toBeNull();
   });
 });

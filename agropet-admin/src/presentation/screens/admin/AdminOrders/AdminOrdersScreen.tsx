@@ -34,10 +34,10 @@ export default function AdminOrdersScreen() {
           <Text style={[styles.columnLabel, { color: labelColor }]}>Situação do{"\n"}pagamento</Text>
           {order.status === 'cancelled' ? (
             <Text style={[styles.valText, { color: '#FF6B6B', fontWeight: 'bold' }]}>Cancelado</Text>
-          ) : order.status === 'confirmed' || order.status === 'completed' ? (
-            <Text style={[styles.valText, { color: h.isDarkMode ? '#4ADE80' : '#339914', fontWeight: 'bold' }]}>Aprovado</Text>
-          ) : (
+          ) : order.payment_method === 'pix' && order.status === 'processing' ? (
             <Text style={[styles.valText, { color: '#e69900', fontWeight: 'bold' }]}>Pendente</Text>
+          ) : (
+            <Text style={[styles.valText, { color: h.isDarkMode ? '#4ADE80' : '#339914', fontWeight: 'bold' }]}>Aprovado</Text>
           )}
         </View>
         <View style={{ width: 1, height: '100%', backgroundColor: separatorColor }} />

@@ -31,6 +31,7 @@ const mockProductsList = [
   { id: 'p-4', name: 'Ração Inativa', price: 80, stock: 0, category_id: 'cat-1', active: false, description: 'Ração' },
   { id: 'p-5', name: 'Ração JSON Imagem', price: 160, stock: 45, category_id: 'cat-1', active: true, description: 'Ração', image_url: '["https://example.com/img1.png"]' },
   { id: 'p-6', name: 'Ração Plain Imagem', price: 170, stock: 40, category_id: 'cat-1', active: true, description: 'Ração', image_url: 'https://example.com/single-img.png' },
+  { id: 'p-7', name: null, price: 90, stock: 30, category_id: 'cat-1', active: true, description: null },
 ];
 
 const mockLimitFn = jest.fn().mockResolvedValue({ data: mockProductsList, error: null });

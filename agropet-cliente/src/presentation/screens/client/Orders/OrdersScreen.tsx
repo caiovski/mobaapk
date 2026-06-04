@@ -22,6 +22,8 @@ export default function OrdersScreen({ navigation }: any) {
     loading, refreshing,
     activeDropdownId, setActiveDropdownId,
     activeCancelDropdownId, setActiveCancelDropdownId,
+    activePayDropdownId, setActivePayDropdownId,
+    activeDetailsDropdownId, setActiveDetailsDropdownId,
     showCancelModal, setShowCancelModal,
     cancellingOrderId, setCancellingOrderId,
     showDeliveryOnly, setShowDeliveryOnly,
@@ -30,8 +32,9 @@ export default function OrdersScreen({ navigation }: any) {
     alertTitle, alertMessage,
     deliveryActive, trackingErrors,
     onRefresh, toggleDropdown,
-    toggleCancelDropdown, handleCancelOrder,
-    activeOrders, pastOrders,
+    toggleCancelDropdown, togglePayDropdown, closeAllDropdowns,
+    handleCancelOrder,
+    pendingPaymentOrders, deliveryOrders, pastOrders,
     getFirstImageUrl,
   } = useOrdersScreen({ navigation });
 
@@ -45,11 +48,17 @@ export default function OrdersScreen({ navigation }: any) {
         isDarkMode={isDarkMode}
         activeDropdownId={activeDropdownId}
         activeCancelDropdownId={activeCancelDropdownId}
+        activePayDropdownId={activePayDropdownId}
+        activeDetailsDropdownId={activeDetailsDropdownId}
         trackingErrors={trackingErrors}
         onToggleDropdown={toggleDropdown}
         onToggleCancelDropdown={toggleCancelDropdown}
+        onTogglePayDropdown={togglePayDropdown}
+        onToggleDetailsDropdown={(id: string) => setActiveDetailsDropdownId(prev => prev === id ? null : id)}
         onCloseDropdown={() => setActiveDropdownId(null)}
         onCloseCancelDropdown={() => setActiveCancelDropdownId(null)}
+        onClosePayDropdown={() => setActivePayDropdownId(null)}
+        onCloseDetailsDropdown={() => setActiveDetailsDropdownId(null)}
         onRequestCancel={(id) => {
           setActiveCancelDropdownId(null);
           setCancellingOrderId(id);
@@ -59,21 +68,22 @@ export default function OrdersScreen({ navigation }: any) {
       />
     ));
 
-  const renderSection = (title: 'delivery' | 'history', orders: any[], isPast: boolean, showAll: boolean, onShowAll: () => void) => {
-    const headerSvg = title === 'delivery'
-      ? <PedidosEmEntregaSvg width={180} height={20} />
+  const renderSection = (title: 'payment' | 'delivery' | 'history', orders: any[], isPast: boolean, showAll: boolean, onShowAll: () => void) => {
+    const headerLabel = title === 'payment' ? 'Pedidos à pagar'
+      : title === 'delivery' ? 'Pedidos em entrega'
+      : 'Histórico de compras';
+    const headerSvg = title === 'payment' ? null
+      : title === 'delivery' ? <PedidosEmEntregaSvg width={180} height={20} />
       : <HistoricoDeComprasSvg width={180} height={20} />;
-    const emptyMsg = isPast
-      ? 'Você não fez nenhuma compra ainda!'
+    const emptyMsg = title === 'payment' ? 'Não há pedidos pendentes de pagamento.'
+      : isPast ? 'Você não fez nenhuma compra ainda!'
       : 'Não há pedidos em entrega.';
 
     return (
       <>
         <View style={styles.sectionHeader}>
-          {isDarkMode
-            ? <Text style={[styles.sectionTitle, { color: '#FFFFFF' }]}>
-                {title === 'delivery' ? 'Pedidos em entrega' : 'Histórico de compras'}
-              </Text>
+          {isDarkMode || title === 'payment'
+            ? <Text style={[styles.sectionTitle, { color: title === 'payment' ? (isDarkMode ? '#FFFFFF' : '#1C2434') : '#FFFFFF' }]}>{headerLabel}</Text>
             : headerSvg}
           {showAll && (
             <TouchableOpacity onPress={onShowAll}>
@@ -105,6 +115,8 @@ export default function OrdersScreen({ navigation }: any) {
       <ScrollView
         contentContainerStyle={[styles.scrollContent, (showDeliveryOnly || showHistoryOnly) && { paddingTop: 10 }]}
         showsVerticalScrollIndicator={false}
+        onScroll={closeAllDropdowns}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -122,11 +134,11 @@ export default function OrdersScreen({ navigation }: any) {
                 ? <Text style={[styles.sectionTitle, { color: '#FFFFFF' }]}>Pedidos em entrega</Text>
                 : <PedidosEmEntregaSvg width={180} height={20} />}
             </View>
-            {activeOrders.length === 0
+            {deliveryOrders.length === 0
               ? <Text style={[styles.emptyText, { color: isDarkMode ? '#A8A8B3' : '#000000' }]}>
                   Não há pedidos em entrega no momento.
                 </Text>
-              : renderOrders(activeOrders, false)}
+              : renderOrders(deliveryOrders, false)}
           </View>
         ) : showHistoryOnly ? (
           <View style={{ flex: 1, minHeight: 400 }}>
@@ -146,7 +158,12 @@ export default function OrdersScreen({ navigation }: any) {
           <>
             {loading
               ? <ActivityIndicator size="large" color="#339914" style={{ marginTop: 20 }} />
-              : renderSection('delivery', activeOrders, false, true, () => setShowDeliveryOnly(true))}
+              : (
+                <>
+                  {pendingPaymentOrders.length > 0 && renderSection('payment', pendingPaymentOrders, false, false, () => {})}
+                  {renderSection('delivery', deliveryOrders, false, true, () => setShowDeliveryOnly(true))}
+                </>
+              )}
             {!loading && (
               <>
                 <View style={[styles.sectionHeader, { marginTop: 40 }]}>

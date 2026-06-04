@@ -53,7 +53,7 @@ export const darkColors: ThemeColors = {
   
   // Custom theme colors
   inputBackground: '#2E2E38',
-  headerBackground: '#121212',
+  headerBackground: '#000000',
   settingsCardBackground: '#1E1E24',
   textPrimary: '#FFFFFF',
 };

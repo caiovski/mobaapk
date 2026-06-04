@@ -9,7 +9,7 @@ import { useUserMenu } from '../../../contexts/UserMenuContext';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { supabase } from '../../../../data/datasources/supabase/client';
 import * as SecureStore from 'expo-secure-store';
-import { getShopStatus } from '../../../../utils/shopHours';
+import { getShopStatus, canBypassStoreHours } from '../../../../utils/shopHours';
 
 function getFirstImageUrl(url: string | null | undefined): string | null {
   if (!url) return null;
@@ -245,17 +245,6 @@ export function useCartScreen() {
       return;
     }
 
-    const shop = getShopStatus(new Date());
-    if (!shop.isOpen) {
-      if (shop.isSundayOrHoliday) {
-        setCheckoutError('Você não pode fazer compras hoje pois é Domingo (ou Feriado)!');
-      } else {
-        setCheckoutError('Você não pode fazer compras fora do horário de funcionamento!');
-      }
-      setTimeout(() => setCheckoutError(null), 5000);
-      return;
-    }
-
     try {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       if (authError || !user) {
@@ -265,13 +254,26 @@ export function useCartScreen() {
 
       const { data: profile, error: profileError } = await supabase
         .from('users')
-        .select('rua, bairro, cep, numero, location_confirmed')
+        .select('role, bypass_store_hours, rua, bairro, cep, numero, location_confirmed')
         .eq('id', user.id)
         .single();
 
       if (profileError || !profile) {
         Alert.alert('Erro', 'Não foi possível carregar os dados do seu perfil. Verifique sua conexão.');
         return;
+      }
+
+      if (!canBypassStoreHours(profile.role, profile.bypass_store_hours)) {
+        const shop = getShopStatus(new Date());
+        if (!shop.isOpen) {
+          if (shop.isSundayOrHoliday) {
+            setCheckoutError('Você não pode fazer compras hoje pois é Domingo (ou Feriado)!');
+          } else {
+            setCheckoutError('Você não pode fazer compras fora do horário de funcionamento!');
+          }
+          setTimeout(() => setCheckoutError(null), 5000);
+          return;
+        }
       }
 
       const hasEmptyFields = !profile.rua?.trim() || !profile.bairro?.trim() || !profile.cep?.trim() || !profile.numero?.trim();

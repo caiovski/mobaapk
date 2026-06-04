@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, Animated } from 'react-native';
 import { Image } from 'expo-image';
 import { useTheme } from '../../../contexts/ThemeContext';
 import NumPedidoSvg from '../../../assets/tela11/em entrega 1/Nº do pedido.svg';
@@ -7,7 +7,30 @@ import RastrearSvg from '../../../assets/tela11/em entrega 1/Rastrear.svg';
 import PixSvg from '../../../assets/tela11/em entrega 1/PIX.svg';
 import DropMapa from '../../../assets/tela11/em entrega 1/selecionar rastreio/Ver pelo mapa.svg';
 import DropSitua from '../../../assets/tela11/em entrega 1/selecionar rastreio/Ver pela situação.svg';
+import { Feather } from '@expo/vector-icons';
 import { styles } from './OrdersScreen.styles';
+
+function AnimatedDropdown({ visible, style, children }: { visible: boolean; style?: any; children: React.ReactNode }) {
+  const opacity = useRef(new Animated.Value(0)).current;
+  const [rendered, setRendered] = useState(visible);
+
+  useEffect(() => {
+    if (visible) {
+      setRendered(true);
+      Animated.timing(opacity, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+    } else {
+      Animated.timing(opacity, { toValue: 0, duration: 150, useNativeDriver: true }).start(() => setRendered(false));
+    }
+  }, [visible]);
+
+  if (!rendered) return null;
+
+  return (
+    <Animated.View style={[style, { opacity }]}>
+      {children}
+    </Animated.View>
+  );
+}
 
 const getPaymentDisplay = (paymentMethod: string, isDarkMode: boolean) => {
   switch (paymentMethod) {
@@ -31,13 +54,19 @@ interface OrderCardProps {
   isDarkMode: boolean;
   activeDropdownId: string | null;
   activeCancelDropdownId: string | null;
+  activePayDropdownId: string | null;
+  activeDetailsDropdownId: string | null;
   trackingErrors: Record<string, string>;
   onToggleDropdown: (orderId: string) => void;
   onToggleCancelDropdown: (orderId: string) => void;
+  onTogglePayDropdown: (orderId: string) => void;
+  onToggleDetailsDropdown: (orderId: string) => void;
   onRequestCancel: (orderId: string) => void;
   getFirstImageUrl: (url: string | null | undefined) => string | null;
   onCloseDropdown: () => void;
   onCloseCancelDropdown: () => void;
+  onClosePayDropdown: () => void;
+  onCloseDetailsDropdown: () => void;
 }
 
 export function OrderCard({
@@ -47,18 +76,26 @@ export function OrderCard({
   isDarkMode,
   activeDropdownId,
   activeCancelDropdownId,
+  activePayDropdownId,
+  activeDetailsDropdownId,
   trackingErrors,
   onToggleDropdown,
   onToggleCancelDropdown,
+  onTogglePayDropdown,
+  onToggleDetailsDropdown,
   onRequestCancel,
   getFirstImageUrl,
   onCloseDropdown,
   onCloseCancelDropdown,
+  onClosePayDropdown,
+  onCloseDetailsDropdown,
 }: OrderCardProps) {
   const firstItem = order.order_items?.[0];
   const imageUrl = getFirstImageUrl(firstItem?.products?.image_url);
   const isDropdownOpen = activeDropdownId === order.id;
   const isCancelDropdownOpen = activeCancelDropdownId === order.id;
+  const isPayDropdownOpen = activePayDropdownId === order.id;
+  const isDetailsDropdownOpen = activeDetailsDropdownId === order.id;
 
   return (
     <View
@@ -67,7 +104,7 @@ export function OrderCard({
         styles.orderCard,
         {
           backgroundColor: isDarkMode ? '#2E2E38' : '#E3E4EB',
-          zIndex: isDropdownOpen || isCancelDropdownOpen ? 9999 : 10,
+          zIndex: isDropdownOpen || isCancelDropdownOpen || isDetailsDropdownOpen ? 9999 : 10,
         },
       ]}
     >
@@ -105,11 +142,73 @@ export function OrderCard({
             <Text style={[styles.cardTitleText, { color: '#66BB6A', marginBottom: 15, fontSize: 13, textAlign: 'center' }]}>
               Pedido concluído
             </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('OrderDetailScreen', { order })}>
+            <TouchableOpacity onPress={() => onToggleDetailsDropdown(order.id)}>
               <Text style={{ color: isDarkMode ? '#FFE082' : '#1C2434', fontSize: 12, fontWeight: 'bold', textAlign: 'center' }}>
                 Detalhes
               </Text>
             </TouchableOpacity>
+            <AnimatedDropdown visible={isDetailsDropdownOpen} style={[styles.dropdownBox, { backgroundColor: isDarkMode ? '#1E1E24' : '#E3E4EB', borderColor: isDarkMode ? '#3E3E4A' : '#CCC' }]}>
+              <TouchableOpacity
+                style={styles.dropItemBtn}
+                onPress={() => {
+                  onCloseDetailsDropdown();
+                  navigation.navigate('OrderDetailScreen', { order });
+                }}
+              >
+                <Text style={[styles.dropText, !isDarkMode && { color: '#1C2434' }]}>Ver detalhes</Text>
+              </TouchableOpacity>
+              <View style={[styles.dropSeparator, { backgroundColor: isDarkMode ? '#3E3E4A' : '#CCC' }]} />
+              <TouchableOpacity
+                style={styles.dropItemBtn}
+                onPress={() => {
+                  onCloseDetailsDropdown();
+                  navigation.navigate('TrackingScreen', { orderId: order.id });
+                }}
+              >
+                <Text style={[styles.dropText, !isDarkMode && { color: '#1C2434' }]}>Ver situação</Text>
+              </TouchableOpacity>
+            </AnimatedDropdown>
+          </>
+        ) : order.status === 'processing' ? (
+          <>
+            <TouchableOpacity onPress={() => onTogglePayDropdown(order.id)}>
+              <Text style={{ color: isDarkMode ? '#FFE082' : '#1C2434', fontSize: 13, fontWeight: 'bold', textAlign: 'center' }}>
+                Pagar
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => onToggleCancelDropdown(order.id)} style={{ marginTop: 6 }}>
+              <Text style={{ color: isDarkMode ? '#FF8A80' : '#D32F2F', fontSize: 12, fontWeight: 'bold', textAlign: 'center' }}>
+                Cancelar
+              </Text>
+            </TouchableOpacity>
+            <AnimatedDropdown visible={isPayDropdownOpen} style={[styles.dropdownBox, { top: 28, backgroundColor: isDarkMode ? '#1E1E24' : '#E3E4EB', borderColor: isDarkMode ? '#3E3E4A' : '#CCC' }]}>
+                <TouchableOpacity
+                  style={styles.dropItemBtn}
+                  onPress={() => {
+                    onClosePayDropdown();
+                    navigation.navigate('PaymentConfirmScreen', {
+                      orderId: order.id,
+                      paymentMethod: order.payment_method,
+                      total: order.total,
+                    });
+                  }}
+                >
+                  <Feather name="credit-card" size={14} color={isDarkMode ? '#FFE082' : '#1C2434'} style={{ marginRight: 6 }} />
+                  <Text style={{ fontSize: 11, fontWeight: 'bold', color: isDarkMode ? '#FFE082' : '#1C2434', textAlign: 'center' }}>
+                    Pagar agora
+                  </Text>
+                </TouchableOpacity>
+              </AnimatedDropdown>
+            <AnimatedDropdown visible={isCancelDropdownOpen} style={[styles.dropdownBox, { top: 58, backgroundColor: isDarkMode ? '#1E1E24' : '#E3E4EB', borderColor: isDarkMode ? '#3E3E4A' : '#CCC' }]}>
+                <TouchableOpacity
+                  style={styles.dropItemBtn}
+                  onPress={() => onRequestCancel(order.id)}
+                >
+                  <Text style={{ fontSize: 11, fontWeight: 'bold', color: isDarkMode ? '#FF8A80' : '#D32F2F', textAlign: 'center' }}>
+                    Cancelar pedido
+                  </Text>
+                </TouchableOpacity>
+              </AnimatedDropdown>
           </>
         ) : (
           <>
@@ -131,8 +230,7 @@ export function OrderCard({
                 Cancelar
               </Text>
             </TouchableOpacity>
-            {isDropdownOpen && (
-              <View style={[styles.dropdownBox, { backgroundColor: isDarkMode ? '#1E1E24' : '#E3E4EB', borderColor: isDarkMode ? '#3E3E4A' : '#CCC' }]}>
+            <AnimatedDropdown visible={isDropdownOpen} style={[styles.dropdownBox, { backgroundColor: isDarkMode ? '#1E1E24' : '#E3E4EB', borderColor: isDarkMode ? '#3E3E4A' : '#CCC' }]}>
                 <TouchableOpacity
                   style={styles.dropItemBtn}
                   onPress={() => {
@@ -150,15 +248,13 @@ export function OrderCard({
                   style={styles.dropItemBtn}
                   onPress={() => {
                     onCloseDropdown();
-                    navigation.navigate('TrackingScreen');
+                    navigation.navigate('TrackingScreen', { orderId: order.id });
                   }}
                 >
                   {isDarkMode ? <Text style={styles.dropText}>Ver pela situação</Text> : <DropSitua width={93} height={12} />}
                 </TouchableOpacity>
-              </View>
-            )}
-            {isCancelDropdownOpen && (
-              <View style={[styles.dropdownBox, { top: 95, backgroundColor: isDarkMode ? '#1E1E24' : '#E3E4EB', borderColor: isDarkMode ? '#3E3E4A' : '#CCC' }]}>
+              </AnimatedDropdown>
+            <AnimatedDropdown visible={isCancelDropdownOpen} style={[styles.dropdownBox, { top: 95, backgroundColor: isDarkMode ? '#1E1E24' : '#E3E4EB', borderColor: isDarkMode ? '#3E3E4A' : '#CCC' }]}>
                 <TouchableOpacity
                   style={styles.dropItemBtn}
                   onPress={() => onRequestCancel(order.id)}
@@ -167,8 +263,8 @@ export function OrderCard({
                     Cancelar
                   </Text>
                 </TouchableOpacity>
-              </View>
-            )}
+              </AnimatedDropdown>
+
           </>
         )}
       </View>

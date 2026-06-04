@@ -1,4 +1,4 @@
-import { StyleSheet, Dimensions } from 'react-native';
+import { StyleSheet, Dimensions, Platform } from 'react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
   },
   bottomBarOuter: {
     position: 'absolute',
-    bottom: 10,
+    bottom: Platform.OS === 'ios' ? 34 : 24,
     left: 16,
     right: 16,
   },

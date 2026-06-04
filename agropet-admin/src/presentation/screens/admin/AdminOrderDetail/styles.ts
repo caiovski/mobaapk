@@ -24,6 +24,8 @@ export const styles = StyleSheet.create({
     color: '#1C2434',
   },
   scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 40,

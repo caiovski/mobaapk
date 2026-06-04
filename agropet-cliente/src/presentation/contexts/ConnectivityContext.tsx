@@ -33,10 +33,14 @@ export function ConnectivityProvider({ children }: { children: React.ReactNode }
 
   useEffect(() => {
     const setup = async () => {
-      const db = await initDB();
-      setSyncQueueService(new SyncQueueService(db));
-      setProductCacheService(new ProductCacheService(db));
-      setOrdersCacheService(new OrdersCacheService(db));
+      try {
+        const db = await initDB();
+        setSyncQueueService(new SyncQueueService(db));
+        setProductCacheService(new ProductCacheService(db));
+        setOrdersCacheService(new OrdersCacheService(db));
+      } catch (e) {
+        console.error('Failed to initialize SQLite database in ConnectivityProvider:', e);
+      }
     };
     setup();
   }, []);

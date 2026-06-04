@@ -135,7 +135,7 @@ describe('AdminOrdersScreen - Deep Coverage', () => {
     const mockOrders = [
       {
         id: 'o1-active-id',
-        status: 'pending',
+        status: 'processing',
         total: 100,
         payment_method: 'pix',
         created_at: now,
@@ -166,7 +166,7 @@ describe('AdminOrdersScreen - Deep Coverage', () => {
     const mockOrders = [
       {
         id: 'o1-pix',
-        status: 'pending',
+        status: 'processing',
         payment_method: 'pix',
         created_at: nowISO,
         order_items: [],

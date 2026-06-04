@@ -25,6 +25,7 @@ export default function useHomeScreen() {
   const [deliveryActive, setDeliveryActive] = useState<boolean>(true);
   const [showReactivatedAlert, setShowReactivatedAlert] = useState(false);
   const [clientName, setClientName] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false);
   const [greeting, setGreeting] = useState('');
   const [shopStatus, setShopStatusState] = useState<any>(null);
   const [showGreetingBar, setShowGreetingBar] = useState(true);
@@ -39,7 +40,7 @@ export default function useHomeScreen() {
       try {
         const { data } = await supabase
           .from('users')
-          .select('name')
+          .select('name, role')
           .eq('id', user.id)
           .single();
         if (data?.name) {
@@ -48,11 +49,13 @@ export default function useHomeScreen() {
         } else {
           setClientName('');
         }
+        setIsAdmin(data?.role === 'admin');
       } catch (e) {
         console.log('Erro ao buscar nome do cliente para a saudação:', e);
       }
     } else {
       setClientName('');
+      setIsAdmin(false);
     }
   };
 
@@ -127,22 +130,31 @@ export default function useHomeScreen() {
     const updateStatus = () => {
       const now = new Date();
       const status = getShopStatus(now);
-      setShopStatusState(status);
 
-      const hour = now.getHours();
-      const isDay = hour >= 6 && hour < 18;
-      const nameToUse = clientName || 'Cliente';
-      if (isDay) {
-        setGreeting(`Bom dia, ${nameToUse}!`);
+      if (isAdmin) {
+        setGreeting('Bem-vindo admin, o que vamos testar hoje?');
+        if (status.isOpen) {
+          setShopStatusState(status);
+        } else {
+          setShopStatusState({ ...status, isOpen: true, countdownText: 'Modo teste — loja fechada' });
+        }
       } else {
-        setGreeting(`Boa noite, ${nameToUse}!`);
+        setShopStatusState(status);
+        const hour = now.getHours();
+        const isDay = hour >= 6 && hour < 18;
+        const nameToUse = clientName || 'Cliente';
+        if (isDay) {
+          setGreeting(`Bom dia, ${nameToUse}!`);
+        } else {
+          setGreeting(`Boa noite, ${nameToUse}!`);
+        }
       }
     };
 
     updateStatus();
     const interval = setInterval(updateStatus, 1000);
     return () => clearInterval(interval);
-  }, [clientName]);
+  }, [clientName, isAdmin]);
 
   const fetchProducts = async (showLoadingIndicator = true) => {
     if (showLoadingIndicator) setLoading(true);
@@ -259,7 +271,7 @@ export default function useHomeScreen() {
     });
 
     const channel = supabase
-      .channel('store_settings_home')
+      .channel(`store_settings_home_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'store_settings' },

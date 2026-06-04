@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback, useContext } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, StatusBar, Platform, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useCallback, useContext, useMemo, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, StatusBar, Platform, ActivityIndicator, ScrollView, Animated } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
+import QRCode from 'react-native-qrcode-svg';
 import { Feather } from '@expo/vector-icons';
 import { useUserMenu } from '../../contexts/UserMenuContext';
 import { AuthContext } from '../../contexts/AuthContext';
@@ -8,6 +9,7 @@ import { CatalogHeader } from '../../components/CatalogHeader';
 import { useTheme } from '../../contexts/ThemeContext';
 import { supabase } from '../../../data/datasources/supabase/client';
 import { NotificationService } from '../../../services/notificationService';
+import { generatePixPayload } from '../../utils/pixPayload';
 
 // === IMPORTAÇÃO DOS SVGs (assets/tela10) ===
 import CheckInIcon from '../../assets/tela10/meio/Check-In.svg';
@@ -32,7 +34,7 @@ export default function PaymentConfirmScreen({ route, navigation }: any) {
   const { toggleMenu } = useUserMenu();
   const { isDarkMode, colors } = useTheme();
   const { user } = useContext(AuthContext);
-  const { orderId, paymentMethod } = route.params || {};
+  const { orderId, paymentMethod, total } = route.params || {};
   const isPix = paymentMethod === 'pix';
 
   const [searchText, setSearchText] = useState('');
@@ -43,8 +45,33 @@ export default function PaymentConfirmScreen({ route, navigation }: any) {
   const [pixMerchant, setPixMerchant] = useState('');
   const [pixStatus, setPixStatus] = useState<'pending' | 'paid' | 'checking'>('pending');
   const [loadingPix, setLoadingPix] = useState(isPix);
-  const [copied, setCopied] = useState(false);
+  const [copiedKey, setCopiedKey] = useState(false);
+  const [copiedPayload, setCopiedPayload] = useState(false);
   const [errorPix, setErrorPix] = useState('');
+
+  // Animação pulsante do ícone de relógio
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 0.4, duration: 900, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 900, useNativeDriver: true }),
+      ])
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [pulseAnim]);
+
+  const pixPayload = useMemo(() => {
+    if (!pixKey || !total) return '';
+    return generatePixPayload({
+      pixKey,
+      merchantName: pixMerchant || 'Loja',
+      amount: Number(total),
+      txid: orderId || '***',
+      city: 'CIDADE',
+    });
+  }, [pixKey, pixMerchant, total, orderId]);
 
   // Buscar chave PIX e iniciar polling
   useEffect(() => {
@@ -115,9 +142,17 @@ export default function PaymentConfirmScreen({ route, navigation }: any) {
   const handleCopyPixKey = useCallback(async () => {
     if (!pixKey) return;
     await Clipboard.setStringAsync(pixKey);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 3000);
+    setCopiedKey(true);
+    setTimeout(() => setCopiedKey(false), 3000);
   }, [pixKey]);
+
+  // Copiar payload PIX copia e cola
+  const handleCopyPixPayload = useCallback(async () => {
+    if (!pixPayload) return;
+    await Clipboard.setStringAsync(pixPayload);
+    setCopiedPayload(true);
+    setTimeout(() => setCopiedPayload(false), 3000);
+  }, [pixPayload]);
 
   // Sincronizar status de frete
   useEffect(() => {
@@ -165,7 +200,7 @@ export default function PaymentConfirmScreen({ route, navigation }: any) {
       />
 
       {/* ========== CONTEÚDO (MEIO) ========== */}
-      <View style={styles.contentContainer}>
+      <ScrollView style={styles.contentScroll} contentContainerStyle={[styles.contentContainer, !isPix && { flex: 1, justifyContent: 'center' }]}>
         {isPix && pixStatus === 'paid' ? (
           <>
             <CheckInIcon width={120} height={120} style={styles.checkIcon} />
@@ -180,35 +215,80 @@ export default function PaymentConfirmScreen({ route, navigation }: any) {
           <ActivityIndicator size="large" color="#339914" />
         ) : isPix ? (
           <>
-            <Feather name="clock" size={60} color="#00BFA5" style={{ marginBottom: 20 }} />
-            <Text style={{ fontSize: 22, fontWeight: 'bold', color: isDarkMode ? '#FFFFFF' : '#1C2434', textAlign: 'center', marginBottom: 8 }}>
+            <Animated.View style={{ opacity: pulseAnim, marginBottom: 12 }}>
+              <Feather name="clock" size={44} color="#00BFA5" />
+            </Animated.View>
+            <Text style={{ fontSize: 20, fontWeight: 'bold', color: isDarkMode ? '#FFFFFF' : '#1C2434', textAlign: 'center', marginBottom: 4 }}>
               Aguardando pagamento
             </Text>
-            <Text style={{ fontSize: 14, color: isDarkMode ? '#A8A8B3' : '#767676', textAlign: 'center', marginBottom: 4 }}>
+            <Text style={{ fontSize: 13, color: isDarkMode ? '#A8A8B3' : '#767676', textAlign: 'center', marginBottom: 2 }}>
               Pedido #{orderId?.slice(0, 8).toUpperCase()}
             </Text>
-            <Text style={{ fontSize: 13, color: isDarkMode ? '#A8A8B3' : '#767676', textAlign: 'center', marginBottom: 24, paddingHorizontal: 20 }}>
-              Use a chave PIX abaixo para realizar o pagamento. O pedido será confirmado automaticamente após a compensação.
+            <Text style={{ fontSize: 12, color: isDarkMode ? '#A8A8B3' : '#767676', textAlign: 'center', marginBottom: 4, paddingHorizontal: 20 }}>
+              Escaneie o QR Code ou use o PIX Copia e Cola para pagar
             </Text>
 
-            {pixKey ? (
-              <View style={{ width: '85%', backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF', borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: isDarkMode ? '#3E3E4A' : '#E3E4EB' }}>
-                <Text style={{ fontSize: 12, fontWeight: 'bold', color: isDarkMode ? '#A8A8B3' : '#767676', marginBottom: 4 }}>Chave PIX</Text>
-                <Text style={{ fontSize: 16, fontWeight: 'bold', color: isDarkMode ? '#FFFFFF' : '#1C2434', marginBottom: 12, textAlign: 'center' }} selectable>{pixKey}</Text>
-                {pixMerchant ? (
-                  <Text style={{ fontSize: 12, color: isDarkMode ? '#A8A8B3' : '#767676', textAlign: 'center', marginBottom: 12 }}>
-                    {pixMerchant}
-                  </Text>
-                ) : null}
-                <TouchableOpacity
-                  style={{ backgroundColor: copied ? '#25BE36' : '#00BFA5', borderRadius: 8, paddingVertical: 12, alignItems: 'center', flexDirection: 'row', justifyContent: 'center' }}
-                  onPress={handleCopyPixKey}
-                  activeOpacity={0.7}
-                >
-                  <Feather name={copied ? 'check' : 'copy'} size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
-                  <Text style={{ color: '#FFFFFF', fontWeight: 'bold', fontSize: 15 }}>{copied ? 'Copiado!' : 'Copiar chave PIX'}</Text>
-                </TouchableOpacity>
+            {/* Valor total */}
+            {total ? (
+              <Text style={{ fontSize: 28, fontWeight: 'bold', color: isDarkMode ? '#81C784' : '#2A7420', textAlign: 'center', marginBottom: 16 }}>
+                R$ {Number(total).toFixed(2)}
+              </Text>
+            ) : null}
+
+            {/* QR Code */}
+            {pixPayload ? (
+              <View style={{ width: 220, height: 220, backgroundColor: '#FFFFFF', borderRadius: 16, padding: 12, marginBottom: 16, alignItems: 'center', justifyContent: 'center', elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 6 }}>
+                <QRCode
+                  value={pixPayload}
+                  size={196}
+                  backgroundColor="#FFFFFF"
+                  color="#000000"
+                />
               </View>
+            ) : null}
+
+            {/* Chave PIX e Copia e Cola */}
+            {pixKey ? (
+              <>
+                {/* PIX Copia e Cola */}
+                <View style={{ width: '90%', backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF', borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: isDarkMode ? '#3E3E4A' : '#E3E4EB' }}>
+                  <Text style={{ fontSize: 11, fontWeight: 'bold', color: isDarkMode ? '#A8A8B3' : '#767676', marginBottom: 6 }}>PIX Copia e Cola</Text>
+                  <Text style={{ fontSize: 11, color: isDarkMode ? '#CCCCCC' : '#555555', marginBottom: 10, lineHeight: 16 }} selectable numberOfLines={3}>
+                    {pixPayload || 'Gerando...'}
+                  </Text>
+                  <TouchableOpacity
+                    style={{ backgroundColor: copiedPayload ? '#25BE36' : '#00BFA5', borderRadius: 8, paddingVertical: 10, alignItems: 'center', flexDirection: 'row', justifyContent: 'center' }}
+                    onPress={handleCopyPixPayload}
+                    activeOpacity={0.7}
+                  >
+                    <Feather name={copiedPayload ? 'check' : 'copy'} size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                    <Text style={{ color: '#FFFFFF', fontWeight: 'bold', fontSize: 13 }}>{copiedPayload ? 'Copiado!' : 'Copiar código'}</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Chave PIX (pagar manualmente) */}
+                <View style={{ width: '90%', backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF', borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: isDarkMode ? '#3E3E4A' : '#E3E4EB' }}>
+                  <Text style={{ fontSize: 11, fontWeight: 'bold', color: isDarkMode ? '#A8A8B3' : '#767676', marginBottom: 2 }}>Chave PIX</Text>
+                  {pixMerchant ? (
+                    <Text style={{ fontSize: 11, color: isDarkMode ? '#A8A8B3' : '#767676', marginBottom: 4 }}>
+                      {pixMerchant}
+                    </Text>
+                  ) : null}
+                  <Text style={{ fontSize: 14, fontWeight: 'bold', color: isDarkMode ? '#FFFFFF' : '#1C2434', marginBottom: 10, textAlign: 'center' }} selectable>{pixKey}</Text>
+                  <TouchableOpacity
+                    style={{ backgroundColor: copiedKey ? '#25BE36' : '#1C2434', borderRadius: 8, paddingVertical: 10, alignItems: 'center', flexDirection: 'row', justifyContent: 'center' }}
+                    onPress={handleCopyPixKey}
+                    activeOpacity={0.7}
+                  >
+                    <Feather name={copiedKey ? 'check' : 'copy'} size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                    <Text style={{ color: '#FFFFFF', fontWeight: 'bold', fontSize: 13 }}>{copiedKey ? 'Copiado!' : 'Copiar chave'}</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <Text style={{ fontSize: 11, color: isDarkMode ? '#A8A8B3' : '#999999', textAlign: 'center', marginBottom: 12, paddingHorizontal: 20 }}>
+                  Ou pague manualmente no seu banco usando a chave PIX acima com o valor de R$ {total ? Number(total).toFixed(2) : '0,00'}
+                </Text>
+              </>
             ) : null}
 
             {errorPix ? (
@@ -228,7 +308,7 @@ export default function PaymentConfirmScreen({ route, navigation }: any) {
             )}
 
             <TouchableOpacity onPress={() => navigation.navigate('OrdersScreen')}>
-              <Text style={{ color: isDarkMode ? '#A8A8B3' : '#767676', fontSize: 13, textDecorationLine: 'underline' }}>Ver meus pedidos</Text>
+              <Text style={{ color: isDarkMode ? '#A8A8B3' : '#767676', fontSize: 13, textDecorationLine: 'underline', marginBottom: 20 }}>Ver meus pedidos</Text>
             </TouchableOpacity>
           </>
         ) : (
@@ -253,16 +333,16 @@ export default function PaymentConfirmScreen({ route, navigation }: any) {
             </TouchableOpacity>
           </>
         )}
-      </View>
+      </ScrollView>
 
       {/* ========== BARRA INFERIOR (Matches ClientTabs) ========== */}
       <View style={styles.tabBarOuter}>
         <View style={[styles.tabBarInner, { backgroundColor: isDarkMode ? '#000000' : '#E3E4EB' }]}>
           <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('ClientTabs', { screen: 'Menu' })}>
-            <View style={isDarkMode ? { width: 51, height: 41, borderRadius: 15, alignItems: 'center', justifyContent: 'center' } : styles.iconBg}>
+            <View style={styles.iconContainer}>
               {isDarkMode ? <HomeIcon8Dark width={32} height={32} fill="#FFFFFF" stroke="#FFFFFF" /> : <HomeIcon8 width={32} height={32} />}
             </View>
-            {isDarkMode ? <MenuLabel8 width={33} height={9} fill="#FFFFFF" stroke="#FFFFFF" /> : <MenuLabel8 width={33} height={9} />}
+            {isDarkMode ? <MenuLabel8 width={33} height={9} fill="#A8A8B3" stroke="#A8A8B3" /> : <MenuLabel8 width={33} height={9} />}
           </TouchableOpacity>
           
           <View style={[styles.tabSeparator, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : '#8A7268' }]} />
@@ -270,10 +350,10 @@ export default function PaymentConfirmScreen({ route, navigation }: any) {
           {deliveryActive && (
             <>
               <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('ClientTabs', { screen: 'Mapa' })}>
-                <View style={isDarkMode ? { width: 51, height: 41, borderRadius: 15, alignItems: 'center', justifyContent: 'center' } : styles.iconBg}>
+                <View style={styles.iconContainer}>
                   {isDarkMode ? <MapIcon8Dark width={32} height={32} fill="#FFFFFF" stroke="#FFFFFF" /> : <MapIcon8 width={32} height={32} />}
                 </View>
-                {isDarkMode ? <MapaLabel8 width={32} height={12} fill="#FFFFFF" stroke="#FFFFFF" /> : <MapaLabel8 width={32} height={12} />}
+                {isDarkMode ? <MapaLabel8 width={32} height={12} fill="#A8A8B3" stroke="#A8A8B3" /> : <MapaLabel8 width={32} height={12} />}
               </TouchableOpacity>
               
               <View style={[styles.tabSeparator, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : '#8A7268' }]} />
@@ -281,7 +361,7 @@ export default function PaymentConfirmScreen({ route, navigation }: any) {
           )}
 
           <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('ClientTabs', { screen: 'Carrinho' })}>
-            <View style={isDarkMode ? { backgroundColor: '#FFFFFF', width: 51, height: 41, borderRadius: 15, alignItems: 'center', justifyContent: 'center' } : [styles.iconBg, { backgroundColor: '#E3DAD9', borderWidth: 1.5, borderColor: '#8A7268' }]}>
+            <View style={isDarkMode ? cartSelectedDark : styles.cartSelectedLight}>
               {isDarkMode ? <CartIcon8Dark width={32} height={32} fill="#FFD700" stroke="#FFD700" /> : <CartIcon8 width={32} height={32} />}
             </View>
             {isDarkMode ? <CarrinhoLabel8 width={52} height={10} fill="#FFD700" stroke="#FFD700" /> : <CarrinhoLabel8 width={52} height={10} />}
@@ -290,10 +370,10 @@ export default function PaymentConfirmScreen({ route, navigation }: any) {
           <View style={[styles.tabSeparator, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : '#8A7268' }]} />
 
           <TouchableOpacity style={styles.tabItem} onPress={() => navigation.navigate('ClientTabs', { screen: 'Opções' })}>
-            <View style={isDarkMode ? { width: 51, height: 41, borderRadius: 15, alignItems: 'center', justifyContent: 'center' } : styles.iconBg}>
+            <View style={styles.iconContainer}>
               {isDarkMode ? <GearIcon8Dark width={32} height={32} fill="#FFFFFF" stroke="#FFFFFF" /> : <GearIcon8 width={32} height={32} />}
             </View>
-            {isDarkMode ? <OpcoesLabel8 width={42} height={12} fill="#FFFFFF" stroke="#FFFFFF" /> : <OpcoesLabel8 width={42} height={12} />}
+            {isDarkMode ? <OpcoesLabel8 width={42} height={12} fill="#A8A8B3" stroke="#A8A8B3" /> : <OpcoesLabel8 width={42} height={12} />}
           </TouchableOpacity>
         </View>
       </View>
@@ -347,11 +427,14 @@ const styles = StyleSheet.create({
   },
 
   // ========== CONTEÚDO (MEIO) ==========
-  contentContainer: {
+  contentScroll: {
     flex: 1,
+  },
+  contentContainer: {
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingBottom: 100, // Dá espaço pra barra inferior não comer o conteúdo
+    justifyContent: 'flex-start',
+    paddingTop: 24,
+    paddingBottom: 120, // Dá espaço pra barra inferior não comer o conteúdo
   },
   checkIcon: {
     marginBottom: 40,
@@ -395,14 +478,28 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 4,
   },
-  iconBg: {
+  iconContainer: {
     width: 51,
     height: 41,
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  iconBgActive: {
+  cartSelectedLight: {
+    width: 51,
+    height: 41,
+    borderRadius: 20,
     backgroundColor: '#E3DAD9',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
+
+const cartSelectedDark = {
+  backgroundColor: '#1E1E24',
+  width: 51,
+  height: 41,
+  borderRadius: 15,
+  alignItems: 'center',
+  justifyContent: 'center',
+} as const;
