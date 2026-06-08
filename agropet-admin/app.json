@@ -28,7 +28,17 @@
     },
     "plugins": [
       "expo-secure-store",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "O Agropet precisa da sua localização em segundo plano para rastrear a entrega em tempo real.",
+          "locationAlwaysPermission": "Permita que o Agropet use sua localização mesmo com o app em segundo plano para rastrear entregas.",
+          "locationWhenInUsePermission": "Permita que o Agropet use sua localização enquanto você estiver usando o app.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true
+        }
+      ]
     ]
   }
 }

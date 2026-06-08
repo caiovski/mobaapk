@@ -5,7 +5,7 @@ import { ThemeProvider } from '../../presentation/contexts/ThemeContext';
 import { UserMenuProvider } from '../../presentation/contexts/UserMenuContext';
 import * as SecureStore from 'expo-secure-store';
 import { supabase } from '../../data/datasources/supabase/client';
-import { Alert } from 'react-native';
+import { Alert, Linking, TouchableOpacity } from 'react-native';
 
 const mockUseTheme = jest.fn().mockReturnValue({
   colors: {
@@ -513,6 +513,60 @@ describe('Deep Coverage - AdminLoginScreen', () => {
     await act(async () => {
       resolveLogin({ data: { session: {} }, error: null });
     });
+  });
+
+  it('should call Linking.openURL when Suporte footer button is pressed', () => {
+    const { UNSAFE_getAllByType, getByTestId } = renderLogin();
+    const touchables = UNSAFE_getAllByType(TouchableOpacity);
+    const submitBtn = getByTestId('admin-login-submit-btn');
+    const suporteBtn = touchables.find(t => {
+      if (t === submitBtn) return false;
+      const child = t.props.children;
+      return child && child.props && child.props.width === 85;
+    });
+
+    const openURLSpy = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
+
+    act(() => {
+      fireEvent.press(suporteBtn!);
+    });
+
+    expect(openURLSpy).toHaveBeenCalledWith('https://wa.me/5535998906096');
+    openURLSpy.mockRestore();
+  });
+
+  it('should navigate to LegalPages privacy when Privacidade button is pressed', () => {
+    const { UNSAFE_getAllByType, getByTestId } = renderLogin();
+    const touchables = UNSAFE_getAllByType(TouchableOpacity);
+    const submitBtn = getByTestId('admin-login-submit-btn');
+    const privacidadeBtn = touchables.find(t => {
+      if (t === submitBtn) return false;
+      const child = t.props.children;
+      return child && child.props && child.props.width === 127;
+    });
+
+    act(() => {
+      fireEvent.press(privacidadeBtn!);
+    });
+
+    expect(mockNavigate).toHaveBeenCalledWith('LegalPages', { type: 'privacy' });
+  });
+
+  it('should navigate to LegalPages terms when Termos button is pressed', () => {
+    const { UNSAFE_getAllByType, getByTestId } = renderLogin();
+    const touchables = UNSAFE_getAllByType(TouchableOpacity);
+    const submitBtn = getByTestId('admin-login-submit-btn');
+    const termosBtn = touchables.find(t => {
+      if (t === submitBtn) return false;
+      const child = t.props.children;
+      return child && child.props && child.props.width === 82;
+    });
+
+    act(() => {
+      fireEvent.press(termosBtn!);
+    });
+
+    expect(mockNavigate).toHaveBeenCalledWith('LegalPages', { type: 'terms' });
   });
 });
 

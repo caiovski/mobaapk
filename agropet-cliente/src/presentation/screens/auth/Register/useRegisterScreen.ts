@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert } from 'react-native';
+import { Alert, Linking } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../../../../data/datasources/supabase/client';
 
@@ -10,6 +10,7 @@ export function useRegisterScreen() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const handleRegister = async () => {
     if (!name || !email || !password || !confirmPassword) {
@@ -18,6 +19,10 @@ export function useRegisterScreen() {
     }
     if (password !== confirmPassword) {
       Alert.alert('Erro', 'As senhas não conferem.');
+      return;
+    }
+    if (!acceptedTerms) {
+      Alert.alert('Termos', 'Você precisa aceitar os Termos de Uso e Política de Privacidade para se cadastrar.');
       return;
     }
 
@@ -43,13 +48,29 @@ export function useRegisterScreen() {
     navigation.replace('ClientLoginScreen');
   };
 
+  const handleOpenWhatsApp = () => {
+    Linking.openURL('https://wa.me/5535998120517');
+  };
+
+  const handleOpenPrivacy = () => {
+    navigation.navigate('LegalPages', { type: 'privacy' });
+  };
+
+  const handleOpenTerms = () => {
+    navigation.navigate('LegalPages', { type: 'terms' });
+  };
+
   return {
     name, setName,
     email, setEmail,
     password, setPassword,
     confirmPassword, setConfirmPassword,
     loading,
+    acceptedTerms, setAcceptedTerms,
     handleRegister,
     handleEntrePorAqui,
+    handleOpenWhatsApp,
+    handleOpenPrivacy,
+    handleOpenTerms,
   };
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert } from 'react-native';
+import { Alert, Linking } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../../../../data/datasources/supabase/client';
 
@@ -93,6 +93,18 @@ export function useClientLoginScreen() {
     navigation.navigate('RegisterScreen');
   };
 
+  const handleOpenWhatsApp = () => {
+    Linking.openURL('https://wa.me/5535998120517');
+  };
+
+  const handleOpenPrivacy = () => {
+    navigation.navigate('LegalPages', { type: 'privacy' });
+  };
+
+  const handleOpenTerms = () => {
+    navigation.navigate('LegalPages', { type: 'terms' });
+  };
+
   const openForgotPasswordModal = () => {
     setForgotEmail(email);
     setNewPassword('');
@@ -117,6 +129,9 @@ export function useClientLoginScreen() {
     isPasswordMatch,
     handleLogin,
     handleComeceAqui,
+    handleOpenWhatsApp,
+    handleOpenPrivacy,
+    handleOpenTerms,
     handleSendOtpCode,
     handleConfirmFinal,
     openForgotPasswordModal,

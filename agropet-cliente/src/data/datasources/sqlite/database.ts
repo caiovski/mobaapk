@@ -3,8 +3,8 @@ import * as SQLite from 'expo-sqlite';
 let dbInstance: SQLite.SQLiteDatabase | null = null;
 let initPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
-export async function initDB() {
-  if (dbInstance) return dbInstance;
+export function initDB(): Promise<SQLite.SQLiteDatabase> {
+  if (dbInstance) return Promise.resolve(dbInstance);
   if (initPromise) return initPromise;
 
   initPromise = (async () => {

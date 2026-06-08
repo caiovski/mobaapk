@@ -104,15 +104,15 @@ export default function ClientLoginScreen() {
 
         <View style={styles.footerContainer}>
           <View style={styles.footerContent}>
-            <TouchableOpacity style={styles.footerItem}>
+            <TouchableOpacity style={styles.footerItem} onPress={h.handleOpenWhatsApp}>
               <Suporte width={85} height={23} />
             </TouchableOpacity>
             <View style={styles.separator} />
-            <TouchableOpacity style={styles.footerItem}>
+            <TouchableOpacity style={styles.footerItem} onPress={h.handleOpenPrivacy}>
               <Privacidade width={127} height={21} />
             </TouchableOpacity>
             <View style={styles.separator} />
-            <TouchableOpacity style={styles.footerItem}>
+            <TouchableOpacity style={styles.footerItem} onPress={h.handleOpenTerms}>
               <Termos width={82} height={19} />
             </TouchableOpacity>
           </View>

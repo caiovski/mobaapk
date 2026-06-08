@@ -108,7 +108,15 @@ export default function OrdersScreen({ navigation }: any) {
   );
 
   return (
-    <View style={[styles.mainContainer, { backgroundColor: colors.backgroundLight }]}>
+    <View
+      style={[styles.mainContainer, { backgroundColor: colors.backgroundLight }]}
+      onStartShouldSetResponderCapture={() => {
+        if (activeDropdownId || activeCancelDropdownId || activePayDropdownId || activeDetailsDropdownId) {
+          closeAllDropdowns();
+        }
+        return false;
+      }}
+    >
       <StatusBar backgroundColor={colors.headerBackground} barStyle="light-content" />
       <CatalogHeader title="Histórico de Pedidos" searchText={searchText} onSearchChange={setSearchText} />
 

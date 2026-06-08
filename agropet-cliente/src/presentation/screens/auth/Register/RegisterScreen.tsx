@@ -7,6 +7,8 @@ import {
   StatusBar,
   TextInput,
   ActivityIndicator,
+  Text,
+  Linking,
 } from 'react-native';
 import Colors from '../../../theme/colors';
 
@@ -129,19 +131,35 @@ export default function RegisterScreen() {
               <CriarContaTexto width={131} height={20} />
             )}
           </TouchableOpacity>
+
+          <View style={styles.termsRow}>
+            <TouchableOpacity
+              testID="termsCheckbox"
+              onPress={() => h.setAcceptedTerms(!h.acceptedTerms)}
+              style={[styles.checkbox, h.acceptedTerms && styles.checkboxChecked]}
+            >
+              {h.acceptedTerms && <Text style={styles.checkmark}>✓</Text>}
+            </TouchableOpacity>
+            <Text style={styles.termsText}>
+              Aceito os{' '}
+              <Text style={styles.termsLink} onPress={h.handleOpenTerms}>Termos de Uso</Text>
+              {' '}e{' '}
+              <Text style={styles.termsLink} onPress={h.handleOpenPrivacy}>Política de Privacidade</Text>
+            </Text>
+          </View>
         </View>
 
         <View style={styles.footerContainer}>
           <View style={styles.footerContent}>
-            <TouchableOpacity style={styles.footerItem}>
+            <TouchableOpacity style={styles.footerItem} onPress={h.handleOpenWhatsApp}>
               <Suporte width={85} height={23} />
             </TouchableOpacity>
             <View style={styles.separator} />
-            <TouchableOpacity style={styles.footerItem}>
+            <TouchableOpacity style={styles.footerItem} onPress={h.handleOpenPrivacy}>
               <Privacidade width={127} height={21} />
             </TouchableOpacity>
             <View style={styles.separator} />
-            <TouchableOpacity style={styles.footerItem}>
+            <TouchableOpacity style={styles.footerItem} onPress={h.handleOpenTerms}>
               <Termos width={82} height={19} />
             </TouchableOpacity>
           </View>

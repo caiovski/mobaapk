@@ -135,6 +135,12 @@ jest.mock('../../data/datasources/supabase/client', () => ({
       getSession: jest.fn().mockResolvedValue({ data: { session: null } }),
     },
     from: jest.fn().mockImplementation(() => createMockChain()),
+    channel: jest.fn().mockReturnValue({
+      on: jest.fn().mockReturnThis(),
+      subscribe: jest.fn().mockResolvedValue(undefined),
+      unsubscribe: jest.fn(),
+    }),
+    removeChannel: jest.fn(),
   },
 }));
 
@@ -187,6 +193,16 @@ describe('AdminMapScreen - Deep Coverage', () => {
   afterEach(() => {
     alertSpy.mockRestore();
   });
+
+  const makeTableChain = (overridden: Record<string, jest.Mock>) => {
+    const base = createMockChain();
+    const ch: any = { ...base, ...overridden };
+    const chainMethods = ['select', 'eq', 'neq', 'in', 'order', 'gte', 'lte', 'limit', 'insert', 'update', 'upsert', 'delete'];
+    for (const m of chainMethods) {
+      ch[m] = jest.fn().mockImplementation(() => ch);
+    }
+    return ch;
+  };
 
   it('should render map, handle centralize to store, and show search suggestions on query', async () => {
     const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue({
@@ -1160,6 +1176,156 @@ describe('AdminMapScreen - Deep Coverage', () => {
     jest.useRealTimers();
   });
 
+  it('covers speech bubble branch, firstGps else, and order preparing status', async () => {
+    // Covers AdminMapScreen.tsx lines 80-98 (speech bubble JSX)
+    const origFetch = global.fetch;
+    const fetchMock = jest.fn().mockImplementation((url: string) => {
+      if (url.includes('nominatim.openstreetmap.org')) {
+        return Promise.resolve({
+          ok: true,
+          text: jest.fn().mockResolvedValue(JSON.stringify([])),
+          json: jest.fn().mockResolvedValue({}),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: jest.fn().mockResolvedValue({ routes: [{ geometry: { coordinates: [[-45.3469, -21.9765], [-45.3460, -21.9760]] } }] }),
+      });
+    });
+    (global as any).fetch = fetchMock;
+
+    const origFrom = (supabase.from as jest.Mock).getMockImplementation();
+    (supabase.from as jest.Mock).mockImplementation((table: string) => {
+      if (table === 'delivery_tracking') {
+        return makeTableChain({
+          single: jest.fn().mockResolvedValue({ data: null, error: null }),
+        });
+      }
+      if (table === 'orders') {
+        return makeTableChain({
+          single: jest.fn().mockResolvedValue({ data: { status: 'preparing', delivering_at: null }, error: null }),
+        });
+      }
+      return createMockChain();
+    });
+
+    currentRouteParams = {
+      clientLocation: {
+        latitude: -21.9700,
+        longitude: -45.3400,
+        name: 'Test Speech',
+        address: 'Rua Teste 123',
+        orderId: 'order-speech-1',
+      }
+    };
+
+    const { getByText, UNSAFE_getAllByType, unmount } = renderScreen(AdminMapScreen);
+
+    await waitFor(() => {
+      expect(UNSAFE_getAllByType(Marker).length).toBe(3);
+    });
+
+    await waitFor(() => {
+      expect(getByText('No momento, seu pedido está sendo preparado!')).toBeTruthy();
+    });
+
+    (supabase.from as jest.Mock).mockImplementation(origFrom);
+    global.fetch = origFetch;
+    unmount();
+  });
+
+  it('covers firstGps truthy, order completed, tracking badge hasArrived, and realtime callbacks', async () => {
+    const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({ routes: [{ geometry: { coordinates: [[-45.3469, -21.9765], [-45.3460, -21.9760]] } }] }),
+    } as any);
+
+    const capturedCbs: Array<(payload: any) => void> = [];
+    const origChannel = (supabase.channel as jest.Mock).getMockImplementation();
+    (supabase.channel as jest.Mock).mockImplementation((name: string) => {
+      const ch = {
+        on: jest.fn().mockImplementation((_event: string, _config: any, cb: any) => {
+          capturedCbs.push(cb);
+          return ch;
+        }),
+        subscribe: jest.fn().mockResolvedValue(undefined),
+        unsubscribe: jest.fn(),
+      };
+      return ch;
+    });
+
+    const origFrom = (supabase.from as jest.Mock).getMockImplementation();
+    (supabase.from as jest.Mock).mockImplementation((table: string) => {
+      if (table === 'delivery_tracking') {
+        return makeTableChain({
+          single: jest.fn().mockResolvedValue({
+            data: { lat: -21.9760, lng: -45.3460, created_at: new Date().toISOString() },
+            error: null,
+          }),
+        });
+      }
+      if (table === 'orders') {
+        return makeTableChain({
+          single: jest.fn().mockResolvedValue({
+            data: { status: 'delivering', delivering_at: new Date().toISOString() },
+            error: null,
+          }),
+        });
+      }
+      return createMockChain();
+    });
+
+    currentRouteParams = {
+      clientLocation: {
+        latitude: -21.9700,
+        longitude: -45.3400,
+        name: 'Test Realtime',
+        address: 'Rua Teste 456',
+        orderId: 'order-realtime-1',
+      }
+    };
+
+    const { getByText, unmount } = renderScreen(AdminMapScreen);
+
+    await waitFor(() => {
+      expect(getByText('🚚 Rastreando entrega...')).toBeTruthy();
+    });
+
+    await act(async () => {
+      for (let i = 0; i < 50; i++) {
+        await Promise.resolve();
+      }
+    });
+
+    // Invoke tracking INSERT callback (covers useAdminMapScreen lines 221-235)
+    if (capturedCbs.length >= 1) {
+      await act(async () => {
+        capturedCbs[0]({ new: { lat: -21.9750, lng: -45.3450 } });
+      });
+    }
+
+    // Invoke order UPDATE callback with completed (covers lines 247-254)
+    if (capturedCbs.length >= 2) {
+      await act(async () => {
+        capturedCbs[1]({ new: { status: 'completed', delivering_at: new Date().toISOString() } });
+      });
+    }
+
+    await act(async () => {
+      for (let i = 0; i < 10; i++) {
+        await Promise.resolve();
+      }
+    });
+
+    // Tracking badge via hasArrived + showCar (AdminMapScreen lines 147-150)
+    expect(getByText('Seu pedido chegou ao destino.')).toBeTruthy();
+
+    (supabase.channel as jest.Mock).mockImplementation(origChannel);
+    (supabase.from as jest.Mock).mockImplementation(origFrom);
+    fetchSpy.mockRestore();
+    unmount();
+  });
+
   it('should cover light mode trackedClient, daytime isNightTime, empty OSRM routes, suggestion without name, and clientLoc without orderId', async () => {
     // Mock Date for daytime isNightTime = false (must be before imports run)
     const mockDate = new Date('2026-05-29T14:00:00');
@@ -1187,14 +1353,27 @@ describe('AdminMapScreen - Deep Coverage', () => {
       })
     } as any);
 
-    // Setup clientLocation without orderId
+    const origFrom = (supabase.from as jest.Mock).getMockImplementation();
+    (supabase.from as jest.Mock).mockImplementation((table: string) => {
+      if (table === 'orders') {
+        return makeTableChain({
+          single: jest.fn().mockResolvedValue({
+            data: { status: 'delivering', delivering_at: new Date().toISOString() },
+            error: null,
+          }),
+        });
+      }
+      return createMockChain();
+    });
+
+    // Setup clientLocation with orderId for Em rota badge
     currentRouteParams = {
       clientLocation: {
         latitude: -21.9700,
         longitude: -45.3400,
-        name: 'Cliente Sem Pedido',
-        address: 'Av Teste 200'
-        // no orderId
+        name: 'Cliente Em Rota',
+        address: 'Av Teste 200',
+        orderId: 'order-rota-1',
       }
     };
 
@@ -1213,6 +1392,7 @@ describe('AdminMapScreen - Deep Coverage', () => {
     expect(getByText('Em rota')).toBeTruthy();
     expect(getByText('Voltar')).toBeTruthy();
 
+    (supabase.from as jest.Mock).mockImplementation(origFrom);
     unmount();
 
     // 2. Suggestion without name field - separate render without tracking
@@ -1254,6 +1434,216 @@ describe('AdminMapScreen - Deep Coverage', () => {
       value: originalPlatform,
       writable: true
     });
+    unmount();
+  });
+
+  it('covers light mode speech bubble branches (AdminMapScreen 82-98)', async () => {
+    (global as any).isDarkModeTest = false;
+    const origFetch = global.fetch;
+    const fetchMock = jest.fn().mockImplementation((url: string) => {
+      if (url.includes('nominatim.openstreetmap.org')) {
+        return Promise.resolve({ ok: true, text: jest.fn().mockResolvedValue(JSON.stringify([])) });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: jest.fn().mockResolvedValue({ routes: [{ geometry: { coordinates: [[-45.3469, -21.9765], [-45.3460, -21.9760]] } }] }),
+      });
+    });
+    (global as any).fetch = fetchMock;
+
+    const origFrom = (supabase.from as jest.Mock).getMockImplementation();
+    (supabase.from as jest.Mock).mockImplementation((table: string) => {
+      if (table === 'delivery_tracking') {
+        return makeTableChain({
+          single: jest.fn().mockResolvedValue({ data: null, error: null }),
+        });
+      }
+      if (table === 'orders') {
+        return makeTableChain({
+          single: jest.fn().mockResolvedValue({
+            data: { status: 'preparing', delivering_at: null },
+            error: null,
+          }),
+        });
+      }
+      return createMockChain();
+    });
+
+    currentRouteParams = {
+      clientLocation: {
+        latitude: -21.9700,
+        longitude: -45.3400,
+        name: 'Test Light Bubble',
+        address: 'Rua Luz 456',
+        orderId: 'order-light-bubble',
+      }
+    };
+
+    const { getByText, unmount } = renderScreen(AdminMapScreen);
+
+    await waitFor(() => {
+      expect(getByText('No momento, seu pedido está sendo preparado!')).toBeTruthy();
+    });
+
+    (supabase.from as jest.Mock).mockImplementation(origFrom);
+    global.fetch = origFetch;
+    (global as any).isDarkModeTest = true;
+    unmount();
+  });
+
+  it('covers completed order initial load (useAdminMapScreen lines 211-212)', async () => {
+    const origFetch = global.fetch;
+    const fetchMock = jest.fn().mockImplementation((url: string) => {
+      if (url.includes('nominatim.openstreetmap.org')) {
+        return Promise.resolve({ ok: true, text: jest.fn().mockResolvedValue(JSON.stringify([])) });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: jest.fn().mockResolvedValue({ routes: [{ geometry: { coordinates: [[-45.3469, -21.9765], [-45.3460, -21.9760]] } }] }),
+      });
+    });
+    (global as any).fetch = fetchMock;
+
+    const origFrom = (supabase.from as jest.Mock).getMockImplementation();
+    (supabase.from as jest.Mock).mockImplementation((table: string) => {
+      if (table === 'delivery_tracking') {
+        return makeTableChain({
+          single: jest.fn().mockResolvedValue({ data: null, error: null }),
+        });
+      }
+      if (table === 'orders') {
+        return makeTableChain({
+          single: jest.fn().mockResolvedValue({
+            data: { status: 'completed', delivering_at: new Date().toISOString() },
+            error: null,
+          }),
+        });
+      }
+      return createMockChain();
+    });
+
+    currentRouteParams = {
+      clientLocation: {
+        latitude: -21.9700,
+        longitude: -45.3400,
+        name: 'Test Completed',
+        address: 'Rua Final 789',
+        orderId: 'order-completed-1',
+      }
+    };
+
+    const { getByText, UNSAFE_getAllByType, unmount } = renderScreen(AdminMapScreen);
+
+    await waitFor(() => {
+      expect(UNSAFE_getAllByType(Marker).length).toBe(3);
+    });
+
+    await waitFor(() => {
+      expect(getByText('Seu pedido chegou ao destino.')).toBeTruthy();
+    });
+
+    (supabase.from as jest.Mock).mockImplementation(origFrom);
+    global.fetch = origFetch;
+    unmount();
+  });
+
+  it('covers orderData null branch (useAdminMapScreen line 205) and realtime branch coverage (lines 224-254)', async () => {
+    const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({ routes: [{ geometry: { coordinates: [[-45.3469, -21.9765], [-45.3460, -21.9760]] } }] }),
+    } as any);
+
+    const capturedCbs: Array<(payload: any) => void> = [];
+    const origChannel = (supabase.channel as jest.Mock).getMockImplementation();
+    (supabase.channel as jest.Mock).mockImplementation((name: string) => {
+      const ch = {
+        on: jest.fn().mockImplementation((_event: string, _config: any, cb: any) => {
+          capturedCbs.push(cb);
+          return ch;
+        }),
+        subscribe: jest.fn().mockResolvedValue(undefined),
+        unsubscribe: jest.fn(),
+      };
+      return ch;
+    });
+
+    const origFrom = (supabase.from as jest.Mock).getMockImplementation();
+    (supabase.from as jest.Mock).mockImplementation((table: string) => {
+      if (table === 'delivery_tracking') {
+        return makeTableChain({
+          single: jest.fn().mockResolvedValue({ data: null, error: null }),
+        });
+      }
+      if (table === 'orders') {
+        return makeTableChain({
+          single: jest.fn().mockResolvedValue({
+            data: null,
+            error: null,
+          }),
+        });
+      }
+      return createMockChain();
+    });
+
+    currentRouteParams = {
+      clientLocation: {
+        latitude: -21.9700,
+        longitude: -45.3400,
+        name: 'Test Branches',
+        address: 'Rua Branch 789',
+        orderId: 'order-branch-1',
+      }
+    };
+
+    const { getByText, UNSAFE_getAllByType, unmount } = renderScreen(AdminMapScreen);
+
+    await waitFor(() => {
+      expect(UNSAFE_getAllByType(Marker).length).toBe(3);
+    });
+
+    // Invoke tracking callback with null lat → early return (line 222)
+    if (capturedCbs.length >= 1) {
+      await act(async () => {
+        capturedCbs[0]({ new: { lat: null, lng: null } });
+      });
+    }
+
+    // Invoke tracking callback with valid data → covers line 224 (longitude changed)
+    if (capturedCbs.length >= 1) {
+      await act(async () => {
+        capturedCbs[0]({ new: { lat: -21.9760, lng: -45.3465 } });
+      });
+    }
+
+    // Invoke tracking callback with same longitude → covers line 224 false branch
+    if (capturedCbs.length >= 1) {
+      await act(async () => {
+        capturedCbs[0]({ new: { lat: -21.9760, lng: -45.3465 } });
+      });
+    }
+
+    // Invoke order callback with no status → covers line 248-249 else branches
+    if (capturedCbs.length >= 2) {
+      await act(async () => {
+        capturedCbs[1]({ new: { status: null, delivering_at: undefined } });
+      });
+    }
+
+    // Invoke order callback with delivering_at set, status 'completed'
+    if (capturedCbs.length >= 2) {
+      await act(async () => {
+        capturedCbs[1]({ new: { status: 'completed', delivering_at: new Date().toISOString() } });
+      });
+    }
+
+    // Tracking badge via isTracking = true
+    await waitFor(() => {
+      expect(getByText('Seu pedido chegou ao destino.')).toBeTruthy();
+    });
+
+    (supabase.channel as jest.Mock).mockImplementation(origChannel);
+    (supabase.from as jest.Mock).mockImplementation(origFrom);
+    fetchSpy.mockRestore();
     unmount();
   });
 });

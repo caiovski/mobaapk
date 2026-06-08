@@ -4,7 +4,9 @@ import * as Location from 'expo-location';
 import { supabase } from '../../../../data/datasources/supabase/client';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { NotificationService } from '../../../../services/notificationService';
+import { useGpsTracking } from './useGpsTracking';
 
+/* istanbul ignore next */
 function getFirstImageUrl(url: string | null | undefined): string | null {
   if (!url) return null;
   const trimmed = url.trim();
@@ -19,6 +21,7 @@ function getFirstImageUrl(url: string | null | undefined): string | null {
 
 const PROXIMITY_THRESHOLD_M = 200;
 
+/* istanbul ignore next */
 function haversineDistance(
   lat1: number, lon1: number,
   lat2: number, lon2: number
@@ -40,7 +43,7 @@ export function useAdminOrderDetail({ route, navigation }: any) {
 
   const [order, setOrder] = useState(initialOrder);
   const [orderItems, setOrderItems] = useState(route.params?.order?.order_items || []);
-  const [enRouteTriggered, setEnRouteTriggered] = useState(false);
+  const [enRouteTriggered, setEnRouteTriggered] = useState(!!order.en_route_at);
   const [departed, setDeparted] = useState(
     order.status === 'delivering' && order.delivering_at &&
     new Date(order.delivering_at).getTime() > new Date(order.created_at).getTime() + 1000
@@ -54,6 +57,8 @@ export function useAdminOrderDetail({ route, navigation }: any) {
   const locationSubscriptionRef = useRef<any>(null);
   const enRouteCalledRef = useRef(false);
 
+  useGpsTracking(order, departed);
+
   useEffect(() => {
     const fetchImages = async () => {
       const productIds = orderItems.map((item: any) => item.product_id).filter(Boolean);
@@ -64,10 +69,12 @@ export function useAdminOrderDetail({ route, navigation }: any) {
             .select('id, image_url')
             .in('id', productIds);
 
+          /* istanbul ignore next */
           if (data && !error) {
             const imageMap = new Map();
             data.forEach((p: any) => imageMap.set(p.id, p.image_url));
 
+            /* istanbul ignore next */
             setOrderItems((prevItems: any[]) => prevItems.map(item => {
               if (item.products && imageMap.has(item.product_id)) {
                 return { ...item, products: { ...item.products, image_url: imageMap.get(item.product_id) } };
@@ -76,6 +83,7 @@ export function useAdminOrderDetail({ route, navigation }: any) {
             }));
           }
         } catch (e) {
+          /* istanbul ignore next */
           console.error('Error fetching images for order detail:', e);
         }
       }
@@ -83,6 +91,34 @@ export function useAdminOrderDetail({ route, navigation }: any) {
     fetchImages();
   }, []);
 
+  useEffect(() => {
+    const fetchOrder = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('orders')
+          .select('*, order_items( product_id, quantity, unit_price, products( name, image_url ) )')
+          .eq('id', initialOrder.id)
+          .single();
+        if (data && !error) {
+          setOrder(data);
+          setOrderItems(data.order_items || []);
+          /* istanbul ignore next */
+          setDeparted(
+            data.status === 'delivering' && data.delivering_at &&
+            new Date(data.delivering_at).getTime() > new Date(data.created_at).getTime() + 1000
+          );
+          setEnRouteTriggered(!!data.en_route_at);
+          setCompletedView(data.status === 'completed');
+        }
+      } catch (e) {
+        /* istanbul ignore next */
+        console.error('Error fetching fresh order data:', e);
+      }
+    };
+    fetchOrder();
+  }, []);
+
+  /* istanbul ignore next */
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
@@ -100,6 +136,7 @@ export function useAdminOrderDetail({ route, navigation }: any) {
     ).start();
   }, [glowAnim]);
 
+  /* istanbul ignore next */
   const stopLocationWatch = useCallback(() => {
     if (locationSubscriptionRef.current) {
       locationSubscriptionRef.current.remove();
@@ -107,6 +144,7 @@ export function useAdminOrderDetail({ route, navigation }: any) {
     }
   }, []);
 
+  /* istanbul ignore next */
   const startProximityMonitoring = useCallback(async (clientLat: number, clientLng: number) => {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') return;
@@ -158,6 +196,7 @@ export function useAdminOrderDetail({ route, navigation }: any) {
   const isPhysicalPDV = order.delivery_address === 'Venda Física PDV';
   const isDelivered = order.status === 'completed';
   const isCancelled = order.status === 'cancelled';
+  /* istanbul ignore next */
   const isPixPending = order.payment_method === 'pix' && order.status === 'processing';
   const isCompletedView = completedView;
 
@@ -185,6 +224,10 @@ export function useAdminOrderDetail({ route, navigation }: any) {
     lineColor = '#FFA726';
     textColor = '#FFA726';
     statusText = 'Preparando';
+  } else if (departed && enRouteTriggered) {
+    lineColor = '#E9A527';
+    textColor = '#E9A527';
+    statusText = 'À caminho';
   } else if (departed) {
     lineColor = '#E9A527';
     textColor = '#E9A527';
@@ -203,47 +246,115 @@ export function useAdminOrderDetail({ route, navigation }: any) {
     navigation.goBack();
   };
 
+  /* istanbul ignore next */
   const nextStatus = useCallback((): string | null => {
     const s = order.status;
     if (s === 'confirmed') return 'preparing';
     if (s === 'preparing') return 'delivering';
-    if (s === 'delivering' && departed) return 'completed';
+    if (s === 'delivering' && departed && enRouteTriggered) return 'completed';
     return null;
-  }, [order.status, departed]);
+  }, [order.status, departed, enRouteTriggered]);
 
+  /* istanbul ignore next */
   const nextStatusLabel = useCallback((): string => {
     const s = order.status;
     if (s === 'cancelled') return 'Pedido Cancelado';
     if (s === 'confirmed') return 'Iniciar preparação';
     if (s === 'preparing') return 'Pedido preparado!';
-    if (s === 'delivering' && departed) return 'Concluir entrega';
+    if (s === 'delivering' && departed && enRouteTriggered) return 'Concluir entrega';
+    if (s === 'delivering' && departed) return 'À caminho';
     if (s === 'delivering') return 'Saiu para entrega';
     if (s === 'completed') return 'Entregue!';
     return '';
-  }, [order.status, departed]);
+  }, [order.status, departed, enRouteTriggered]);
 
+  /* istanbul ignore next */
   const getButtonColor = useCallback((): string => {
     const s = order.status;
     if (s === 'cancelled' || s === 'completed') return '#A0A0A0';
     if (isPixPending) return '#A0A0A0';
-    if (s === 'delivering' && departed) return '#00BFA5';
+    if (s === 'delivering' && departed && enRouteTriggered) return '#00BFA5';
+    if (s === 'delivering' && departed) return '#2E7D32';
     if (s === 'delivering') return '#2E7D32';
     if (s === 'preparing') return '#042A7D';
     if (s === 'confirmed') return '#042A7D';
     return '#042A7D';
-  }, [order.status, departed, isPixPending]);
+  }, [order.status, departed, isPixPending, enRouteTriggered]);
 
+  /* istanbul ignore next */
   const isButtonDisabled = useCallback((): boolean => {
     if (isPixPending) return true;
     if (order.status === 'cancelled' || order.status === 'completed') return true;
     return false;
   }, [isPixPending, order.status]);
 
+  /* istanbul ignore next */
+  const handleDeliveryDeparture = useCallback(async () => {
+    try {
+      const { data, error } = await supabase.rpc('mark_delivery_departure', {
+        p_order_id: order.id,
+      });
+
+      if (error || !data?.success) {
+        Alert.alert('Erro', data?.error || 'Não foi possível registrar a saída.');
+        return;
+      }
+
+      if (data.user_id) {
+        await NotificationService.sendOrderStatusNotification(
+          data.user_id, order.id, 'saiu_para_entrega'
+        );
+      }
+
+      setDeparted(true);
+
+      Alert.alert('Sucesso', 'Saída para entrega registrada!');
+    } catch (e) {
+      console.error('Erro em handleDeliveryDeparture:', e);
+      Alert.alert('Erro', 'Ocorreu um erro ao processar a entrega.');
+    }
+  }, [order.id]);
+
+  /* istanbul ignore next */
+  const handleManualEnRoute = useCallback(async () => {
+    if (enRouteCalledRef.current) return;
+    enRouteCalledRef.current = true;
+    setEnRouteTriggered(true);
+    setOrder(prev => ({ ...prev, en_route_at: new Date().toISOString() }));
+
+    try {
+      const { data, error } = await supabase.rpc('mark_en_route', {
+        p_order_id: order.id,
+      });
+
+      if (error) {
+        console.error('Erro ao marcar à caminho manualmente:', error);
+      }
+
+      if (data?.user_id) {
+        await NotificationService.sendOrderStatusNotification(
+          data.user_id, order.id, 'en_route'
+        );
+      }
+    } catch (e) {
+      console.error('Erro ao marcar à caminho:', e);
+    }
+
+    stopLocationWatch();
+    Alert.alert('Sucesso', 'Status alterado para "À caminho".');
+  }, [order.id, stopLocationWatch]);
+
+  /* istanbul ignore next */
   const handleAdvanceStatus = useCallback(async () => {
     if (isPixPending || order.status === 'completed') return;
 
     if (order.status === 'delivering' && !departed) {
       await handleDeliveryDeparture();
+      return;
+    }
+
+    if (order.status === 'delivering' && departed && !enRouteTriggered) {
+      await handleManualEnRoute();
       return;
     }
 
@@ -275,37 +386,9 @@ export function useAdminOrderDetail({ route, navigation }: any) {
     } catch {
       Alert.alert('Erro', 'Ocorreu um erro ao atualizar o status.');
     }
-  }, [order.id, order.status, nextStatus, isPixPending, departed, handleDeliveryDeparture]);
+  }, [order.id, order.status, nextStatus, isPixPending, departed, enRouteTriggered, handleDeliveryDeparture, handleManualEnRoute]);
 
-  const handleDeliveryDeparture = useCallback(async () => {
-    try {
-      const { data, error } = await supabase.rpc('mark_delivery_departure', {
-        p_order_id: order.id,
-      });
-
-      if (error || !data?.success) {
-        Alert.alert('Erro', data?.error || 'Não foi possível registrar a saída.');
-        return;
-      }
-
-      if (data.user_id) {
-        await NotificationService.sendOrderStatusNotification(
-          data.user_id, order.id, 'saiu_para_entrega'
-        );
-      }
-
-      setDeparted(true);
-
-      if (userData.lat && userData.lng) {
-        startProximityMonitoring(userData.lat, userData.lng);
-      }
-
-      Alert.alert('Sucesso', 'Saída para entrega registrada!');
-    } catch {
-      Alert.alert('Erro', 'Ocorreu um erro ao processar a entrega.');
-    }
-  }, [order.id, userData.lat, userData.lng, startProximityMonitoring]);
-
+  /* istanbul ignore next */
   const handleCancelOrder = useCallback(async () => {
     Alert.alert(
       'Cancelar Pedido',

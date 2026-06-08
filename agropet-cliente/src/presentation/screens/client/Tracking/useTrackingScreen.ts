@@ -20,6 +20,25 @@ function getOuterStatus(s1: StepStatusType, s2: StepStatusType): StepStatusType 
   return s1;
 }
 
+const NOTIF_DURATION = 7000;
+
+function getNotifMessage(oldData: any, newData: any): string {
+  const oldStatus = oldData?.status;
+  const newStatus = newData?.status;
+  const oldEnRoute = oldData?.en_route_at;
+  const newEnRoute = newData?.en_route_at;
+  const oldDeliveringAt = oldData?.delivering_at;
+  const newDeliveringAt = newData?.delivering_at;
+
+  if (oldStatus === 'confirmed' && newStatus === 'preparing') return 'Seu pedido está sendo preparado!';
+  if (oldStatus === 'preparing' && newStatus === 'delivering') return 'Seu pedido foi preparado!';
+  if (!oldDeliveringAt && newDeliveringAt && newStatus === 'delivering') return 'Seu pedido saiu para entrega!';
+  if (!oldEnRoute && newEnRoute) return 'Seu pedido já está a caminho, 200 metros de sua casa!';
+  if (oldStatus === 'delivering' && newStatus === 'completed') return 'Seu pedido foi entregue com sucesso!';
+
+  return '';
+}
+
 export function useTrackingScreen({ navigation }: any) {
   const route = useRoute();
   const { toggleMenu } = useUserMenu();
@@ -31,6 +50,8 @@ export function useTrackingScreen({ navigation }: any) {
   const orderId = (route.params as any)?.orderId || null;
   const [enRouteTriggered, setEnRouteTriggered] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [notifMessage, setNotifMessage] = useState('');
+  const [notifVisible, setNotifVisible] = useState(false);
 
   const fetchOrder = useCallback(async (showLoading = true) => {
     if (!orderId) { if (showLoading) setLoading(false); return; }
@@ -41,9 +62,9 @@ export function useTrackingScreen({ navigation }: any) {
         .select('*, order_items( product_id, quantity, unit_price, products( name ) )')
         .eq('id', orderId)
         .single();
-      if (data && !error) {
+        if (data && !error) {
         setOrder(data);
-        if (data.en_route_at || data.delivering_at) setEnRouteTriggered(true);
+        if (data.en_route_at) setEnRouteTriggered(true);
       }
     } catch (e) {
       console.log('Error fetching order for tracking:', e);
@@ -63,8 +84,14 @@ export function useTrackingScreen({ navigation }: any) {
         { event: '*', schema: 'public', table: 'orders', filter: `id=eq.${orderId}` },
         (payload) => {
           const newOrder = payload.new as any;
+          const oldOrder = payload.old as any;
           setOrder(newOrder);
-          if (newOrder?.en_route_at || newOrder?.delivering_at) setEnRouteTriggered(true);
+          if (newOrder?.en_route_at) setEnRouteTriggered(true);
+          const msg = getNotifMessage(oldOrder, newOrder);
+          if (msg) {
+            setNotifMessage(msg);
+            setNotifVisible(true);
+          }
         }
       )
       .subscribe();
@@ -109,6 +136,7 @@ export function useTrackingScreen({ navigation }: any) {
   const status = order?.status || '';
   const activeStep = getActiveStep(status);
   const cancelled = status === 'cancelled';
+  const hasDeliveryDeparted = !!order?.delivering_at;
 
   const stepStatuses = useMemo((): StepStatusType[] => {
     if (cancelled) return STEP_LABELS.map(() => 'red');
@@ -117,23 +145,25 @@ export function useTrackingScreen({ navigation }: any) {
     if (status === 'confirmed') return ['check', 'warn', 'red', 'red'];
     if (status === 'preparing') return ['check', 'warn', 'red', 'red'];
     if (status === 'delivering') {
-      if (enRouteTriggered) return ['check', 'check', 'warn', 'warn'];
+      if (enRouteTriggered) return ['check', 'check', 'check', 'warn'];
+      if (hasDeliveryDeparted) return ['check', 'check', 'warn', 'red'];
       return ['check', 'check', 'red', 'red'];
     }
     return ['red', 'red', 'red', 'red'];
-  }, [status, cancelled, enRouteTriggered]);
+  }, [status, cancelled, enRouteTriggered, hasDeliveryDeparted]);
 
   const outerStatuses = useMemo(() =>
     stepStatuses.map((s, i) => {
       if (i === 0) return s;
       const next = i + 1 < stepStatuses.length ? stepStatuses[i + 1] : s;
+      if (status === 'confirmed' && s === 'warn' && next === 'red') return 'red';
       return getOuterStatus(s, next);
     }),
-    [stepStatuses]
+    [stepStatuses, status]
   );
 
-  const step4IconStatus: StepStatusType = stepStatuses[3] === 'check' ? 'check' : 'red';
-  const step4OuterStatus: StepStatusType = stepStatuses[3] === 'check' ? 'check' : 'red';
+  const step4IconStatus: StepStatusType = stepStatuses[3];
+  const step4OuterStatus: StepStatusType = stepStatuses[3];
 
   const step2SubStatuses = useMemo((): [StepStatusType, StepStatusType] => {
     if (cancelled) return ['red', 'red'];
@@ -147,10 +177,10 @@ export function useTrackingScreen({ navigation }: any) {
   const step3SubStatuses = useMemo((): [StepStatusType, StepStatusType] => {
     if (cancelled) return ['red', 'red'];
     return [
-      enRouteTriggered || status === 'completed' ? 'check' : (status === 'delivering' ? 'warn' : 'red'),
-      status === 'completed' ? 'check' : (enRouteTriggered ? 'warn' : 'red'),
+      enRouteTriggered || status === 'completed' ? 'check' : (hasDeliveryDeparted ? 'check' : (status === 'delivering' ? 'warn' : 'red')),
+      status === 'completed' ? 'check' : (enRouteTriggered ? 'check' : (hasDeliveryDeparted ? 'warn' : 'red')),
     ];
-  }, [status, cancelled, enRouteTriggered]);
+  }, [status, cancelled, enRouteTriggered, hasDeliveryDeparted]);
 
   const stepTimestamp = (stepIndex: number): string | undefined => {
     if (!order) return undefined;
@@ -173,6 +203,12 @@ export function useTrackingScreen({ navigation }: any) {
   }, [fetchOrder]);
 
   const sharedGlowAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!notifVisible) return;
+    const timer = setTimeout(() => setNotifVisible(false), NOTIF_DURATION);
+    return () => clearTimeout(timer);
+  }, [notifVisible]);
 
   useEffect(() => {
     Animated.loop(
@@ -216,6 +252,7 @@ export function useTrackingScreen({ navigation }: any) {
     loading,
     activeStep,
     cancelled,
+    hasDeliveryDeparted,
     status,
     orderId,
     enRouteTriggered,
@@ -232,5 +269,8 @@ export function useTrackingScreen({ navigation }: any) {
     getThermometerGlowIntensity,
     refreshing,
     onRefresh,
+    notifMessage,
+    notifVisible,
+    setNotifVisible,
   };
 }

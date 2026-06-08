@@ -50,7 +50,7 @@ describe('RegisterScreen', () => {
 
   it('should trigger signUp successfully and go back to Login', async () => {
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
-    const { getByPlaceholderText, UNSAFE_getAllByType } = render(<RegisterScreen />);
+    const { getByPlaceholderText, getByTestId, UNSAFE_getAllByType } = render(<RegisterScreen />);
 
     const nameInput = getByPlaceholderText('Nome completo ...');
     const emailInput = getByPlaceholderText('Ex: email@gmail.com...');
@@ -71,6 +71,10 @@ describe('RegisterScreen', () => {
     });
 
     expect(registerButton).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.press(getByTestId('termsCheckbox'));
+    });
 
     await act(async () => {
       fireEvent.press(registerButton!);
@@ -138,7 +142,7 @@ describe('RegisterScreen', () => {
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     mockSignUp.mockResolvedValue({ data: {}, error: new Error('User already exists') });
 
-    const { getByPlaceholderText, UNSAFE_getAllByType } = render(<RegisterScreen />);
+    const { getByPlaceholderText, getByTestId, UNSAFE_getAllByType } = render(<RegisterScreen />);
 
     await act(async () => {
       fireEvent.changeText(getByPlaceholderText('Nome completo ...'), 'Name');
@@ -151,6 +155,10 @@ describe('RegisterScreen', () => {
     const registerButton = touchables.find(t => {
       const child = t.props.children;
       return child && child.props && child.props.width === 131;
+    });
+
+    await act(async () => {
+      fireEvent.press(getByTestId('termsCheckbox'));
     });
 
     await act(async () => {
@@ -182,7 +190,7 @@ describe('RegisterScreen', () => {
 
   it('should handle signUp when session is returned immediately', async () => {
     mockSignUp.mockResolvedValue({ data: { session: { id: 'sess-1' } }, error: null });
-    const { getByPlaceholderText, UNSAFE_getAllByType } = render(<RegisterScreen />);
+    const { getByPlaceholderText, getByTestId, UNSAFE_getAllByType } = render(<RegisterScreen />);
 
     await act(async () => {
       fireEvent.changeText(getByPlaceholderText('Nome completo ...'), 'Name');
@@ -195,6 +203,10 @@ describe('RegisterScreen', () => {
     const registerButton = touchables.find(t => {
       const child = t.props.children;
       return child && child.props && child.props.width === 131;
+    });
+
+    await act(async () => {
+      fireEvent.press(getByTestId('termsCheckbox'));
     });
 
     await act(async () => {

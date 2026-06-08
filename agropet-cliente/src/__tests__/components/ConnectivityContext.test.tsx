@@ -175,4 +175,22 @@ describe('ConnectivityContext', () => {
     expect(getByTestId('online-status').props.children).toBe('online');
     expect(getByTestId('connection-type').props.children).toBe('unknown');
   });
+
+  it('should handle initDB failure gracefully', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const { initDB } = require('../../data/datasources/sqlite/database');
+    initDB.mockRejectedValue(new Error('init failed'));
+
+    render(
+      <ConnectivityProvider>
+        <ConnectivityConsumer />
+      </ConnectivityProvider>
+    );
+
+    await act(async () => {});
+
+    expect(consoleSpy).toHaveBeenCalledWith('Failed to initialize SQLite database in ConnectivityProvider:', expect.any(Error));
+    consoleSpy.mockRestore();
+    initDB.mockResolvedValue({});
+  });
 });

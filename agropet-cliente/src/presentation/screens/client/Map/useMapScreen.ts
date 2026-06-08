@@ -30,6 +30,10 @@ export function useMapScreen(route: any, navigation: any) {
     hasArrived,
     showCar,
     handleGoBackFromTracking,
+    speechBubble,
+    orderStatus,
+    deliveringAt,
+    hasDeparted,
   } = useMapDirections(mapRef, clientLocation, storeLocation, trackingOrderId, navigation);
 
   const isNightTime = useCallback(() => {
@@ -55,6 +59,10 @@ export function useMapScreen(route: any, navigation: any) {
     hasArrived,
     showCar,
     handleGoBackFromTracking,
+    speechBubble,
+    orderStatus,
+    deliveringAt,
+    hasDeparted,
     fitMapToMarkers,
     isNightTime,
   };

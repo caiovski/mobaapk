@@ -43,6 +43,12 @@ export const styles = StyleSheet.create({
   },
   legendRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   legendText: { fontSize: 12, color: '#333333', fontWeight: '600' },
+  speechBubble: {
+    position: 'absolute', top: 160, alignSelf: 'center', borderRadius: 12,
+    paddingHorizontal: 16, paddingVertical: 10, elevation: 5, shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, zIndex: 10,
+  },
+  speechBubbleText: { fontSize: 14, lineHeight: 20 },
   trackingBadge: {
     position: 'absolute', top: 100, alignSelf: 'center', backgroundColor: '#1a3a6b',
     paddingHorizontal: 20, paddingVertical: 10, borderRadius: 16, alignItems: 'center',

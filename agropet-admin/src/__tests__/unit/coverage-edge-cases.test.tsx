@@ -1124,4 +1124,28 @@ describe('useAdminProfileForm - remaining branches', () => {
     supabase.from = origFrom;
     jest.restoreAllMocks();
   });
+
+  it('covers getSpeechBubbleText helper function', () => {
+    const { getSpeechBubbleText } = require('../../presentation/screens/admin/AdminMap/useAdminMapScreen');
+    expect(getSpeechBubbleText(undefined, null)).toBeNull();
+    expect(getSpeechBubbleText('completed', null)).toBeNull();
+    expect(getSpeechBubbleText('cancelled', null)).toBeNull();
+    expect(getSpeechBubbleText('confirmed', null)).toBe('Seu pedido foi confirmado, logo logo entrará em preparação!');
+    expect(getSpeechBubbleText('preparing', null)).toBe('No momento, seu pedido está sendo preparado!');
+    expect(getSpeechBubbleText('delivering', '2026-05-27T00:00:00.000Z')).toBe('Saímos para entrega e estamos à caminho, caro cliente.');
+    expect(getSpeechBubbleText('delivering', null)).toBe('Seu pedido está sendo preparado e sairá da entrega logo logo!');
+    expect(getSpeechBubbleText('pending', null)).toBeNull();
+  });
+
+  it('covers findClosestPointIndex helper function', () => {
+    const { findClosestPointIndex } = require('../../presentation/screens/admin/AdminMap/useAdminMapScreen');
+    const coords = [
+      { latitude: 0, longitude: 0 },
+      { latitude: 1, longitude: 1 },
+      { latitude: 2, longitude: 2 },
+    ];
+    expect(findClosestPointIndex({ latitude: 0.1, longitude: 0.1 }, coords)).toBe(0);
+    expect(findClosestPointIndex({ latitude: 0.9, longitude: 0.9 }, coords)).toBe(1);
+    expect(findClosestPointIndex({ latitude: 1.9, longitude: 1.9 }, coords)).toBe(2);
+  });
 });

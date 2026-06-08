@@ -220,7 +220,7 @@ export function OrderCard({
                 {trackingErrors[order.id]}
               </Text>
             )}
-            <TouchableOpacity onPress={() => navigation.navigate('OrderDetailScreen', { order })} style={{ marginTop: 6 }}>
+            <TouchableOpacity onPress={() => { onCloseDropdown(); navigation.navigate('OrderDetailScreen', { order }); }} style={{ marginTop: 6 }}>
               <Text style={{ color: isDarkMode ? '#FFE082' : '#1C2434', fontSize: 12, fontWeight: 'bold', textAlign: 'center' }}>
                 Detalhes
               </Text>

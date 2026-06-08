@@ -1,7 +1,17 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import MapView from 'react-native-maps';
-import * as SecureStore from 'expo-secure-store';
 import { supabase } from '../../../../data/datasources/supabase/client';
+
+export function getSpeechBubbleText(status: string | undefined, deliveringAt: string | null | undefined): string | null {
+  if (!status || status === 'completed' || status === 'cancelled') return null;
+  if (status === 'confirmed') return 'Seu pedido foi confirmado, logo logo entrará em preparação!';
+  if (status === 'preparing') return 'No momento, seu pedido está sendo preparado!';
+  if (status === 'delivering') {
+    if (deliveringAt) return 'Saímos para entrega e estamos à caminho, caro cliente.';
+    return 'Seu pedido está sendo preparado e sairá da entrega logo logo!';
+  }
+  return null;
+}
 
 export function useMapDirections(
   mapRef: React.RefObject<MapView>,
@@ -16,279 +26,192 @@ export function useMapDirections(
   const [isTracking, setIsTracking] = useState(false);
   const [facingRight, setFacingRight] = useState(true);
   const [hasArrived, setHasArrived] = useState(false);
-  const [showCar, setShowCar] = useState(true);
-  const trackingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const routeIndexRef = useRef(0);
-  const carAnimationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const trackingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const hideCarTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showCar, setShowCar] = useState(false);
+  const [orderStatus, setOrderStatus] = useState<string | undefined>(undefined);
+  const [deliveringAt, setDeliveringAt] = useState<string | null | undefined>(undefined);
+
   const hasFitRouteRef = useRef(false);
-  const clearAllTracking = useCallback(() => {
-    if (trackingIntervalRef.current) {
-      clearInterval(trackingIntervalRef.current);
-      trackingIntervalRef.current = null;
-    }
-    if (carAnimationIntervalRef.current) {
-      clearInterval(carAnimationIntervalRef.current);
-      carAnimationIntervalRef.current = null;
-    }
-    if (trackingTimeoutRef.current) {
-      clearTimeout(trackingTimeoutRef.current);
-      trackingTimeoutRef.current = null;
-    }
-    if (hideCarTimeoutRef.current) {
-      clearTimeout(hideCarTimeoutRef.current);
-      hideCarTimeoutRef.current = null;
-    }
+  const prevPosRef = useRef<{ latitude: number; longitude: number } | null>(null);
+  const orderCompletedRef = useRef(false);
+
+  const handleGoBackFromTracking = useCallback(() => {
     setRouteCoordinates([]);
     setRemainingRoute([]);
     setCarPosition(null);
     setIsTracking(false);
     setHasArrived(false);
-    setShowCar(true);
+    setShowCar(false);
+    setOrderStatus(undefined);
+    setDeliveringAt(undefined);
     hasFitRouteRef.current = false;
-  }, []);
-
-  const handleGoBackFromTracking = useCallback(() => {
-    clearAllTracking();
+    orderCompletedRef.current = false;
+    prevPosRef.current = null;
     navigation.setParams({ trackingOrderId: null });
     navigation.goBack();
-  }, [navigation, clearAllTracking]);
+  }, [navigation]);
+
   useEffect(() => {
-    const unsubscribeBlur = navigation.addListener('blur', () => {
-      clearAllTracking();
+    const unsubBlur = navigation.addListener('blur', () => {
+      setRouteCoordinates([]);
+      setRemainingRoute([]);
+      setCarPosition(null);
+      setIsTracking(false);
+      setHasArrived(false);
+      setShowCar(false);
+      setOrderStatus(undefined);
+      setDeliveringAt(undefined);
+      hasFitRouteRef.current = false;
+      orderCompletedRef.current = false;
+      prevPosRef.current = null;
       navigation.setParams({ trackingOrderId: null });
     });
-    return unsubscribeBlur;
-  }, [navigation, clearAllTracking]);
-
-  const animateCarTo = useCallback((
-    startCoord: { latitude: number; longitude: number },
-    endCoord: { latitude: number; longitude: number },
-    duration: number,
-    onFinished?: () => void,
-  ) => {
-    const steps = Math.round(duration / 50);
-    let currentStep = 0;
-
-    if (carAnimationIntervalRef.current) {
-      clearInterval(carAnimationIntervalRef.current);
-    }
-
-    if (steps <= 0) {
-      setCarPosition(endCoord);
-      if (onFinished) onFinished();
-      return;
-    }
-
-    carAnimationIntervalRef.current = setInterval(() => {
-      currentStep += 1;
-      if (currentStep >= steps) {
-        clearInterval(carAnimationIntervalRef.current!);
-        carAnimationIntervalRef.current = null;
-        setCarPosition(endCoord);
-        if (onFinished) onFinished();
-        return;
-      }
-
-      const ratio = currentStep / steps;
-      const lat = startCoord.latitude + (endCoord.latitude - startCoord.latitude) * ratio;
-      const lng = startCoord.longitude + (endCoord.longitude - startCoord.longitude) * ratio;
-      setCarPosition({ latitude: lat, longitude: lng });
-    }, 50);
-  }, []);
-
-  const startTracking = useCallback((coords: { latitude: number; longitude: number }[], startTime: number) => {
-    setIsTracking(true);
-    setHasArrived(false);
-    setShowCar(true);
-    routeIndexRef.current = 0;
-
-    if (trackingTimeoutRef.current) {
-      clearTimeout(trackingTimeoutRef.current);
-    }
-    if (carAnimationIntervalRef.current) {
-      clearInterval(carAnimationIntervalRef.current);
-    }
-    if (hideCarTimeoutRef.current) {
-      clearTimeout(hideCarTimeoutRef.current);
-    }
-
-    const moveToNextStep = () => {
-      const totalPoints = coords.length;
-      const elapsedMs = Date.now() - startTime;
-      const stepDuration = 1500;
-      const expectedIndex = Math.floor(elapsedMs / stepDuration);
-
-      if (expectedIndex >= totalPoints) {
-        const currentPos = carPosition || coords[routeIndexRef.current];
-
-        const lastIndex = coords.length - 1;
-        if (lastIndex > 0) {
-          const startC = coords[lastIndex - 1];
-          const endC = coords[lastIndex];
-          if (endC.longitude !== startC.longitude) {
-            setFacingRight(endC.longitude > startC.longitude);
-          }
-        }
-
-        animateCarTo(currentPos, coords[totalPoints - 1], 500, async () => {
-          setIsTracking(false);
-          setRemainingRoute([]);
-          setHasArrived(true);
-
-          if (trackingOrderId) {
-            const { error } = await supabase
-              .from('orders')
-              .update({ status: 'completed' })
-              .eq('id', trackingOrderId);
-
-            if (error) {
-              console.log('Erro ao atualizar pedido para entregue:', error);
-            }
-          }
-
-          if (hideCarTimeoutRef.current) {
-            clearTimeout(hideCarTimeoutRef.current);
-          }
-          hideCarTimeoutRef.current = setTimeout(() => {
-            setShowCar(false);
-          }, 60000);
-        });
-        return;
-      }
-
-      const currentIndex = routeIndexRef.current;
-
-      if (expectedIndex - currentIndex > 5) {
-        const skipIndex = expectedIndex - 5;
-        routeIndexRef.current = skipIndex;
-
-        if (skipIndex > 0) {
-          const startC = coords[skipIndex - 1];
-          const endC = coords[skipIndex];
-          if (endC.longitude !== startC.longitude) {
-            setFacingRight(endC.longitude > startC.longitude);
-          }
-        }
-
-        setCarPosition(coords[skipIndex]);
-        setRemainingRoute(coords.slice(skipIndex));
-        trackingTimeoutRef.current = setTimeout(() => {
-          moveToNextStep();
-        }, 50);
-        return;
-      }
-
-      const nextIndex = currentIndex + 1;
-      routeIndexRef.current = nextIndex;
-      setRemainingRoute(coords.slice(nextIndex));
-
-      const startC = coords[currentIndex];
-      const endC = coords[nextIndex];
-
-      if (endC.longitude !== startC.longitude) {
-        setFacingRight(endC.longitude > startC.longitude);
-      }
-
-      const isCatchingUp = nextIndex < expectedIndex;
-      const duration = isCatchingUp ? 150 : stepDuration;
-
-      animateCarTo(startC, endC, duration, () => {
-        trackingTimeoutRef.current = setTimeout(() => {
-          moveToNextStep();
-        }, 10);
-      });
-    };
-
-    moveToNextStep();
-  }, [animateCarTo, carPosition, trackingOrderId]);
-
-  const fetchRoute = useCallback(async () => {
-    if (!clientLocation) return;
-    try {
-      const origin = `${storeLocation.longitude},${storeLocation.latitude}`;
-      const destination = `${clientLocation.longitude},${clientLocation.latitude}`;
-
-      const response = await fetch(
-        `https://router.project-osrm.org/route/v1/driving/${origin};${destination}?overview=full&geometries=geojson`
-      );
-      const data = await response.json();
-
-      if (data.routes && data.routes.length > 0) {
-        const coords = data.routes[0].geometry.coordinates.map(
-          (coord: [number, number]) => ({
-            latitude: coord[1],
-            longitude: coord[0],
-          })
-        );
-        setRouteCoordinates(coords);
-        setRemainingRoute(coords);
-        setCarPosition(coords[0]);
-        routeIndexRef.current = 0;
-
-        let startTime = Date.now();
-        try {
-          if (trackingOrderId) {
-            const storedStart = await SecureStore.getItemAsync(`tracking_start_${trackingOrderId}`);
-            if (storedStart) {
-              const parsedStart = parseInt(storedStart, 10);
-              const elapsedMs = Date.now() - parsedStart;
-              const totalDuration = coords.length * 1500;
-
-              if (elapsedMs >= totalDuration) {
-                startTime = Date.now();
-                await SecureStore.setItemAsync(`tracking_start_${trackingOrderId}`, startTime.toString());
-              } else {
-                startTime = parsedStart;
-              }
-            } else {
-              await SecureStore.setItemAsync(`tracking_start_${trackingOrderId}`, startTime.toString());
-            }
-          }
-        } catch (e) {
-          console.log('Erro com SecureStore', e);
-        }
-
-        startTracking(coords, startTime);
-
-        if (mapRef.current && coords.length > 0 && !hasFitRouteRef.current) {
-          hasFitRouteRef.current = true;
-          setTimeout(() => {
-            mapRef.current?.fitToCoordinates(coords, {
-              edgePadding: { top: 100, right: 50, bottom: 150, left: 50 },
-              animated: true,
-            });
-          }, 1000);
-        }
-      }
-    } catch (e) {
-      console.log('Erro ao buscar rota OSRM:', e);
-    }
-  }, [clientLocation, storeLocation, trackingOrderId, startTracking]);
+    return unsubBlur;
+  }, [navigation]);
 
   useEffect(() => {
-    if (trackingOrderId && clientLocation && storeLocation) {
-      fetchRoute();
-    }
+    if (!trackingOrderId || !clientLocation) return;
+
+    const fetchRouteAndSubscribe = async () => {
+      try {
+        const origin = `${storeLocation.longitude},${storeLocation.latitude}`;
+        const destination = `${clientLocation.longitude},${clientLocation.latitude}`;
+
+        const response = await fetch(
+          `https://router.project-osrm.org/route/v1/driving/${origin};${destination}?overview=full&geometries=geojson`
+        );
+        const data = await response.json();
+
+        if (data.routes && data.routes.length > 0) {
+          const coords = data.routes[0].geometry.coordinates.map(
+            (coord: [number, number]) => ({
+              latitude: coord[1],
+              longitude: coord[0],
+            })
+          );
+          setRouteCoordinates(coords);
+          setRemainingRoute(coords);
+
+          if (mapRef.current && coords.length > 0 && !hasFitRouteRef.current) {
+            hasFitRouteRef.current = true;
+            setTimeout(() => {
+              mapRef.current?.fitToCoordinates(coords, {
+                edgePadding: { top: 100, right: 50, bottom: 150, left: 50 },
+                animated: true,
+              });
+            }, 1000);
+          }
+        }
+      } catch (e) {
+        console.log('Erro ao buscar rota OSRM:', e);
+      }
+
+      const { data: firstGps } = await supabase
+        .from('delivery_tracking')
+        .select('lat, lng, created_at')
+        .eq('order_id', trackingOrderId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (firstGps && firstGps.lat != null && firstGps.lng != null) {
+        const pos = { latitude: firstGps.lat, longitude: firstGps.lng };
+        setCarPosition(pos);
+        setShowCar(true);
+        setIsTracking(true);
+        prevPosRef.current = pos;
+      } else {
+        setCarPosition({ latitude: storeLocation.latitude, longitude: storeLocation.longitude });
+        setShowCar(true);
+      }
+
+      const { data: orderData } = await supabase
+        .from('orders')
+        .select('status, delivering_at')
+        .eq('id', trackingOrderId)
+        .single();
+
+      if (orderData) {
+        setOrderStatus(orderData.status);
+        setDeliveringAt(orderData.delivering_at);
+
+        if (orderData.status === 'completed') {
+          orderCompletedRef.current = true;
+          setHasArrived(true);
+          setIsTracking(false);
+        }
+      }
+
+      const channel = supabase
+        .channel(`map_delivery_tracking_${trackingOrderId}`)
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'delivery_tracking', filter: `order_id=eq.${trackingOrderId}` },
+          (payload: any) => {
+            const { lat, lng } = payload.new;
+            if (lat == null || lng == null) return;
+
+            const newPos = { latitude: lat, longitude: lng };
+
+            if (prevPosRef.current) {
+              const prevLng = prevPosRef.current.longitude;
+              if (newPos.longitude !== prevLng) {
+                setFacingRight(newPos.longitude > prevLng);
+              }
+            }
+
+            prevPosRef.current = newPos;
+            setCarPosition(newPos);
+            setShowCar(true);
+            setIsTracking(true);
+            setHasArrived(false);
+            orderCompletedRef.current = false;
+
+            setRemainingRoute((prev) => {
+              if (prev.length === 0) return prev;
+              const closestIdx = findClosestPointIndex(newPos, prev);
+              return prev.slice(closestIdx);
+            });
+          }
+        )
+        .subscribe();
+
+      const orderChannel = supabase
+        .channel(`map_order_status_${trackingOrderId}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'orders', filter: `id=eq.${trackingOrderId}` },
+          (payload: any) => {
+            const newOrder = payload.new as any;
+            if (newOrder?.status) setOrderStatus(newOrder.status);
+            if (newOrder?.delivering_at !== undefined) setDeliveringAt(newOrder.delivering_at);
+
+            if (newOrder?.status === 'completed' && !orderCompletedRef.current) {
+              orderCompletedRef.current = true;
+              setHasArrived(true);
+              setIsTracking(false);
+              setTimeout(() => setShowCar(false), 60000);
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+        supabase.removeChannel(orderChannel);
+      };
+    };
+
+    fetchRouteAndSubscribe();
+
+    return () => {
+      hasFitRouteRef.current = false;
+    };
   }, [trackingOrderId, clientLocation, storeLocation]);
 
-  useEffect(() => {
-    return () => {
-      if (trackingIntervalRef.current) {
-        clearInterval(trackingIntervalRef.current);
-      }
-      if (carAnimationIntervalRef.current) {
-        clearInterval(carAnimationIntervalRef.current);
-      }
-      if (trackingTimeoutRef.current) {
-        clearTimeout(trackingTimeoutRef.current);
-      }
-      if (hideCarTimeoutRef.current) {
-        clearTimeout(hideCarTimeoutRef.current);
-      }
-    };
-  }, []);
+  const hasDeparted = orderStatus === 'delivering' && !!deliveringAt;
+
+  const speechBubble = !hasArrived ? getSpeechBubbleText(orderStatus, deliveringAt) : null;
+
   return {
     routeCoordinates,
     remainingRoute,
@@ -298,5 +221,27 @@ export function useMapDirections(
     hasArrived,
     showCar,
     handleGoBackFromTracking,
+    speechBubble,
+    orderStatus,
+    deliveringAt,
+    hasDeparted,
   };
+}
+
+function findClosestPointIndex(
+  pos: { latitude: number; longitude: number },
+  coords: { latitude: number; longitude: number }[]
+): number {
+  let minDist = Infinity;
+  let minIdx = 0;
+  for (let i = 0; i < coords.length; i++) {
+    const dlat = pos.latitude - coords[i].latitude;
+    const dlng = pos.longitude - coords[i].longitude;
+    const dist = dlat * dlat + dlng * dlng;
+    if (dist < minDist) {
+      minDist = dist;
+      minIdx = i;
+    }
+  }
+  return minIdx;
 }

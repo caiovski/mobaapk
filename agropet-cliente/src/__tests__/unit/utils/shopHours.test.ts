@@ -1,32 +1,32 @@
-import { isHoliday, getStoreHoursForDate, getShopStatus } from '../../../utils/shopHours';
+import { isHoliday, getStoreHoursForDate, getShopStatus, canBypassStoreHours } from '../../../utils/shopHours';
 
 describe('shopHours Utility', () => {
   describe('isHoliday', () => {
     it('should identify fixed national holidays correctly', () => {
-      expect(isHoliday(new Date('2026-01-01T12:00:00'))).toBe(true); // Ano Novo
-      expect(isHoliday(new Date('2026-04-21T12:00:00'))).toBe(true); // Tiradentes
-      expect(isHoliday(new Date('2026-05-01T12:00:00'))).toBe(true); // Dia do Trabalho
-      expect(isHoliday(new Date('2026-09-07T12:00:00'))).toBe(true); // Independência
-      expect(isHoliday(new Date('2026-10-12T12:00:00'))).toBe(true); // N. Sra. Aparecida
-      expect(isHoliday(new Date('2026-11-02T12:00:00'))).toBe(true); // Finados
-      expect(isHoliday(new Date('2026-11-15T12:00:00'))).toBe(true); // Proclamação da República
-      expect(isHoliday(new Date('2026-12-25T12:00:00'))).toBe(true); // Natal
+      expect(isHoliday(new Date('2026-01-01T12:00:00'))).toBe(true);
+      expect(isHoliday(new Date('2026-04-21T12:00:00'))).toBe(true);
+      expect(isHoliday(new Date('2026-05-01T12:00:00'))).toBe(true);
+      expect(isHoliday(new Date('2026-09-07T12:00:00'))).toBe(true);
+      expect(isHoliday(new Date('2026-10-12T12:00:00'))).toBe(true);
+      expect(isHoliday(new Date('2026-11-02T12:00:00'))).toBe(true);
+      expect(isHoliday(new Date('2026-11-15T12:00:00'))).toBe(true);
+      expect(isHoliday(new Date('2026-12-25T12:00:00'))).toBe(true);
     });
 
     it('should return false for regular working days', () => {
-      expect(isHoliday(new Date('2026-05-20T12:00:00'))).toBe(false); // regular Wednesday
+      expect(isHoliday(new Date('2026-05-20T12:00:00'))).toBe(false);
     });
 
     it('should identify dynamic holidays based on Easter correctly (Year 2026)', () => {
-      expect(isHoliday(new Date('2026-04-03T12:00:00'))).toBe(true); // Good Friday
-      expect(isHoliday(new Date('2026-02-17T12:00:00'))).toBe(true); // Carnival Tuesday
-      expect(isHoliday(new Date('2026-06-04T12:00:00'))).toBe(true); // Corpus Christi
+      expect(isHoliday(new Date('2026-04-03T12:00:00'))).toBe(true);
+      expect(isHoliday(new Date('2026-02-17T12:00:00'))).toBe(true);
+      expect(isHoliday(new Date('2026-06-04T12:00:00'))).toBe(true);
     });
   });
 
   describe('getStoreHoursForDate', () => {
     it('should return closed on Sundays', () => {
-      const sunday = new Date('2026-05-24T12:00:00'); // Sunday
+      const sunday = new Date('2026-05-24T12:00:00');
       const hours = getStoreHoursForDate(sunday);
       expect(hours.isOpenToday).toBe(false);
       expect(hours.openHour).toBe(0);
@@ -34,9 +34,9 @@ describe('shopHours Utility', () => {
     });
 
     it('should return half day (8 to 12) on Saturdays and Holidays', () => {
-      const saturday = new Date('2026-05-23T12:00:00'); // Saturday
-      const holiday = new Date('2026-12-25T12:00:00'); // Christmas
-      
+      const saturday = new Date('2026-05-23T12:00:00');
+      const holiday = new Date('2026-12-25T12:00:00');
+
       const hoursSat = getStoreHoursForDate(saturday);
       const hoursHol = getStoreHoursForDate(holiday);
 
@@ -58,15 +58,14 @@ describe('shopHours Utility', () => {
     });
   });
 
-  // SKIPPED TEMPORARILY while store bypass (isOpen: true) is active
-  describe.skip('getShopStatus', () => {
+  describe('getShopStatus', () => {
     it('should return closed on Sunday with countdown to Monday', () => {
       const sunday = new Date('2026-05-24T12:00:00');
       const status = getShopStatus(sunday);
       expect(status.isOpen).toBe(false);
       expect(status.isSundayOrHoliday).toBe(true);
       expect(status.countdownText).toContain('A loja abrirá em');
-      expect(status.secondsRemaining).toBe(20 * 3600); // 20h até segunda 8h
+      expect(status.secondsRemaining).toBe(20 * 3600);
     });
 
     it('should return closed on holiday with countdown to next open day', () => {
@@ -75,7 +74,7 @@ describe('shopHours Utility', () => {
       expect(status.isOpen).toBe(false);
       expect(status.isSundayOrHoliday).toBe(true);
       expect(status.countdownText).toContain('A loja abrirá em');
-      expect(status.secondsRemaining).toBe(20 * 3600); // 20h até sábado 8h
+      expect(status.secondsRemaining).toBe(20 * 3600);
     });
 
     it('should return open during business hours on weekday', () => {
@@ -114,7 +113,7 @@ describe('shopHours Utility', () => {
       expect(status.isOpen).toBe(false);
       expect(status.isSundayOrHoliday).toBe(false);
       expect(status.countdownText).toContain('A loja abrirá em');
-      expect(status.secondsRemaining).toBe(12 * 3600); // 12h até quinta 8h
+      expect(status.secondsRemaining).toBe(12 * 3600);
     });
 
     it('should return closed on Saturday afternoon with countdown in days to Monday', () => {
@@ -124,7 +123,7 @@ describe('shopHours Utility', () => {
       expect(status.isSundayOrHoliday).toBe(false);
       expect(status.countdownText).toContain('A loja abrirá em');
       expect(status.countdownText).toContain('01 dia');
-      expect(status.secondsRemaining).toBe(43 * 3600); // 43h até segunda 8h
+      expect(status.secondsRemaining).toBe(43 * 3600);
     });
 
     it('should use singular hour/minute/second when 1 remains during open', () => {
@@ -150,5 +149,22 @@ describe('shopHours Utility', () => {
       expect(status.countdownText).toContain('01 dia . 01 hora . 01 minuto . 01 segundo');
     });
   });
-});
 
+  describe('canBypassStoreHours', () => {
+    it('should return true for admin role', () => {
+      expect(canBypassStoreHours('admin')).toBe(true);
+    });
+
+    it('should return true when bypassStoreHours is true', () => {
+      expect(canBypassStoreHours(undefined, true)).toBe(true);
+    });
+
+    it('should return false when no bypass conditions are met', () => {
+      expect(canBypassStoreHours()).toBe(false);
+    });
+
+    it('should return false when userRole is not admin and bypassStoreHours is false', () => {
+      expect(canBypassStoreHours('client', false)).toBe(false);
+    });
+  });
+});

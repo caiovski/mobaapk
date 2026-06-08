@@ -6,6 +6,7 @@ import {
   ScrollView,
   Dimensions,
   StatusBar,
+  Linking,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Colors from '../theme/colors';
@@ -102,7 +103,7 @@ export default function SplashScreen() {
         <View style={styles.footerContainer}>
           <View style={styles.footerContent}>
             {/* Suporte */}
-            <TouchableOpacity style={styles.footerItem}>
+            <TouchableOpacity style={styles.footerItem} onPress={() => Linking.openURL('https://wa.me/5535998120517')}>
               <Suporte width={85} height={23} />
             </TouchableOpacity>
 
@@ -110,7 +111,7 @@ export default function SplashScreen() {
             <View style={styles.separator} />
 
             {/* Privacidade */}
-            <TouchableOpacity style={styles.footerItem}>
+            <TouchableOpacity style={styles.footerItem} onPress={() => navigation.navigate('LegalPages', { type: 'privacy' })}>
               <Privacidade width={127} height={21} />
             </TouchableOpacity>
 
@@ -118,7 +119,7 @@ export default function SplashScreen() {
             <View style={styles.separator} />
 
             {/* Termos */}
-            <TouchableOpacity style={styles.footerItem}>
+            <TouchableOpacity style={styles.footerItem} onPress={() => navigation.navigate('LegalPages', { type: 'terms' })}>
               <Termos width={82} height={19} />
             </TouchableOpacity>
           </View>

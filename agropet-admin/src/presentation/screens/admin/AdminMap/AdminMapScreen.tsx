@@ -68,15 +68,17 @@ export default function AdminMapScreen() {
           {h.trackedClient && (
             <Marker coordinate={{ latitude: h.trackedClient.latitude, longitude: h.trackedClient.longitude }} title={h.trackedClient.name} description={h.trackedClient.address} pinColor="blue" />
           )}
-          { /* istanbul ignore next */ (h.remainingRoute.length > 1 || (h.remainingRoute.length > 0 && h.carPosition)) && (
+          { /* istanbul ignore next */ h.hasDeparted && (h.remainingRoute.length > 1 || (h.remainingRoute.length > 0 && h.carPosition)) && (
             <>
               <Polyline coordinates={h.carPosition ? [h.carPosition, ...h.remainingRoute] : h.remainingRoute} strokeColor="#000000" strokeWidth={8} lineCap="round" lineJoin="round" />
               <Polyline coordinates={h.carPosition ? [h.carPosition, ...h.remainingRoute] : h.remainingRoute} strokeColor="#1a3a6b" strokeWidth={5} lineCap="round" lineJoin="round" />
             </>
           )}
           {h.carPosition && h.showCar && (
-            <Marker coordinate={h.carPosition} anchor={{ x: 0.5, y: 0.5 }} flat title="Entregador">
-              <FiorinoIcon facingRight={h.facingRight} />
+            <Marker coordinate={h.carPosition} anchor={{ x: 0.5, y: 1 }} flat title="Entregador">
+              <View style={{ alignItems: 'center' }}>
+                <FiorinoIcon facingRight={h.facingRight} />
+              </View>
             </Marker>
           )}
           {h.searchedLocation && (
@@ -116,14 +118,20 @@ export default function AdminMapScreen() {
           <View style={styles.legendRow}><View style={{ width: 24, alignItems: 'center' }}><LegendPin color="#2196F3" /></View><Text style={[styles.legendText, { color: h.colors.textDark }]}>Cliente</Text></View>
         </View>
 
-        {(h.isTracking || (h.hasArrived && h.showCar)) && (
+        {(h.isTracking || (h.hasArrived && h.showCar)) && h.hasDeparted && (
           <View style={styles.trackingBadge}>
             <Text style={styles.trackingBadgeText}>🚚 Rastreando entrega...</Text>
             <Text style={styles.trackingBadgeSubtext}>{h.hasArrived ? 'Seu pedido chegou ao destino.' : 'Seu pedido saiu para entrega.'}</Text>
           </View>
         )}
 
-        {!!h.trackedClient && (
+        {!!h.trackedClient && h.speechBubble && (
+          <View style={[styles.speechBubble, { backgroundColor: h.isDarkMode ? '#1E1E24' : '#FFFFFF' }]}>
+            <Text style={[styles.speechBubbleText, { color: h.colors.textDark }]}>{h.speechBubble}</Text>
+          </View>
+        )}
+
+        {!!h.trackedClient && h.hasDeparted && (
           <View style={[styles.emRotaContainer, { backgroundColor: h.isDarkMode ? '#2E2E38' : '#FFFFFF' }]}>
             <View style={styles.pulseContainer}><View style={styles.pulseDot} /></View>
             <Text style={[styles.emRotaText, { color: h.isDarkMode ? '#FFFFFF' : '#1C2434' }]}>Em rota</Text>

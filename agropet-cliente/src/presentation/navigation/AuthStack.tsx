@@ -2,6 +2,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import SplashScreen from '../screens/SplashScreen';
 import ClientLoginScreen from '../screens/auth/ClientLogin';
 import RegisterScreen from '../screens/auth/Register';
+import LegalPagesScreen from '../screens/auth/LegalPages';
 
 const Stack = createStackNavigator();
 
@@ -11,6 +12,7 @@ export default function AuthStack() {
       <Stack.Screen name="SplashScreen" component={SplashScreen} options={{ headerShown: false }} />
       <Stack.Screen name="ClientLoginScreen" component={ClientLoginScreen} options={{ headerShown: false }} />
       <Stack.Screen name="RegisterScreen" component={RegisterScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="LegalPages" component={LegalPagesScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }

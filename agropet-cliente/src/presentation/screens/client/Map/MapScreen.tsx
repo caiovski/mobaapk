@@ -32,6 +32,8 @@ export default function MapScreen({ route, navigation }: any) {
     hasArrived,
     showCar,
     handleGoBackFromTracking,
+    speechBubble,
+    hasDeparted,
     fitMapToMarkers,
     isNightTime,
   } = useMapScreen(route, navigation);
@@ -84,7 +86,7 @@ export default function MapScreen({ route, navigation }: any) {
             />
           )}
 
-          {(remainingRoute.length > 1 || (remainingRoute.length > 0 && carPosition)) && (
+          {hasDeparted && (remainingRoute.length > 1 || (remainingRoute.length > 0 && carPosition)) && (
             <Polyline
               coordinates={carPosition ? [carPosition, ...remainingRoute] : remainingRoute}
               strokeColor={isDarkMode ? '#000000' : '#000000'}
@@ -94,7 +96,7 @@ export default function MapScreen({ route, navigation }: any) {
             />
           )}
 
-          {(remainingRoute.length > 1 || (remainingRoute.length > 0 && carPosition)) && (
+          {hasDeparted && (remainingRoute.length > 1 || (remainingRoute.length > 0 && carPosition)) && (
             <Polyline
               coordinates={carPosition ? [carPosition, ...remainingRoute] : remainingRoute}
               strokeColor={isDarkMode ? '#22A3F3' : '#1a3a6b'}
@@ -107,11 +109,13 @@ export default function MapScreen({ route, navigation }: any) {
           {carPosition && showCar && (
             <Marker
               coordinate={carPosition}
-              anchor={{ x: 0.5, y: 0.5 }}
+              anchor={{ x: 0.5, y: 1 }}
               flat={true}
               title="Entregador"
             >
-              <FiorinoIcon facingRight={facingRight} />
+              <View style={{ alignItems: 'center' }}>
+                <FiorinoIcon facingRight={facingRight} />
+              </View>
             </Marker>
           )}
         </MapView>
@@ -200,7 +204,7 @@ export default function MapScreen({ route, navigation }: any) {
           </View>
         )}
 
-        {(isTracking || (hasArrived && showCar)) && (
+        {hasDeparted && (isTracking || (hasArrived && showCar)) && (
           <View style={[styles.trackingBadge, { backgroundColor: isDarkMode ? '#2E2E38' : '#1a3a6b' }]}>
             <Text style={styles.trackingBadgeText}>🚚 Rastreando entrega...</Text>
             <Text style={styles.trackingBadgeSubtext}>
@@ -209,7 +213,7 @@ export default function MapScreen({ route, navigation }: any) {
           </View>
         )}
 
-        {!!trackingOrderId && (
+        {!!trackingOrderId && hasDeparted && (
           <View style={[
             styles.emRotaContainer,
             { backgroundColor: isDarkMode ? '#2E2E38' : '#FFFFFF' }

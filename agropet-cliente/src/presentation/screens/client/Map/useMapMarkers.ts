@@ -81,8 +81,9 @@ export function useMapMarkers(
   );
 
   useEffect(() => {
+    const channelName = `store_location_changes_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const subscription = supabase
-      .channel('store_location_changes')
+      .channel(channelName)
       .on(
         'postgres_changes',
         {

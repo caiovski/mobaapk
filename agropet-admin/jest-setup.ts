@@ -55,9 +55,16 @@ jest.mock('@supabase/supabase-js', () => {
     delete: jest.fn().mockReturnThis(),
     then: undefined,
   };
+  const mockChannel = {
+    on: jest.fn().mockReturnThis(),
+    subscribe: jest.fn().mockResolvedValue(undefined),
+    unsubscribe: jest.fn(),
+  };
   const mockSupabase = {
     from: jest.fn().mockReturnValue(mockChain),
     auth: mockAuth,
+    channel: jest.fn().mockReturnValue(mockChannel),
+    removeChannel: jest.fn(),
   };
   return {
     createClient: jest.fn(() => mockSupabase),
@@ -121,6 +128,18 @@ jest.mock('expo-location', () => ({
   startLocationUpdatesAsync: jest.fn().mockResolvedValue(undefined),
   stopLocationUpdatesAsync: jest.fn().mockResolvedValue(undefined),
   hasStartedLocationUpdatesAsync: jest.fn().mockResolvedValue(false),
+  Accuracy: {
+    High: 5,
+    Balanced: 3,
+    Low: 1,
+    Lowest: 0,
+  },
+  ActivityType: {
+    AutomotiveNavigation: 2,
+    OtherNavigation: 3,
+    Fitness: 1,
+    Other: 0,
+  },
 }));
 
 // Mock do expo-image-picker

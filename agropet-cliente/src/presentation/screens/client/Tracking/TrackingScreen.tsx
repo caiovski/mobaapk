@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Animated, RefreshControl } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../../contexts/ThemeContext';
@@ -42,6 +42,7 @@ import OpcoesLabel8 from '../../../assets/tela11/barra de baixo/Opções.svg';
 import { useTrackingScreen, StepStatusType } from './useTrackingScreen';
 import { styles } from './TrackingScreen.styles';
 import { ThermometerLine } from './ThermometerLine';
+import DeliveryMinimap from './DeliveryMinimap';
 
 function StepCard({ children, isDarkMode, isActive }: { children: React.ReactNode; isDarkMode: boolean; isActive: boolean }) {
   return (
@@ -112,6 +113,18 @@ export default function TrackingScreen({ navigation }: any) {
   const s4Outer = h.step4OuterStatus;
 
   const barGlowAnim = useRef(new Animated.Value(0)).current;
+  const notifAnim = useRef(new Animated.Value(-100)).current;
+  const [prevNotifVisible, setPrevNotifVisible] = useState(false);
+
+  useEffect(() => {
+    if (h.notifVisible && !prevNotifVisible) {
+      notifAnim.setValue(-100);
+      Animated.timing(notifAnim, { toValue: 0, duration: 300, useNativeDriver: true }).start();
+    } else if (!h.notifVisible && prevNotifVisible) {
+      Animated.timing(notifAnim, { toValue: -100, duration: 300, useNativeDriver: true }).start();
+    }
+    setPrevNotifVisible(h.notifVisible);
+  }, [h.notifVisible]);
 
   useEffect(() => {
     Animated.loop(
@@ -154,6 +167,40 @@ export default function TrackingScreen({ navigation }: any) {
         searchText={h.searchText}
         onSearchChange={h.setSearchText}
       />
+
+      {h.notifVisible ? (
+        <Animated.View style={{
+          transform: [{ translateY: notifAnim }],
+          position: 'absolute',
+          top: 50,
+          left: 16,
+          right: 16,
+          zIndex: 100,
+          backgroundColor: h.isDarkMode ? '#2E2E38' : '#FFFFFF',
+          borderRadius: 12,
+          paddingVertical: 12,
+          paddingHorizontal: 16,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.15,
+          shadowRadius: 6,
+          elevation: 8,
+          borderLeftWidth: 4,
+          borderLeftColor: '#339914',
+        }}>
+          <TouchableOpacity onPress={() => h.setNotifVisible(false)} style={{ position: 'absolute', top: 6, right: 10, zIndex: 101 }}>
+            <Feather name="x" size={18} color={h.isDarkMode ? '#999' : '#666'} />
+          </TouchableOpacity>
+          <Text style={{
+            fontSize: 14,
+            fontWeight: 'bold',
+            color: h.isDarkMode ? '#FFFFFF' : '#333',
+            marginRight: 20,
+          }}>
+            {h.notifMessage}
+          </Text>
+        </Animated.View>
+      ) : null}
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={h.refreshing} onRefresh={h.onRefresh} colors={['#339914']} />}
@@ -314,12 +361,12 @@ export default function TrackingScreen({ navigation }: any) {
               <Text style={[styles.horarioLabel, { color: h.isDarkMode ? '#FFFFFF' : '#1C2434' }]}>
                 Horário
               </Text>
-              {h.enRouteTriggered || st[2] === 'check' ? (
+              {h.order?.delivering_at || st[2] === 'check' ? (
                 <Text style={{ fontSize: 13, fontWeight: 'bold', color: h.isDarkMode ? '#FFFFFF' : '#333', textAlign: 'center' }}>
                   {h.formatTime(h.stepTimestamp(2))}
                 </Text>
               ) : (
-                <Feather name="clock" size={24} color={h.status === 'delivering' || st[2] === 'warn' ? '#E9A527' : '#C51818'} />
+                <Feather name="clock" size={24} color={h.status === 'preparing' || h.status === 'delivering' || st[2] === 'warn' ? '#E9A527' : '#C51818'} />
               )}
             </View>
           </StepCard>
@@ -356,7 +403,7 @@ export default function TrackingScreen({ navigation }: any) {
                   {h.formatTime(h.stepTimestamp(3))}
                 </Text>
               ) : (
-                <Feather name="clock" size={24} color={h.status === 'delivering' && h.enRouteTriggered || st[3] === 'warn' ? '#E9A527' : '#C51818'} />
+                <Feather name="clock" size={24}               color={h.status === 'delivering' && h.enRouteTriggered || st[3] === 'warn' || h.hasDeliveryDeparted ? '#E9A527' : '#C51818'} />
               )}
             </View>
           </StepCard>
@@ -369,6 +416,17 @@ export default function TrackingScreen({ navigation }: any) {
           </View>
         )}
       </ScrollView>
+
+      <DeliveryMinimap
+        orderId={h.orderId}
+        status={h.status}
+        hasDeliveryDeparted={h.hasDeliveryDeparted}
+        isDarkMode={h.isDarkMode}
+        onExpand={() => navigation.push('ClientTabs', {
+          screen: 'Mapa',
+          params: { trackingOrderId: h.orderId },
+        })}
+      />
 
       <View style={styles.tabBarOuter}>
         <View style={[styles.tabBarInner, { backgroundColor: h.isDarkMode ? '#000000' : '#E3E4EB' }]}>

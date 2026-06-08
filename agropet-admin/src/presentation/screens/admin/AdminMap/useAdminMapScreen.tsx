@@ -1,9 +1,38 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Alert, Keyboard } from 'react-native';
 import MapView from 'react-native-maps';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { supabase } from '../../../../data/datasources/supabase/client';
 import { useTheme } from '../../../contexts/ThemeContext';
+
+export function getSpeechBubbleText(status: string | undefined, deliveringAt: string | null | undefined): string | null {
+  if (!status || status === 'completed' || status === 'cancelled') return null;
+  if (status === 'confirmed') return 'Seu pedido foi confirmado, logo logo entrará em preparação!';
+  if (status === 'preparing') return 'No momento, seu pedido está sendo preparado!';
+  if (status === 'delivering') {
+    if (deliveringAt) return 'Saímos para entrega e estamos à caminho, caro cliente.';
+    return 'Seu pedido está sendo preparado e sairá da entrega logo logo!';
+  }
+  return null;
+}
+
+export function findClosestPointIndex(
+  pos: { latitude: number; longitude: number },
+  coords: { latitude: number; longitude: number }[]
+): number {
+  let minDist = Infinity;
+  let minIdx = 0;
+  for (let i = 0; i < coords.length; i++) {
+    const dlat = pos.latitude - coords[i].latitude;
+    const dlng = pos.longitude - coords[i].longitude;
+    const dist = dlat * dlat + dlng * dlng;
+    if (dist < minDist) {
+      minDist = dist;
+      minIdx = i;
+    }
+  }
+  return minIdx;
+}
 
 export const DEFAULT_STORE_LOCATION = {
   latitude: -21.9765, longitude: -45.3469,
@@ -54,28 +83,27 @@ export function useAdminMapScreen() {
   const [hasArrived, setHasArrived] = useState(false);
   const [showCar, setShowCar] = useState(true);
   const [deliveryRadius, setDeliveryRadius] = useState(17);
+  const [orderStatus, setOrderStatus] = useState<string | undefined>(undefined);
+  const [deliveringAt, setDeliveringAt] = useState<string | null | undefined>(undefined);
 
-  const routeIndexRef = useRef(0);
-  const carAnimationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const trackingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const hideCarTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevPosRef = useRef<{ latitude: number; longitude: number } | null>(null);
+  const orderIdRef = useRef<string | null>(null);
 
-  const fetchStoreLocation = async () => {
+  const fetchStoreLocation = useCallback(async () => {
     try {
       const { data, error } = await supabase.from('agropet_store_location').select('latitude, longitude').eq('id', 1).single();
-      /* istanbul ignore next */
       if (data && !error) setStoreLocation({ ...DEFAULT_STORE_LOCATION, latitude: data.latitude, longitude: data.longitude });
     } catch (e) { /* ignore */ }
-  };
+  }, []);
 
-  const fetchRadius = async () => {
+  const fetchRadius = useCallback(async () => {
     try {
       const { data, error } = await supabase.from('store_settings').select('delivery_radius_km').maybeSingle();
       setDeliveryRadius(data && !error && data.delivery_radius_km !== null ? data.delivery_radius_km : 17);
     } catch (e) { setDeliveryRadius(17); }
-  };
+  }, []);
 
-  useEffect(() => { fetchStoreLocation(); fetchRadius(); }, []);
+  useEffect(() => { fetchStoreLocation(); fetchRadius(); }, [fetchStoreLocation, fetchRadius]);
 
   /* istanbul ignore next */
   const animateCarTo = (
@@ -83,111 +111,10 @@ export function useAdminMapScreen() {
     endCoord: { latitude: number; longitude: number },
     duration: number, onFinished?: () => void
   ) => {
-    const steps = Math.round(duration / 50);
-    let currentStep = 0;
-    if (carAnimationIntervalRef.current) clearInterval(carAnimationIntervalRef.current);
-    if (steps <= 0) { setCarPosition(endCoord); if (onFinished) onFinished(); return; }
-    carAnimationIntervalRef.current = setInterval(() => {
-      currentStep += 1;
-      if (currentStep >= steps) {
-        clearInterval(carAnimationIntervalRef.current!);
-        carAnimationIntervalRef.current = null;
-        setCarPosition(endCoord);
-        if (onFinished) onFinished();
-        return;
-      }
-      const ratio = currentStep / steps;
-      setCarPosition({
-        latitude: startCoord.latitude + (endCoord.latitude - startCoord.latitude) * ratio,
-        longitude: startCoord.longitude + (endCoord.longitude - startCoord.longitude) * ratio,
-      });
-    }, 50);
+    if (onFinished) onFinished();
   };
 
-  /* istanbul ignore next */
-  const startTracking = (coords: { latitude: number; longitude: number }[], startTime: number, clientLoc?: any) => {
-    setIsTracking(true); setHasArrived(false); setShowCar(true); routeIndexRef.current = 0;
-    if (trackingTimeoutRef.current) clearTimeout(trackingTimeoutRef.current);
-    if (carAnimationIntervalRef.current) clearInterval(carAnimationIntervalRef.current);
-    if (hideCarTimeoutRef.current) clearTimeout(hideCarTimeoutRef.current);
-
-    const moveToNextStep = () => {
-      const totalPoints = coords.length;
-      const elapsedMs = Date.now() - startTime;
-      const stepDuration = 1500;
-      const expectedIndex = Math.floor(elapsedMs / stepDuration);
-
-      if (expectedIndex >= totalPoints || routeIndexRef.current >= totalPoints - 1) {
-        const currentPos = carPosition || coords[routeIndexRef.current];
-        const lastIndex = coords.length - 1;
-        if (lastIndex > 0) {
-          const sC = coords[lastIndex - 1], eC = coords[lastIndex];
-          if (eC.longitude !== sC.longitude) setFacingRight(eC.longitude > sC.longitude);
-        }
-        animateCarTo(currentPos, coords[totalPoints - 1], 500, async () => {
-          setIsTracking(false); setRemainingRoute([]); setHasArrived(true);
-          if (clientLoc?.orderId) {
-            try {
-              const { error } = await supabase.from('orders').update({ status: 'completed' }).eq('id', clientLoc.orderId);
-              if (error) console.error('Erro ao atualizar status do pedido:', error);
-            } catch (err) { console.error('Erro ao atualizar status do pedido:', err); }
-          }
-          if (hideCarTimeoutRef.current) clearTimeout(hideCarTimeoutRef.current);
-          hideCarTimeoutRef.current = setTimeout(() => setShowCar(false), 60000);
-        });
-        return;
-      }
-
-      const currentIndex = routeIndexRef.current;
-      if (expectedIndex - currentIndex > 5) {
-        const skipIndex = expectedIndex - 5;
-        routeIndexRef.current = skipIndex;
-        if (skipIndex > 0) {
-          const sC = coords[skipIndex - 1], eC = coords[skipIndex];
-          if (eC.longitude !== sC.longitude) setFacingRight(eC.longitude > sC.longitude);
-        }
-        setCarPosition(coords[skipIndex]);
-        setRemainingRoute(coords.slice(skipIndex));
-        trackingTimeoutRef.current = setTimeout(() => moveToNextStep(), 50);
-        return;
-      }
-
-      const nextIndex = currentIndex + 1;
-      routeIndexRef.current = nextIndex;
-      setRemainingRoute(coords.slice(nextIndex));
-      const sC = coords[currentIndex], eC = coords[nextIndex];
-      if (sC && eC && eC.longitude !== sC.longitude) setFacingRight(eC.longitude > sC.longitude);
-      if (sC && eC) {
-        animateCarTo(sC, eC, nextIndex < expectedIndex ? 150 : stepDuration, () => {
-          trackingTimeoutRef.current = setTimeout(() => moveToNextStep(), 10);
-        });
-      } else {
-        trackingTimeoutRef.current = setTimeout(() => moveToNextStep(), 10);
-      }
-    };
-    moveToNextStep();
-  };
-
-  /* istanbul ignore next */
-  const fetchRouteAndStartTracking = async (storeLoc: any, clientLoc: any) => {
-    try {
-      const origin = `${storeLoc.longitude},${storeLoc.latitude}`;
-      const destination = `${clientLoc.longitude},${clientLoc.latitude}`;
-      const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${origin};${destination}?overview=full&geometries=geojson`);
-      const data = await response.json();
-      if (data.routes && data.routes[0]) {
-        const coords = data.routes[0].geometry.coordinates.map((coord: any) => ({ latitude: coord[1], longitude: coord[0] }));
-        setRouteCoordinates(coords);
-        setRemainingRoute(coords);
-        setCarPosition(coords[0]);
-        routeIndexRef.current = 0;
-        startTracking(coords, Date.now(), clientLoc);
-      }
-    } catch (err) { console.error('Erro ao buscar rota:', err); }
-  };
-
-  /* istanbul ignore next */
-  const fetchLocations = async (query: string) => {
+  const fetchLocations = useCallback(async (query: string) => {
     try {
       setIsSearching(true);
       const queryWithCity = `${query}, Lambari, Minas Gerais, Brasil`;
@@ -199,14 +126,14 @@ export function useAdminMapScreen() {
       try { setSuggestions(JSON.parse(text)); } catch (e) { console.error('JSON error:', text); }
     } catch (error) { console.error('Erro ao buscar local', error); }
     finally { setIsSearching(false); }
-  };
+  }, []);
 
   useEffect(() => {
     const delay = setTimeout(() => {
       if (searchQuery.trim().length > 2) fetchLocations(searchQuery); else setSuggestions([]);
     }, 500);
     return () => clearTimeout(delay);
-  }, [searchQuery]);
+  }, [searchQuery, fetchLocations]);
 
   /* istanbul ignore next */
   const handleSelectLocation = (loc: any) => {
@@ -219,58 +146,152 @@ export function useAdminMapScreen() {
 
   useEffect(() => {
     let currentStoreLoc = storeLocation;
-    /* istanbul ignore next */
+    let trackingChannel: any = null;
+    let orderChannel: any = null;
+
     const loadAndTrack = async () => {
       fetchRadius();
       try {
         const { data, error } = await supabase.from('agropet_store_location').select('latitude, longitude').eq('id', 1).single();
         if (data && !error) { currentStoreLoc = { ...DEFAULT_STORE_LOCATION, latitude: data.latitude, longitude: data.longitude }; setStoreLocation(currentStoreLoc); }
       } catch (e) { console.log('Error loading store location on focus:', e); }
-      
+
       const params = route.params;
       if (params?.clientLocation) {
         const clientLoc = params.clientLocation;
         setTrackedClient(clientLoc);
-        if (mapRef.current) mapRef.current.animateToRegion({ latitude: clientLoc.latitude, longitude: clientLoc.longitude, latitudeDelta: 0.008, longitudeDelta: 0.008 }, 1000);
-        fetchRouteAndStartTracking(currentStoreLoc, clientLoc);
-      } else { setTrackedClient(null); }
+        /* istanbul ignore next */ if (mapRef.current) mapRef.current.animateToRegion({ latitude: clientLoc.latitude, longitude: clientLoc.longitude, latitudeDelta: 0.008, longitudeDelta: 0.008 }, 1000);
+
+        try {
+          const origin = `${currentStoreLoc.longitude},${currentStoreLoc.latitude}`;
+          const destination = `${clientLoc.longitude},${clientLoc.latitude}`;
+          const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${origin};${destination}?overview=full&geometries=geojson`);
+          const data = await response.json();
+          if (data.routes && data.routes[0]) {
+            const coords = data.routes[0].geometry.coordinates.map((coord: any) => ({ latitude: coord[1], longitude: coord[0] }));
+            setRouteCoordinates(coords);
+            setRemainingRoute(coords);
+          }
+        } catch (err) { console.error('Erro ao buscar rota:', err); }
+
+        const orderId = clientLoc.orderId;
+        if (orderId) {
+          orderIdRef.current = orderId;
+
+          const { data: firstGps } = await supabase
+            .from('delivery_tracking')
+            .select('lat, lng, created_at')
+            .eq('order_id', orderId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+          if (firstGps && firstGps.lat != null && firstGps.lng != null) {
+            const pos = { latitude: firstGps.lat, longitude: firstGps.lng };
+            setCarPosition(pos);
+            setShowCar(true);
+            setIsTracking(true);
+            prevPosRef.current = pos;
+          } else {
+            setCarPosition({ latitude: currentStoreLoc.latitude, longitude: currentStoreLoc.longitude });
+          }
+
+          const { data: orderData } = await supabase
+            .from('orders')
+            .select('status, delivering_at')
+            .eq('id', orderId)
+            .single();
+
+          if (orderData) {
+            setOrderStatus(orderData.status);
+            setDeliveringAt(orderData.delivering_at);
+          }
+
+          if (orderData?.status === 'completed') {
+            setHasArrived(true);
+            setIsTracking(false);
+          }
+
+          trackingChannel = supabase
+            .channel(`admin_map_tracking_${orderId}`)
+            .on(
+              'postgres_changes',
+              { event: 'INSERT', schema: 'public', table: 'delivery_tracking', filter: `order_id=eq.${orderId}` },
+              (payload: any) => {
+                const { lat, lng } = payload.new;
+                if (lat == null || lng == null) return;
+                const newPos = { latitude: lat, longitude: lng };
+                if (prevPosRef.current && newPos.longitude !== prevPosRef.current.longitude) {
+                  setFacingRight(newPos.longitude > prevPosRef.current.longitude);
+                }
+                prevPosRef.current = newPos;
+                setCarPosition(newPos);
+                setShowCar(true);
+                setIsTracking(true);
+                setHasArrived(false);
+                setRemainingRoute((prev) => {
+                  /* istanbul ignore next */
+                  if (prev.length === 0) return prev;
+                  const closestIdx = findClosestPointIndex(newPos, prev);
+                  return prev.slice(closestIdx);
+                });
+              }
+            )
+            .subscribe();
+
+          orderChannel = supabase
+            .channel(`admin_map_order_${orderId}`)
+            .on(
+              'postgres_changes',
+              { event: '*', schema: 'public', table: 'orders', filter: `id=eq.${orderId}` },
+              (payload: any) => {
+                const newOrder = payload.new as any;
+                if (newOrder?.status) setOrderStatus(newOrder.status);
+                if (newOrder?.delivering_at !== undefined) setDeliveringAt(newOrder.delivering_at);
+
+                if (newOrder?.status === 'completed') {
+                  setHasArrived(true);
+                  setIsTracking(false);
+                  /* istanbul ignore next */
+                  setTimeout(() => setShowCar(false), 60000);
+                }
+              }
+            )
+            .subscribe();
+        }
+      } else {
+        setTrackedClient(null);
+      }
     };
+
     loadAndTrack();
-  }, [route.params?.clientLocation]);
+
+    return () => {
+      if (trackingChannel) supabase.removeChannel(trackingChannel);
+      if (orderChannel) supabase.removeChannel(orderChannel);
+      orderIdRef.current = null;
+    };
+  }, [route.params?.clientLocation, fetchRadius]);
 
   useEffect(() => {
     const unsubBlur = navigation.addListener('blur', () => {
       setTrackedClient(null); setRouteCoordinates([]); setRemainingRoute([]); setCarPosition(null);
       setIsTracking(false); setHasArrived(false); setShowCar(true);
-      if (carAnimationIntervalRef.current) { clearInterval(carAnimationIntervalRef.current); carAnimationIntervalRef.current = null; }
-      if (trackingTimeoutRef.current) { clearTimeout(trackingTimeoutRef.current); trackingTimeoutRef.current = null; }
-      if (hideCarTimeoutRef.current) { clearTimeout(hideCarTimeoutRef.current); hideCarTimeoutRef.current = null; }
+      prevPosRef.current = null;
+      orderIdRef.current = null;
       navigation.setParams({ clientLocation: null });
     });
     return unsubBlur;
   }, [navigation]);
 
-  useEffect(() => {
-    return () => {
-      /* istanbul ignore next */
-      if (carAnimationIntervalRef.current) clearInterval(carAnimationIntervalRef.current);
-      /* istanbul ignore next */
-      if (trackingTimeoutRef.current) clearTimeout(trackingTimeoutRef.current);
-      /* istanbul ignore next */
-      if (hideCarTimeoutRef.current) clearTimeout(hideCarTimeoutRef.current);
-    };
-  }, []);
-
-  /* istanbul ignore next */
-  const handleGoBackFromTracking = () => {
-    if (carAnimationIntervalRef.current) { clearInterval(carAnimationIntervalRef.current); carAnimationIntervalRef.current = null; }
-    if (trackingTimeoutRef.current) { clearTimeout(trackingTimeoutRef.current); trackingTimeoutRef.current = null; }
-    if (hideCarTimeoutRef.current) { clearTimeout(hideCarTimeoutRef.current); hideCarTimeoutRef.current = null; }
+  const handleGoBackFromTracking = useCallback(() => {
     setTrackedClient(null); setRouteCoordinates([]); setRemainingRoute([]); setCarPosition(null);
     setIsTracking(false); setHasArrived(false); setShowCar(true);
+    prevPosRef.current = null;
+    orderIdRef.current = null;
     navigation.setParams({ clientLocation: null });
     navigation.goBack();
-  };
+  }, [navigation]);
 
   /* istanbul ignore next */
   const handleMarkerDragEnd = async (e: any) => {
@@ -292,12 +313,17 @@ export function useAdminMapScreen() {
     ]);
   };
 
+  const speechBubble = !hasArrived ? getSpeechBubbleText(orderStatus, deliveringAt) : null;
+  const hasDeparted = (orderStatus === 'delivering' && !!deliveringAt) || orderStatus === 'completed';
+
   return {
     colors, isDarkMode, navigation, mapRef, route,
     storeLocation, isEditingLocation, searchQuery, setSearchQuery,
     suggestions, isSearching, searchedLocation,
     trackedClient, routeCoordinates, remainingRoute,
     carPosition, isTracking, facingRight, hasArrived, showCar, deliveryRadius,
+    orderStatus, deliveringAt, hasDeparted,
+    speechBubble,
     handleSelectLocation, handleGoBackFromTracking, handleMarkerDragEnd, handleSetStoreLocation,
     setIsEditingLocation, animateCarTo,
   };

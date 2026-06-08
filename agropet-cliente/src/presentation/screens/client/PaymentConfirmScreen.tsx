@@ -170,8 +170,9 @@ export default function PaymentConfirmScreen({ route, navigation }: any) {
 
     fetchDeliveryStatus();
 
+    const settingsChannelName = `store_settings_confirm_tabs_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const channel = supabase
-      .channel('store_settings_confirm_tabs')
+      .channel(settingsChannelName)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'store_settings' },

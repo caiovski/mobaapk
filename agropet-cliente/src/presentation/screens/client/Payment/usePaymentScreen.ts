@@ -47,7 +47,7 @@ export function usePaymentScreen() {
     fetchDeliveryStatus();
 
     const channel = supabase
-      .channel('store_settings_payment_tabs')
+      .channel(`store_settings_payment_tabs_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'store_settings' },

@@ -94,7 +94,7 @@ export function useProfileAddress({
   };
 
   React.useEffect(() => { fetchDeliveryStatus();
-    const channel = supabase.channel('store_settings_profile_tabs')
+    const channel = supabase.channel(`store_settings_profile_tabs_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'store_settings' }, (payload) => {
         if (payload.new && (payload.new as any).delivery_active !== undefined) {
           setDeliveryActive((payload.new as any).delivery_active);

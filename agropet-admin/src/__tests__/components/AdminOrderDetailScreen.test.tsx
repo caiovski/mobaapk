@@ -384,4 +384,77 @@ describe('AdminOrderDetailScreen - Deep Coverage', () => {
     const { getByText } = renderScreen(AdminOrderDetailScreen, { route: mockRoute, navigation: { goBack: mockGoBack } });
     expect(getByText('Dynamic Image Product')).toBeTruthy();
   });
+
+  it('should render order with preparing status showing Preparando', () => {
+    const mockRoute = {
+      params: {
+        order: {
+          id: 'order-prep-001',
+          created_at: '2026-05-27T10:00:00.000Z',
+          total: 120,
+          status: 'preparing',
+          delivery_address: 'Rua G 321',
+          order_items: [
+            { product_id: 'p-prep', quantity: 2, unit_price: 60, products: { name: 'Brinquedo', image_url: 'https://ex.com/toy.png' } }
+          ],
+          users: { name: 'Ana', phone: '11977776666', rua: 'Rua G', numero: '321', bairro: 'Centro', cep: '13001-000' },
+        },
+      },
+    };
+
+    const { getByText } = renderScreen(AdminOrderDetailScreen, { route: mockRoute, navigation: { goBack: mockGoBack } });
+    expect(getByText('Preparando')).toBeTruthy();
+    expect(getByText('Brinquedo')).toBeTruthy();
+    expect(getByText('Ana')).toBeTruthy();
+  });
+
+  it('should render delivering order with departed and enRouteTriggered showing À caminho', () => {
+    const mockRoute = {
+      params: {
+        order: {
+          id: 'order-enr-001',
+          created_at: '2026-05-27T10:00:00.000Z',
+          delivering_at: '2026-05-27T11:00:00.000Z',
+          en_route_at: '2026-05-27T11:30:00.000Z',
+          total: 90,
+          status: 'delivering',
+          delivery_address: 'Rua H 654',
+          order_items: [
+            { product_id: 'p-enr', quantity: 1, unit_price: 90, products: { name: 'Shampoo', image_url: null } }
+          ],
+          users: { name: 'Carlos', phone: '11955554444', rua: 'Rua H', numero: '654', bairro: 'Jardim', cep: '13002-000' },
+        },
+      },
+    };
+
+    const { getByText } = renderScreen(AdminOrderDetailScreen, { route: mockRoute, navigation: { goBack: mockGoBack } });
+    expect(getByText('À caminho')).toBeTruthy();
+    expect(getByText('Shampoo')).toBeTruthy();
+    expect(getByText('Carlos')).toBeTruthy();
+  });
+
+  it('should render delivering order with departed only showing Saiu para entrega', () => {
+    const mockRoute = {
+      params: {
+        order: {
+          id: 'order-dep-001',
+          created_at: '2026-05-27T10:00:00.000Z',
+          delivering_at: '2026-05-27T11:00:00.000Z',
+          en_route_at: null,
+          total: 75,
+          status: 'delivering',
+          delivery_address: 'Rua I 987',
+          order_items: [
+            { product_id: 'p-dep', quantity: 3, unit_price: 25, products: { name: 'Osso', image_url: null } }
+          ],
+          users: { name: 'Beatriz', phone: '11933332222', rua: 'Rua I', numero: '987', bairro: 'Vila', cep: '13003-000' },
+        },
+      },
+    };
+
+    const { getByText } = renderScreen(AdminOrderDetailScreen, { route: mockRoute, navigation: { goBack: mockGoBack } });
+    expect(getByText('Saiu para entrega')).toBeTruthy();
+    expect(getByText('Osso')).toBeTruthy();
+    expect(getByText('Beatriz')).toBeTruthy();
+  });
 });

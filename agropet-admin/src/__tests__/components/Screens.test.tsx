@@ -86,7 +86,7 @@ jest.mock('../../data/datasources/supabase/client', () => ({
         order: jest.fn().mockReturnThis(),
         gte: jest.fn().mockReturnThis(),
         lte: jest.fn().mockReturnThis(),
-        single: jest.fn().mockResolvedValue({ data: { role: 'admin' }, error: null }),
+        single: jest.fn().mockResolvedValue({ data: null, error: null }),
         insert: jest.fn().mockReturnThis(),
         update: jest.fn().mockReturnThis(),
         delete: jest.fn().mockReturnThis(),
@@ -221,8 +221,8 @@ describe('Unified Admin Screens Tests', () => {
     expect(getByText('Cancelado')).toBeTruthy();
   });
 
-  it('should render AdminOrderDetailScreen with completed and cancelled physical PDV sales', () => {
-    const mockRouteCompleted = {
+  it('should render AdminOrderDetailScreen with completed physical PDV sale', () => {
+    const mockRoute = {
       params: {
         order: {
           id: 'order-pdv-1',
@@ -235,10 +235,12 @@ describe('Unified Admin Screens Tests', () => {
         }
       }
     };
-    const { getByText, rerender } = renderScreen(AdminOrderDetailScreen, { route: mockRouteCompleted });
+    const { getByText } = renderScreen(AdminOrderDetailScreen, { route: mockRoute });
     expect(getByText('Venda Física (Concluída)')).toBeTruthy();
+  });
 
-    const mockRouteCancelled = {
+  it('should render AdminOrderDetailScreen with cancelled physical PDV sale', () => {
+    const mockRoute = {
       params: {
         order: {
           id: 'order-pdv-2',
@@ -251,15 +253,7 @@ describe('Unified Admin Screens Tests', () => {
         }
       }
     };
-    rerender(
-      <AuthContext.Provider value={authVal}>
-        <ThemeProvider>
-          <UserMenuProvider>
-            <AdminOrderDetailScreen route={mockRouteCancelled} />
-          </UserMenuProvider>
-        </ThemeProvider>
-      </AuthContext.Provider>
-    );
+    const { getByText } = renderScreen(AdminOrderDetailScreen, { route: mockRoute });
     expect(getByText('Venda Física (Cancelada)')).toBeTruthy();
   });
 

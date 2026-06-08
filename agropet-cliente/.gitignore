@@ -41,8 +41,5 @@ yarn-error.*
 /ios
 /android
 
-# ignorar app.json
-app.json
-
 # ignorar arquivos de cobertura
 cliente_coverage.txt
