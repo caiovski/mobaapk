@@ -27,7 +27,7 @@
 
 Seja muito bem-vindo ao repositório do **AgroPet Lambari**, um ecossistema mobile avançado composto por **dois aplicativos isolados** (Cliente e Administrador) desenvolvidos com as melhores práticas de Engenharia de Software, arquitetura robusta e banco de dados de alto desempenho.
 
----
+
 
 ## 👨‍💻 Sobre o Desenvolvedor
 
@@ -182,44 +182,39 @@ Novas e inovadoras mecânicas de comportamento visual e de negócios estão cata
 
 Compilamos abaixo a lista completa de mecânicas de ponta que foram totalmente implementadas e agregadas ao ecossistema do **AgroPet Lambari**:
 
-### 🗂️ 1. Filtro Avançado e Alertas de Estoque Reativos
-*   **Filtros Unificados e Modernizados:** Unificamos os filtros de controle de catálogo administrativo em um botão dinâmico e consistente ao de relatórios de vendas.
-*   **Detecção de Baixo Estoque:** Subseção dedicada para produtos em **Alerta Amarelo** (atenção) e **Alerta Vermelho** (crítico).
-*   **Priorização com Exclusão Mutua:** Catálogo ordena produtos críticos no topo; filtros de alerta anulam a categoria *Inativos*.
-
-### ⚙️ 2. Seleção e Desativação em Massa de Produtos
+### ⚙️ 1. Seleção e Desativação em Massa de Produtos
 *   **Operações em Bloco:** Botão "Selecionar Tudo" + "Desativar Todos" para gestão simultânea de centenas de itens.
 *   **Alternância Inteligente:** Botão se transforma em "Cancelar Seleção" quando modo de exclusão é ativado.
 *   **Aviso Destrutivo em Tela Cheia:** Confirmação visual vermelha para prevenir erros acidentais.
 
-### 🎠 3. Carrossel Multi-Fotos (Até 5) com Animação e Opacidade Flanqueada
+### 🎠 2. Carrossel Multi-Fotos (Até 5) com Animação e Opacidade Flanqueada
 *   **Upload de Múltiplas Mídias:** Até 5 fotos por produto, serializadas no banco de dados.
 *   **Visualização Clássica de Flanco:** Imagem centralizada flanqueada por mini-prévias com `opacity: 0.35`.
 *   **Animação Cross-Fade:** Looping automático de transição a cada 5 segundos no catálogo do cliente.
 *   **fallback Estático:** Telas secundárias exibem apenas a primeira foto.
 
-### ⚡ 4. Resolução de Timeouts RLS e Otimizações de Caixa e Histórico
+### ⚡ 3. Resolução de Timeouts RLS e Otimizações de Caixa e Histórico
 *   **Fim de Gargalos (Postgres 57014):** Remoção de timeouts com `SET row_security = off` e otimização para menos de 50ms.
 *   **Desvinculação Caixa/PDV:** Ledger passa a exibir exclusivamente sangrias e suprimentos manuais.
 *   **Histórico de Pedidos Puro:** Oculta vendas do PDV, mostra estritamente pedidos online de clientes.
 
-### 🧪 5. Maximização de Cobertura de Testes e Limpeza Arquitetural
+### 🧪 4. Maximização de Cobertura de Testes e Limpeza Arquitetural
 *   **100% Test Coverage:** Testes unitários herméticos em Domain Entities e Value Objects (Order, Product, User, etc.).
 *   **Edge Cases:** Testes de timeout assíncrono e tracking com duração nula no AdminMapScreen.
 *   **Limpeza Arquitetural:** Remoção de artefatos obsoletos e arquivos *index.ts* vazios.
 
-### 🎨 6. Unificação Global de Caixa e Sincronização UI/UX
+### 🎨 5. Unificação Global de Caixa e Sincronização UI/UX
 *   **Caixa Global Unificado:** Sincronização contábil completa na tela de Histórico de Vendas com `<CaixaGlobalPanel>`.
 *   **Reversão Atômica de Estoque:** Devolução de produtos ao estoque com expurgação simultânea do Caixa Global.
 *   **Dark Mode Avançado:** SVGs explícitos `*Dark.svg` para forçar cores brancas em interfaces `#000000`.
 *   **Bateria Invicta:** 253/253 testes Cliente e 512/512 Admin.
 
-### 🛠️ 7. Refatoração e Bug Fixes Técnicos — 30/05/2026
+### 🛠️ 6. Refatoração e Bug Fixes Técnicos — 30/05/2026
 *   **Modularização Extrema:** Componentes reduzidos de 2.000+ para menos de 400 linhas.
 *   **Bugfix Crítico:** Resolução de timeouts no Jest e duplicação sintática na TrackingScreen.
 *   **Limpeza Final:** Expurgo de arquivos residuais, logs e scripts locais.
 
-### 🛡️ 8. Patch: Blindagem do projeto, reforma no Banco de Dados e melhorias técnicas — 31/05/2026
+### 🛡️ 7. Patch: Blindagem do projeto, reforma no Banco de Dados e melhorias técnicas — 31/05/2026
 *   **Cobertura 100% Admin:** 14 novos arquivos de teste, 100% Statements/Branches/Functions/Lines em 68 arquivos.
 *   **13 Migrations SQL (22-34):** Idempotência, Rate Limiter, Estoque Atômico, RLS, Auditoria, Índices, PIX, IDOR, Controle de Concorrência, LGPD, Notificações e Dead-Letter Queue.
 *   **Infraestrutura:** Docker multi-estágio, docker-compose, CI/CD GitHub Actions, health check, feature flags.
@@ -228,17 +223,26 @@ Compilamos abaixo a lista completa de mecânicas de ponta que foram totalmente i
 *   **15 OpenSpecs:** Documentação viva de todas as iniciativas técnicas.
 *   **61 arquivos, +1889 linhas, -310 removidas** — 999 testes.
 
-### ⚖️📡 9. LegalPages e Rastreamento GPS em Tempo Real (NOVO!!!) — 07/06/2026
+### ⚖️📡 8. LegalPages e Rastreamento GPS em Tempo Real (NOVO!!!) — 07/06/2026
 *   **LegalPages Compartilhado (Cliente + Admin):** Telas de Política de Privacidade e Termos de Uso em ambos os apps, com roteamento dinâmico na `AuthStack` via parâmetro `documentType` e 6 testes unitários validando privacidade, termos, fallback e fechamento.
 *   **gpsTrackingService (Admin):** Serviço modular com start/stop monitoramento, atualização periódica de coordenadas no Supabase e tratamento de erros com timeouts. Hook `useGpsTracking` gerenciando o ciclo de vida do tracking no `AdminOrderDetail`. 2 suites de teste com cenários de sucesso, falha de permissão e timeout.
 *   **Migration SQL (41):** Script `add_delivery_tracking.sql` para estrutura de persistência do tracking em tempo real.
 
-### 🗺️🐛 10. Delivery Minimap, Correções de UX e Expansão de Testes (NOVO!!!) — 07/06/2026
+---
+
+### 🗺️🐛 9. Delivery Minimap, Correções de UX e Expansão de Testes (NOVO!!!) — 07/06/2026
 *   **Componente DeliveryMinimap (Cliente):** Mapa customizado com `react-native-maps`, marcador animado da posição do entregador, polígono de rota e centralização dinâmica da câmera. Hook `useDeliveryMinimap` com assinatura Realtime, interpolação suave de coordenadas e fallback para timeline textual.
 *   **Dropdown Fechando ao Tocar Fora:** `onStartShouldSetResponderCapture` no `OrdersScreen` + `closeAllDropdowns()` no botão Detalhes do `OrderCard`.
 *   **Correção hasDeparted:** Lógica expandida para incluir status `completed` no AdminMapScreen.
 *   **Expansão de Testes:** Cobertura adicional em `shopHours.test.ts` (finais de semana/feriados), `database.test.ts` (transação, rollback, concorrência), `ConnectivityContext.test.tsx` e `coverage-edge-cases.test.tsx`.
 *   **58 arquivos modificados, +2726 linhas, -538 removidas** — 363 testes Admin e 145 Cliente, **508 testes automatizados**.
+
+### 🚀📱 10. Configurações Finais, App Icons e Resolução de Crashes Nativos (NOVO!!!) — 08/06/2026
+*   **Resolução de JNI Crash:** Correção definitiva do erro fatal na inicialização do aplicativo cliente através do downgrade da dependência `expo-sharing` para a versão compatível com a SDK 54.
+*   **Segurança de Navegação:** Implementação de um `<SafeAreaProvider>` global encapsulando o `GestureHandlerRootView` nos dois aplicativos para prevenir falhas silenciosas de renderização do BottomTabs.
+*   **Variáveis de Ambiente Seguras:** Configuração avançada do `app.config.js` para injetar segredos como a `GOOGLE_MAPS_API_KEY` diretamente da nuvem da Expo, removendo chaves codificadas (`hardcoded`) do `app.json`.
+*   **Identidade Visual (Ícones):** Injeção de App Icons vetoriais personalizados na pasta assets (Fundo Laranja Puro no Cliente, Fundo Azul-Marinho no Admin) e adequação dos Nomes de Exibição dos binários finais (Agropet Lambari e Agropet Admin).
+*   **Sucesso no EAS Build:** Geração dos APKs de produção com arquitetura nativa ativada (`newArchEnabled: true`), finalizando a Sprint com sucesso e permitindo o lançamento seguro dos apps nos dispositivos.
 
 ---
 

@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "agropet-admin",
+    "name": "Agropet Admin",
     "slug": "agropet-admin",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -18,7 +18,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#1c2b3e"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,

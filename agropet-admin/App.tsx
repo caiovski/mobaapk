@@ -1,4 +1,6 @@
 import React, { useEffect } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from './src/presentation/contexts/AuthContext';
 import { UserMenuProvider } from './src/presentation/contexts/UserMenuContext';
 import { ThemeProvider } from './src/presentation/contexts/ThemeContext';
@@ -17,15 +19,19 @@ export default function App() {
   }, []);
 
   return (
-    <ErrorBoundary>
-      <ThemeProvider>
-        <AuthProvider>
-          <UserMenuProvider>
-            <AppNavigator />
-          </UserMenuProvider>
-        </AuthProvider>
-      </ThemeProvider>
-    </ErrorBoundary>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <ErrorBoundary>
+        <ThemeProvider>
+          <AuthProvider>
+            <UserMenuProvider>
+              <AppNavigator />
+            </UserMenuProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </ErrorBoundary>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 

@@ -1,5 +1,7 @@
 import React, { useEffect } from 'react';
 import { Alert } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from './src/presentation/contexts/AuthContext';
 import { CartProvider } from './src/presentation/contexts/CartContext';
 import { ThemeProvider } from './src/presentation/contexts/ThemeContext';
@@ -24,7 +26,7 @@ export default function App() {
     const receivedListener = NotificationService.addNotificationReceivedListener(notification => {
       const { title, body } = notification.request.content;
       if (title) {
-        Alert.alert(title, body);
+        Alert.alert(title, body ?? undefined);
       }
     });
 
@@ -34,18 +36,22 @@ export default function App() {
   }, []);
 
   return (
-    <ErrorBoundary>
-      <ConnectivityProvider>
-        <ThemeProvider>
-          <AuthProvider>
-            <FilterProvider>
-              <CartProvider>
-                <AppNavigator />
-              </CartProvider>
-            </FilterProvider>
-          </AuthProvider>
-        </ThemeProvider>
-      </ConnectivityProvider>
-    </ErrorBoundary>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <ErrorBoundary>
+        <ConnectivityProvider>
+          <ThemeProvider>
+            <AuthProvider>
+              <FilterProvider>
+                <CartProvider>
+                  <AppNavigator />
+                </CartProvider>
+              </FilterProvider>
+            </AuthProvider>
+          </ThemeProvider>
+        </ConnectivityProvider>
+      </ErrorBoundary>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
