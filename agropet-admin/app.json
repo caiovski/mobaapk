@@ -27,9 +27,19 @@
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_BACKGROUND_LOCATION",
         "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_LOCATION"
       ],
-      "package": "com.caiovski.agropetadmin"
+      "package": "com.caiovski.agropetadmin",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyDv0N8MyMGo-BAbi2Qw4oJ9J4Dk5i8uz4I"
+        }
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -52,6 +62,12 @@
       "eas": {
         "projectId": "e01e60b6-00a6-4254-959c-7d455a98c628"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/e01e60b6-00a6-4254-959c-7d455a98c628"
     }
   }
 }

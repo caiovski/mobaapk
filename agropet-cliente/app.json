@@ -37,12 +37,27 @@
       "expo-sqlite",
       "expo-location",
       "expo-image-picker",
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "react-native",
+          "organization": "caiovski"
+        }
+      ],
+      "expo-localization"
     ],
     "extra": {
       "eas": {
         "projectId": "6cb70e8d-d12c-4c75-8d0b-d0c818f76a7a"
       }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/6cb70e8d-d12c-4c75-8d0b-d0c818f76a7a"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
     }
   }
 }

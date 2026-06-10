@@ -2,6 +2,7 @@ import React from 'react';
 import { render, waitFor, act, fireEvent } from '@testing-library/react-native';
 import { Text, Button } from 'react-native';
 import { AuthContext, AuthProvider } from '../../../src/presentation/contexts/AuthContext';
+import { NotificationService } from '../../../src/services/notificationService';
 
 // ── Mock Supabase ──
 const mockGetSession = jest.fn();
@@ -9,6 +10,9 @@ const mockSignOut = jest.fn();
 const mockUnsubscribe = jest.fn();
 
 let authStateChangeCallback: any = null;
+
+const mockEq = jest.fn().mockReturnValue({ error: null });
+const mockUpdate = jest.fn().mockReturnValue({ eq: mockEq });
 
 jest.mock('../../../src/data/datasources/supabase/client', () => ({
   supabase: {
@@ -26,6 +30,7 @@ jest.mock('../../../src/data/datasources/supabase/client', () => ({
         };
       },
     },
+    from: () => ({ update: mockUpdate }),
   },
 }));
 
@@ -130,6 +135,48 @@ describe('AuthContext (Cliente)', () => {
 
     expect(getByTestId('session').props.children).toBe('no-session');
     expect(getByTestId('user').props.children).toBe('no-user');
+  });
+
+  it('should handle push token registration error', async () => {
+    mockEq.mockReturnValueOnce({ error: new Error('push fail') });
+
+    const mockSession = {
+      user: { id: 'user-1', email: 'test@test.com' },
+      access_token: 'token',
+    };
+    mockGetSession.mockResolvedValue({ data: { session: mockSession } });
+
+    const { getByTestId } = render(
+      <AuthProvider>
+        <AuthConsumer />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(getByTestId('loading').props.children).toBe('loaded');
+    });
+  });
+
+  it('should skip push token registration when token is null', async () => {
+    jest.spyOn(NotificationService, 'getExpoPushToken').mockResolvedValue(null);
+
+    const mockSession = {
+      user: { id: 'user-1', email: 'test@test.com' },
+      access_token: 'token',
+    };
+    mockGetSession.mockResolvedValue({ data: { session: mockSession } });
+
+    const { getByTestId } = render(
+      <AuthProvider>
+        <AuthConsumer />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(getByTestId('loading').props.children).toBe('loaded');
+    });
+
+    expect(mockUpdate).not.toHaveBeenCalled();
   });
 
   it('should call supabase.auth.signOut on signOut', async () => {

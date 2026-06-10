@@ -11,8 +11,15 @@ import { ErrorBoundary } from './src/presentation/components/ErrorBoundary';
 import { auditService } from './src/services/auditService';
 import { NotificationService } from './src/services/notificationService';
 import AppNavigator from './src/presentation/navigation/AppNavigator';
+import * as Sentry from '@sentry/react-native';
+import { PostHogProvider } from 'posthog-react-native';
 
-export default function App() {
+Sentry.init({
+  dsn: 'https://057a16ede169637157ee16b9f6aa03b8@o4511538369069056.ingest.us.sentry.io/4511538373394432',
+  debug: false,
+});
+
+function App() {
   useEffect(() => {
     auditService.log('app.started', { app: 'cliente' });
     auditService.healthCheck().then((status) => {
@@ -37,21 +44,25 @@ export default function App() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <ErrorBoundary>
-        <ConnectivityProvider>
-          <ThemeProvider>
-            <AuthProvider>
-              <FilterProvider>
-                <CartProvider>
-                  <AppNavigator />
-                </CartProvider>
-              </FilterProvider>
-            </AuthProvider>
-          </ThemeProvider>
-        </ConnectivityProvider>
-      </ErrorBoundary>
-      </SafeAreaProvider>
+      <PostHogProvider apiKey="phc_mWHHW3AmwcUip7i4fcXJ9ZBqqDp9honAwxv7PZHyDoKb" options={{ host: 'https://us.i.posthog.com' }}>
+        <SafeAreaProvider>
+          <ErrorBoundary>
+          <ConnectivityProvider>
+            <ThemeProvider>
+              <AuthProvider>
+                <FilterProvider>
+                  <CartProvider>
+                    <AppNavigator />
+                  </CartProvider>
+                </FilterProvider>
+              </AuthProvider>
+            </ThemeProvider>
+          </ConnectivityProvider>
+        </ErrorBoundary>
+        </SafeAreaProvider>
+      </PostHogProvider>
     </GestureHandlerRootView>
   );
 }
+
+export default Sentry.wrap(App);

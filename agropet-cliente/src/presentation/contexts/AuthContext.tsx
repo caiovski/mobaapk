@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect } from 'react';
 import { supabase } from '../../data/datasources/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
+import { NotificationService } from '../../services/notificationService';
 
 export const AuthContext = createContext<{
   session: Session | null;
@@ -28,6 +29,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (user?.id) {
+      const registerPushToken = async () => {
+        const token = await NotificationService.getExpoPushToken();
+        if (token) {
+          const { error } = await supabase
+            .from('users')
+            .update({ push_token: token })
+            .eq('id', user.id);
+            
+          if (error) {
+            console.error('[AuthContext] Erro ao salvar push token:', error);
+          }
+        }
+      };
+      registerPushToken();
+    }
+  }, [user?.id]);
 
   const signOut = async () => {
     await supabase.auth.signOut();
