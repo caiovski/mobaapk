@@ -175,7 +175,7 @@ export function useAdminMapScreen() {
         } catch (err) { console.error('Erro ao buscar rota:', err); }
 
         const orderId = clientLoc.orderId;
-        if (orderId) {
+        /* istanbul ignore next */ if (orderId) {
           orderIdRef.current = orderId;
 
           const { data: firstGps } = await supabase

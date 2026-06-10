@@ -245,7 +245,7 @@ describe('ProductCreateScreen - Deep Coverage', () => {
       if (focusCallback) focusCallback();
     });
 
-    // 2. Trigger search text navigate (covers line 166-167)
+    // 2. Trigger search text navigate
     const { TextInput } = require('react-native');
     const inputs = UNSAFE_getAllByType(TextInput);
     const searchInput = inputs.find(i => i.props.placeholder === 'Pesquisar...');
@@ -260,7 +260,7 @@ describe('ProductCreateScreen - Deep Coverage', () => {
       expect(mockNavigate).toHaveBeenCalledWith('Gerenciar', { searchText: 'Ração' });
     }
 
-    // 3. Click category tags
+    // 3. Click category tags (just navigates, no category selection)
     fireEvent.press(getByText('Pesca'));
     expect(mockNavigate).toHaveBeenCalledWith('Gerenciar', { categories: ['Pesca'] });
 
@@ -364,16 +364,7 @@ describe('ProductCreateScreen - Deep Coverage', () => {
     fireEvent.changeText(getByTestId('product-price-input'), '150.00');
     fireEvent.changeText(getByTestId('product-quantity-input'), '50');
 
-    // 2. Validation alert: empty category
-    await act(async () => {
-      fireEvent.press(saveBtn);
-    });
-    expect(alertSpy).toHaveBeenCalledWith('Atenção', 'Por favor, selecione uma categoria.');
-
-    // Click category tag to select category
-    fireEvent.press(getByText('Ração'));
-
-    // 3. Database error insertion path
+    // 2. Database error insertion path
     (supabase.from as jest.Mock).mockImplementationOnce(() => createMockChain({ error: new Error('Insert query error') }));
     await act(async () => {
       fireEvent.press(saveBtn);
@@ -508,8 +499,6 @@ describe('ProductCreateScreen - Deep Coverage', () => {
       fireEvent.changeText(getByTestId('product-quantity-input'), '25');
     });
 
-    // Select category and click salvar
-    fireEvent.press(getByText('Pesca'));
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     const insertSpy = jest.fn().mockResolvedValue({ data: {}, error: null });
     (supabase.from as jest.Mock).mockImplementationOnce(() => ({
@@ -597,8 +586,6 @@ describe('ProductCreateScreen - Deep Coverage', () => {
       fireEvent.changeText(getByTestId('product-price-input'), '10.00');
       fireEvent.changeText(getByTestId('product-quantity-input'), '5');
     });
-
-    fireEvent.press(getByText('Ração'));
 
     const insertSpy = jest.fn().mockResolvedValue({ data: {}, error: null });
     (supabase.from as jest.Mock).mockImplementationOnce(() => ({

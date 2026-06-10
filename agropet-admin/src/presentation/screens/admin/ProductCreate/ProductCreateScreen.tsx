@@ -23,15 +23,14 @@ export default function ProductCreateScreen() {
   const h = useProductCreateScreen();
 
   const renderTag = (category: string) => {
-    const isSelected = h.activeCategory === category;
     return (
       <TouchableOpacity
         key={category}
-        onPress={() => { h.setActiveCategory(category); h.navigation.navigate('Gerenciar', { categories: [category] }); }}
+        onPress={() => h.navigation.navigate('Gerenciar', { categories: [category] })}
         activeOpacity={0.7}
-        style={[styles.tagItem, { backgroundColor: isSelected ? '#5B86E5' : 'transparent' }]}
+        style={[styles.tagItem, { backgroundColor: 'transparent' }]}
       >
-        <Text style={[styles.tagText, { color: isSelected ? '#FFFFFF' : h.labelColor, fontWeight: isSelected ? 'bold' : 'normal' }]}>{category}</Text>
+        <Text style={[styles.tagText, { color: h.labelColor }]}>{category}</Text>
       </TouchableOpacity>
     );
   };

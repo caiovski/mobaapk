@@ -9,7 +9,6 @@ export function useProductCreateScreen() {
   const { colors, isDarkMode } = useTheme();
   const navigation = useNavigation<any>();
   const [searchText, setSearchText] = useState('');
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [showImagePickerOptions, setShowImagePickerOptions] = useState(false);
   const [photos, setPhotos] = useState<Array<{ uri: string; base64?: string | null }>>([]);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
@@ -21,7 +20,6 @@ export function useProductCreateScreen() {
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       setSearchText('');
-      setActiveCategory(null);
       setPhotos([]);
       setCurrentPhotoIndex(0);
       setName('');
@@ -85,10 +83,6 @@ export function useProductCreateScreen() {
       Alert.alert('Atenção', 'Por favor, preencha todos os campos do formulário.');
       return;
     }
-    if (!activeCategory) {
-      Alert.alert('Atenção', 'Por favor, selecione uma categoria.');
-      return;
-    }
     const mappedImages = photos.map(p => p.base64 ? `data:image/jpeg;base64,${p.base64}` : p.uri);
     const { error } = await supabase.from('products').insert([{
       name,
@@ -97,7 +91,6 @@ export function useProductCreateScreen() {
       stock: parseInt(quantity, 10),
       active: true,
       image_url: mappedImages.length > 0 ? JSON.stringify(mappedImages) : null,
-      category_id: activeCategory,
     }]);
     if (error) {
       Alert.alert('Erro', 'Não foi possível registrar o produto.');
@@ -124,7 +117,6 @@ export function useProductCreateScreen() {
     isDarkMode,
     navigation,
     searchText, setSearchText,
-    activeCategory, setActiveCategory,
     showImagePickerOptions, setShowImagePickerOptions,
     photos, setPhotos,
     currentPhotoIndex, setCurrentPhotoIndex,
