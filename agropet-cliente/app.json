@@ -38,14 +38,7 @@
       "expo-location",
       "expo-image-picker",
       "expo-notifications",
-      [
-        "@sentry/react-native/expo",
-        {
-          "url": "https://sentry.io/",
-          "project": "react-native",
-          "organization": "caiovski"
-        }
-      ],
+
       "expo-localization"
     ],
     "extra": {

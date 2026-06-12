@@ -37,16 +37,7 @@ export default function AdminLoginScreen() {
   const [loading, setLoading] = useState(false);
 
   const handleSendCode = async () => {
-    setLoading(true);
-    try {
-      const { error } = await supabase.functions.invoke('smooth-worker');
-      if (error) throw error;
-      Alert.alert('Sucesso', 'Código enviado para o e-mail do proprietário.');
-    } catch (e: any) {
-      Alert.alert('Erro', 'Não foi possível enviar o código.');
-    } finally {
-      setLoading(false);
-    }
+    Alert.alert('Aviso', 'Update de segurança futuro, você pode logar com seu e-mail normalmente e senha!');
   };
 
   const handleLogin = async () => {
