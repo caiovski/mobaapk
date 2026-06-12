@@ -7,7 +7,8 @@ import { supabase } from '../../../../data/datasources/supabase/client';
 import { CartContext } from '../../../contexts/CartContext';
 import { AuthContext } from '../../../contexts/AuthContext';
 import { useConnectivity } from '../../../contexts/ConnectivityContext';
-import { useFilter, isProductInCategories } from '../../../contexts/FilterContext';
+import { useFilter } from '../../../contexts/FilterContext';
+import { isProductInCategories } from '../../../../services/categoryService';
 import { getShopStatus } from '../../../../utils/shopHours';
 
 export default function useHomeScreen() {
@@ -16,7 +17,7 @@ export default function useHomeScreen() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const { searchText, setSearchText, selectedCategories } = useFilter();
+  const { searchText, setSearchText, selectedCategories, categories } = useFilter();
   const { addToCart } = useContext(CartContext);
   const { user } = useContext(AuthContext);
 
@@ -160,7 +161,7 @@ export default function useHomeScreen() {
     if (showLoadingIndicator) setLoading(true);
     const { data, error } = await supabase
       .from('products')
-      .select('id, name, description, price, stock, active, category_id, created_at, image_url')
+      .select('id, name, description, price, stock, active, category_id, created_at, image_url, is_bulk, is_per_meter')
       .eq('active', true)
       .order('created_at', { ascending: false });
 
@@ -318,7 +319,7 @@ export default function useHomeScreen() {
     const desc = (p.description || '').toLowerCase();
     const query = searchText.toLowerCase();
     const matchesSearch = name.includes(query) || desc.includes(query);
-    const matchesCategory = isProductInCategories(p, selectedCategories);
+    const matchesCategory = isProductInCategories(p, selectedCategories, categories);
     return matchesSearch && matchesCategory;
   });
 

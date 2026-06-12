@@ -90,8 +90,8 @@ describe('AdminHeader Component', () => {
   });
 
   it('should render all textual titles correctly', () => {
-    const titles: Array<'mapa' | 'editar_produto' | 'perfil_adm' | 'detalhes_pedido' | 'painel_vendas' | 'consultar_vendas'> = [
-      'mapa', 'editar_produto', 'perfil_adm', 'detalhes_pedido', 'painel_vendas', 'consultar_vendas'
+    const titles: Array<'mapa' | 'editar_produto' | 'perfil_adm' | 'detalhes_pedido' | 'painel_vendas' | 'consultar_vendas' | 'painel_caixa' | 'histórico_caixa'> = [
+      'mapa', 'editar_produto', 'perfil_adm', 'detalhes_pedido', 'painel_vendas', 'consultar_vendas', 'painel_caixa', 'histórico_caixa'
     ];
 
     titles.forEach((t) => {
@@ -102,6 +102,8 @@ describe('AdminHeader Component', () => {
       if (t === 'detalhes_pedido') expect(getByText('Detalhes do pedido')).toBeTruthy();
       if (t === 'painel_vendas') expect(getByText('Painel de vendas')).toBeTruthy();
       if (t === 'consultar_vendas') expect(getByText('Consultar vendas')).toBeTruthy();
+      if (t === 'painel_caixa') expect(getByText('Painel do Caixa')).toBeTruthy();
+      if (t === 'histórico_caixa') expect(getByText('Histórico do Caixa')).toBeTruthy();
     });
   });
 

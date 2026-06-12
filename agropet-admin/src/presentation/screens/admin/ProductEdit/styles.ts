@@ -38,6 +38,12 @@ export const styles = StyleSheet.create({
   textArea: { height: 100, paddingRight: 15 },
   editIconRight: { position: 'absolute', right: 15, zIndex: 3 },
   editIconBottomRight: { position: 'absolute', right: 15, bottom: 15, zIndex: 3 },
+  stockFieldContainer: {
+    flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderRadius: 10, paddingHorizontal: 10, minHeight: 45,
+  },
+  stockFieldInput: {
+    flex: 1, fontSize: 14, fontWeight: 'bold', paddingVertical: 8,
+  },
   row: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 },
   smallInputWrapper: { flex: 1 },
   confirmBtn: { width: '100%', height: 45, justifyContent: 'center', alignItems: 'center' },
@@ -55,4 +61,8 @@ export const styles = StyleSheet.create({
   modalOptionText: { fontSize: 16, color: '#D4D4D4', fontWeight: '500' },
   modalCancelText: { color: '#FF6B6B', fontWeight: 'bold' },
   modalSeparator: { height: 1, backgroundColor: '#333333', width: '100%' },
+  bulkToggleRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingVertical: 8, paddingHorizontal: 4,
+  },
 });

@@ -82,8 +82,13 @@ jest.mock('../../presentation/contexts/FilterContext', () => ({
     setActiveCategories: jest.fn(),
     searchText: '',
     setSearchText: jest.fn(),
+    categories: [],
   }),
+}));
+
+jest.mock('../../services/categoryService', () => ({
   isProductInCategories: () => true,
+  fetchActiveCategories: jest.fn().mockResolvedValue([]),
 }));
 
 jest.mock('../../presentation/contexts/CartContext', () => {

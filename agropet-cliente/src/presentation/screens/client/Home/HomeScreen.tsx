@@ -111,19 +111,21 @@ export default function HomeScreen() {
       <Text style={[styles.productName, { color: colors.textDark }]} numberOfLines={2}>{item.name}</Text>
 
       <View style={styles.productBottomRow}>
-        <TouchableOpacity
-          onPress={() => addToCart(item)}
-          activeOpacity={0.7}
-          style={[styles.addCartBtn, { backgroundColor: isDarkMode ? '#1E1E1E' : '#1C2434' }]}
-        >
-          <MaterialIcons name="shopping-cart" size={26} color="#FFFFFF" />
-          <View style={styles.addCartPlusBadge}>
-            <Feather name="plus" size={9} color="#FFFFFF" />
-          </View>
-        </TouchableOpacity>
+        {!item.is_bulk && !item.is_per_meter && (
+          <TouchableOpacity
+            onPress={() => addToCart(item)}
+            activeOpacity={0.7}
+            style={[styles.addCartBtn, { backgroundColor: isDarkMode ? '#1E1E1E' : '#1C2434' }]}
+          >
+            <MaterialIcons name="shopping-cart" size={26} color="#FFFFFF" />
+            <View style={styles.addCartPlusBadge}>
+              <Feather name="plus" size={9} color="#FFFFFF" />
+            </View>
+          </TouchableOpacity>
+        )}
 
         <View style={styles.priceAndButton}>
-          <Text style={[styles.productPrice, { color: colors.textDark }]}>R$ {item.price?.toFixed(2)}</Text>
+          <Text style={[styles.productPrice, { color: colors.textDark }]}>R$ {item.price?.toFixed(2)}{item.is_bulk ? ' /Kg' : item.is_per_meter ? ' /m' : ''}</Text>
           <TouchableOpacity
             style={styles.verItemBtn}
             activeOpacity={0.7}

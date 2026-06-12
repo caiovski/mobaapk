@@ -12,6 +12,22 @@ import { Feather } from '@expo/vector-icons';
 // Import screen
 import ProductEditScreen from '../../presentation/screens/admin/ProductEdit';
 
+// ── Mock useCategories ──
+jest.mock('../../presentation/contexts/useCategories', () => ({
+  useCategories: () => ({
+    categories: [
+      { id: '1', name: 'Pesca', keywords: ['pesca', 'vara'], active: true },
+      { id: '2', name: 'Ração', keywords: ['ração', 'cachorro', 'purina'], active: true },
+    ],
+    allCategories: [],
+    loading: false,
+    reload: jest.fn(),
+    createCategory: jest.fn(),
+    toggleActive: jest.fn(),
+    deleteCategory: jest.fn(),
+  }),
+}));
+
 // ── Mock expo-image-picker ──
 jest.mock('expo-image-picker', () => ({
   getCameraPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted' }),
@@ -426,6 +442,8 @@ describe('ProductEditScreen - Deep Coverage', () => {
           name: 'Product Without ID',
           price: 50,
           stock: 10,
+          critical_stock: 3,
+          moderate_stock: 8,
         }
       }
     });
@@ -470,6 +488,7 @@ describe('ProductEditScreen - Deep Coverage', () => {
           id: 'p-1', name: 'Product 1', price: 50, stock: 10,
           active: true, description: 'Description 1',
           image_url: '["https://example.com/img1.png", "https://example.com/img2.png"]',
+          critical_stock: 3, moderate_stock: 8,
         }
       }
     });
@@ -509,7 +528,7 @@ describe('ProductEditScreen - Deep Coverage', () => {
       fireEvent.press(saveBtn);
     });
 
-    expect(alertSpy).toHaveBeenCalledWith('Atenção', 'Por favor, preencha todos os campos do formulário.');
+    expect(alertSpy).toHaveBeenCalledWith('Atenção', 'Por favor, preencha todos os campos obrigatórios, incluindo estoque crítico e estoque moderado.');
 
     // Restore name input
     if (nameInput) {
@@ -732,7 +751,7 @@ describe('ProductEditScreen - Deep Coverage', () => {
   it('should handle save with no photos (mappedImages empty branch)', async () => {
     mockUseRoute.mockReturnValueOnce({
       params: {
-        product: { id: 'p-no-photos', name: 'No Photo', price: 30, stock: 5, active: true, description: '', image_url: null }
+        product: { id: 'p-no-photos', name: 'No Photo', price: 30, stock: 5, active: true, description: '', image_url: null, critical_stock: 3, moderate_stock: 8 }
       }
     });
     const { getByText, getByTestId } = renderScreen(ProductEditScreen);
@@ -771,7 +790,7 @@ describe('ProductEditScreen - Deep Coverage', () => {
   it('should save with gallery photo that has base64 (covers p.base64 truthy at line 169)', async () => {
     mockUseRoute.mockReturnValueOnce({
       params: {
-        product: { id: 'p-b64-yes', name: 'Test', price: 40, stock: 8, active: true, description: '', image_url: null }
+        product: { id: 'p-b64-yes', name: 'Test', price: 40, stock: 8, active: true, description: '', image_url: null, critical_stock: 3, moderate_stock: 8 }
       }
     });
     const { getByText, getByTestId } = renderScreen(ProductEditScreen);
@@ -812,5 +831,17 @@ describe('ProductEditScreen - Deep Coverage', () => {
     await act(async () => {
       fireEvent.press(getByText('Tirar Foto'));
     });
+  });
+
+  it('should render bulk toggle and unit dropdown for isBulk product', () => {
+    mockUseRoute.mockImplementationOnce(() => ({
+      params: {
+        product: { id: 'p-bulk-test', name: 'Bulk Test', price: 20, stock: 5000, is_bulk: true, active: true, description: '', image_url: null }
+      }
+    }));
+    const { getByText, getAllByText } = renderScreen(ProductEditScreen);
+
+    expect(getByText('Produto à granel')).toBeTruthy();
+    expect(getAllByText('Kg').length).toBe(1);
   });
 });

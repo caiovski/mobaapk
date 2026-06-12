@@ -30,7 +30,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         .eq('id', currentSession.user.id)
         .single();
         
-      if (data?.role === 'admin') {
+      if (data?.role === 'admin' || data?.role === 'dev') {
         setSession(currentSession);
         setUser(currentSession.user);
       } else {

@@ -23,6 +23,22 @@ jest.mock('@react-navigation/native', () => ({
   useRoute: () => stableRoute,
 }));
 
+// ── Mock useCategories ──
+jest.mock('../../presentation/contexts/useCategories', () => ({
+  useCategories: () => ({
+    categories: [
+      { id: '1', name: 'Pesca', keywords: ['pesca', 'vara'], active: true },
+      { id: '2', name: 'Ração', keywords: ['ração', 'cachorro', 'purina'], active: true },
+    ],
+    allCategories: [],
+    loading: false,
+    reload: jest.fn(),
+    createCategory: jest.fn(),
+    toggleActive: jest.fn(),
+    deleteCategory: jest.fn(),
+  }),
+}));
+
 // ── Mock do Supabase Client ──
 const mockProductsList = [
   { id: 'p-1', name: 'Ração Crítica Red', price: 100, stock: 5, category_id: 'cat-1', active: true, description: 'Ração' },
@@ -154,16 +170,16 @@ describe('ManageProductsScreen - Full Coverage', () => {
     const { TouchableOpacity } = require('react-native');
     const touchables = UNSAFE_getAllByType(TouchableOpacity);
     
-    // Toggle active on first card (touchables[11])
+    // Toggle active on first card (touchables[17])
     await act(async () => {
-      fireEvent.press(touchables[11]);
+      fireEvent.press(touchables[17]);
     });
     expect(mockUpdate).toHaveBeenCalledWith({ active: false });
 
     // Trigger toggle active status (error catch)
     mockEqFn.mockResolvedValueOnce({ error: new Error('Update error') });
     await act(async () => {
-      fireEvent.press(touchables[11]);
+      fireEvent.press(touchables[17]);
     });
     expect(alertSpy).toHaveBeenCalledWith('Erro', 'Não foi possível alterar o status do produto.');
 
@@ -181,9 +197,9 @@ describe('ManageProductsScreen - Full Coverage', () => {
     const { TouchableOpacity } = require('react-native');
     const touchables = UNSAFE_getAllByType(TouchableOpacity);
 
-    // Click trash button on first card (touchables[10])
+    // Click trash button on first card (touchables[16])
     await act(async () => {
-      fireEvent.press(touchables[10]);
+      fireEvent.press(touchables[16]);
     });
 
     // Verify Alert.alert is triggered
@@ -372,12 +388,12 @@ describe('ManageProductsScreen - Full Coverage', () => {
       expect(getByText('Ração Crítica Red')).toBeTruthy();
     });
 
-    // Press edit icon on first card (touchables[9])
+    // Press edit icon on first card (touchables[15])
     const { TouchableOpacity } = require('react-native');
     const touchables = UNSAFE_getAllByType(TouchableOpacity);
     
     await act(async () => {
-      fireEvent.press(touchables[9]);
+      fireEvent.press(touchables[15]);
     });
     expect(mockNavigate).toHaveBeenCalledWith('ProductEditScreen', { product: mockProductsList[0] });
 
@@ -536,5 +552,250 @@ describe('ManageProductsScreen - Full Coverage', () => {
 
     // Revert to Dark Mode
     (global as any).isDarkModeTest = true;
+  });
+
+  it('should open and close the create category modal', async () => {
+    const { getByText, queryByText, UNSAFE_getAllByType } = render(<ManageProductsScreen />);
+
+    await waitFor(() => {
+      expect(getByText('Ração Crítica Red')).toBeTruthy();
+    });
+
+    const { TouchableOpacity } = require('react-native');
+    const touchables = UNSAFE_getAllByType(TouchableOpacity);
+    const addCatBtn = touchables.find(t => {
+      try {
+        const feather = t.findByType(Feather);
+        return feather.props.name === 'plus';
+      } catch (_) { return false; }
+    });
+
+    fireEvent.press(addCatBtn);
+    expect(getByText('Nova Categoria')).toBeTruthy();
+
+    fireEvent.press(getByText('Cancelar'));
+    expect(queryByText('Nova Categoria')).toBeNull();
+  });
+
+  it('should create category via modal', async () => {
+    const { getByText, getByPlaceholderText, queryByText, UNSAFE_getAllByType } = render(<ManageProductsScreen />);
+
+    await waitFor(() => {
+      expect(getByText('Ração Crítica Red')).toBeTruthy();
+    });
+
+    const { TouchableOpacity } = require('react-native');
+    const touchables = UNSAFE_getAllByType(TouchableOpacity);
+    const addCatBtn = touchables.find(t => {
+      try {
+        const feather = t.findByType(Feather);
+        return feather.props.name === 'plus';
+      } catch (_) { return false; }
+    });
+
+    fireEvent.press(addCatBtn);
+    expect(getByText('Nova Categoria')).toBeTruthy();
+
+    fireEvent.changeText(getByPlaceholderText('Nome da categoria'), 'New Cat');
+    fireEvent.changeText(getByPlaceholderText('Palavras-chave (separadas por vírgula)'), 'kw1, kw2');
+
+    await act(async () => {
+      fireEvent.press(getByText('Criar'));
+    });
+
+    await waitFor(() => {
+      expect(queryByText('Nova Categoria')).toBeNull();
+    }, { timeout: 5000 });
+  });
+
+  it('should not create category when name is empty', async () => {
+    const { getByText, getByPlaceholderText, UNSAFE_getAllByType } = render(<ManageProductsScreen />);
+
+    await waitFor(() => {
+      expect(getByText('Ração Crítica Red')).toBeTruthy();
+    });
+
+    const { TouchableOpacity } = require('react-native');
+    const touchables = UNSAFE_getAllByType(TouchableOpacity);
+    const addCatBtn = touchables.find(t => {
+      try {
+        const feather = t.findByType(Feather);
+        return feather.props.name === 'plus';
+      } catch (_) { return false; }
+    });
+
+    fireEvent.press(addCatBtn);
+    expect(getByText('Nova Categoria')).toBeTruthy();
+
+    fireEvent.changeText(getByPlaceholderText('Palavras-chave (separadas por vírgula)'), 'kw1');
+
+    await act(async () => {
+      fireEvent.press(getByText('Criar'));
+    });
+
+    expect(getByText('Nova Categoria')).toBeTruthy();
+  });
+
+  it('should apply multiple sort options via filter modal', async () => {
+    const { getByText } = render(<ManageProductsScreen />);
+
+    await waitFor(() => {
+      expect(getByText('Ração Crítica Red')).toBeTruthy();
+    });
+
+    // Sort by highest price (already verified, keep baseline)
+    fireEvent.press(getByText('Filtro'));
+    fireEvent.press(getByText('Maior preço'));
+    fireEvent.press(getByText('Aplicar Filtros'));
+    await waitFor(() => { expect(getByText('Ração Crítica Red')).toBeTruthy(); });
+
+    // Sort by newest
+    fireEvent.press(getByText('Filtro'));
+    fireEvent.press(getByText('Produtos mais novos'));
+    fireEvent.press(getByText('Aplicar Filtros'));
+    await waitFor(() => { expect(getByText('Ração Crítica Red')).toBeTruthy(); });
+
+    // Sort by oldest
+    fireEvent.press(getByText('Filtro'));
+    fireEvent.press(getByText('Produtos mais velhos'));
+    fireEvent.press(getByText('Aplicar Filtros'));
+    await waitFor(() => { expect(getByText('Ração Crítica Red')).toBeTruthy(); });
+
+    // Sort by most stock
+    fireEvent.press(getByText('Filtro'));
+    fireEvent.press(getByText('Mais estoque'));
+    fireEvent.press(getByText('Aplicar Filtros'));
+    await waitFor(() => { expect(getByText('Ração Crítica Red')).toBeTruthy(); });
+
+    // Sort by lowest price
+    fireEvent.press(getByText('Filtro'));
+    fireEvent.press(getByText('Menor preço'));
+    fireEvent.press(getByText('Aplicar Filtros'));
+    await waitFor(() => { expect(getByText('Ração Crítica Red')).toBeTruthy(); });
+  });
+
+  it('should handle reactivate all with no inactive products', async () => {
+    const { getByText, queryByText } = render(<ManageProductsScreen />);
+
+    await waitFor(() => {
+      expect(getByText('Ração Crítica Red')).toBeTruthy();
+    });
+
+    expect(queryByText('Reativar todos')).toBeNull();
+  });
+
+  it('should handle reactivate all flow success', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    const inactiveProducts = mockProductsList.map(p => ({ ...p, active: false }));
+    mockLimitFn.mockResolvedValueOnce({ data: inactiveProducts, error: null });
+
+    const { getByText } = render(<ManageProductsScreen />);
+
+    await waitFor(() => {
+      expect(getByText('Ração Crítica Red')).toBeTruthy();
+    });
+
+    fireEvent.press(getByText('Reativar todos'));
+
+    const lastCall = alertSpy.mock.calls[alertSpy.mock.calls.length - 1];
+    const reactBtn = (lastCall[2] || []).find((b: any) => b.text === 'Reativar Todos');
+
+    if (reactBtn && typeof reactBtn.onPress === 'function') {
+      mockInFn.mockResolvedValueOnce({ error: null });
+      await act(async () => { await reactBtn.onPress(); });
+    }
+    expect(alertSpy).toHaveBeenCalledWith('Sucesso', 'Todos os produtos foram reativados.');
+
+    alertSpy.mockRestore();
+  });
+
+  it('should handle reactivate all flow error', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    const inactiveProducts = mockProductsList.map(p => ({ ...p, active: false }));
+    mockLimitFn.mockResolvedValueOnce({ data: inactiveProducts, error: null });
+
+    const { getByText } = render(<ManageProductsScreen />);
+
+    await waitFor(() => {
+      expect(getByText('Ração Crítica Red')).toBeTruthy();
+    });
+
+    fireEvent.press(getByText('Reativar todos'));
+
+    const lastCall = alertSpy.mock.calls[alertSpy.mock.calls.length - 1];
+    const reactBtn = (lastCall[2] || []).find((b: any) => b.text === 'Reativar Todos');
+
+    if (reactBtn && typeof reactBtn.onPress === 'function') {
+      mockInFn.mockResolvedValueOnce({ error: new Error('Reactivate error') });
+      await act(async () => { await reactBtn.onPress(); });
+    }
+    expect(alertSpy).toHaveBeenCalledWith('Erro', 'Não foi possível reativar os produtos.');
+
+    alertSpy.mockRestore();
+  });
+
+  it('should handle reactivate all flow exception', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    const inactiveProducts = mockProductsList.map(p => ({ ...p, active: false }));
+    mockLimitFn.mockResolvedValueOnce({ data: inactiveProducts, error: null });
+
+    const { getByText } = render(<ManageProductsScreen />);
+
+    await waitFor(() => {
+      expect(getByText('Ração Crítica Red')).toBeTruthy();
+    });
+
+    fireEvent.press(getByText('Reativar todos'));
+
+    const lastCall = alertSpy.mock.calls[alertSpy.mock.calls.length - 1];
+    const reactBtn = (lastCall[2] || []).find((b: any) => b.text === 'Reativar Todos');
+
+    if (reactBtn && typeof reactBtn.onPress === 'function') {
+      mockInFn.mockRejectedValueOnce(new Error('Reactivate exception'));
+      await act(async () => { await reactBtn.onPress(); });
+    }
+    expect(alertSpy).toHaveBeenCalledWith('Erro', 'Ocorreu um erro ao reativar os produtos.');
+
+    alertSpy.mockRestore();
+  });
+
+  it('should handle reactivate all cancel option', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    const inactiveProducts = mockProductsList.map(p => ({ ...p, active: false }));
+    mockLimitFn.mockResolvedValueOnce({ data: inactiveProducts, error: null });
+
+    const { getByText } = render(<ManageProductsScreen />);
+
+    await waitFor(() => {
+      expect(getByText('Ração Crítica Red')).toBeTruthy();
+    });
+
+    fireEvent.press(getByText('Reativar todos'));
+
+    const lastCall = alertSpy.mock.calls[alertSpy.mock.calls.length - 1];
+    const cancelBtn = (lastCall[2] || []).find((b: any) => b.text === 'Cancelar');
+
+    if (cancelBtn && typeof cancelBtn.onPress === 'function') {
+      cancelBtn.onPress();
+    }
+
+    alertSpy.mockRestore();
+  });
+
+  it('should apply alert filter combined with sort option', async () => {
+    const { getByText } = render(<ManageProductsScreen />);
+
+    await waitFor(() => {
+      expect(getByText('Ração Crítica Red')).toBeTruthy();
+    });
+
+    fireEvent.press(getByText('Filtro'));
+    fireEvent.press(getByText('Estoque Crítico (Alerta Vermelho)'));
+    fireEvent.press(getByText('Produtos mais novos'));
+    fireEvent.press(getByText('Aplicar Filtros'));
+
+    await waitFor(() => {
+      expect(getByText('Ração Crítica Red')).toBeTruthy();
+    });
   });
 });

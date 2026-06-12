@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, StatusBar, ScrollView, RefreshControl } from 'react-native';
+import { View, StatusBar, ScrollView, RefreshControl, Text } from 'react-native';
+import Constants from 'expo-constants';
 import { useProfile } from './useProfile';
 import { styles } from './ProfileScreen.styles';
 import { CatalogHeader } from '../../../components/CatalogHeader';
@@ -28,6 +29,9 @@ export default function ProfileScreen() {
         <ProfileHeader h={h} />
         <ProfileContactInfo h={h} />
         <ProfileAddressForm h={h} />
+        <Text style={{ textAlign: 'center', color: '#919191', fontSize: 12, marginTop: 20, marginBottom: 20, fontWeight: 'bold' }}>
+          v{Constants.expoConfig?.version || '1.1.0'}
+        </Text>
       </ScrollView>
       <ProfileTabBar h={h} />
       <UsernameModal h={h} />

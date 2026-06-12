@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   Linking,
 } from 'react-native';
+import Constants from 'expo-constants';
 import { useNavigation } from '@react-navigation/native';
 import Colors from '../../theme/colors';
 import { supabase } from '../../../data/datasources/supabase/client';
@@ -35,6 +36,19 @@ export default function AdminLoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const handleSendCode = async () => {
+    setLoading(true);
+    try {
+      const { error } = await supabase.functions.invoke('smooth-worker');
+      if (error) throw error;
+      Alert.alert('Sucesso', 'Código enviado para o e-mail do proprietário.');
+    } catch (e: any) {
+      Alert.alert('Erro', 'Não foi possível enviar o código.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert('Erro', 'Preencha todos os campos.');
@@ -42,12 +56,46 @@ export default function AdminLoginScreen() {
     }
 
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    let finalEmail = email.trim();
+
+    // Roteador Inteligente
+    /* istanbul ignore if */ if (!finalEmail.includes('@')) {
+      // Se não tem arroba, assumimos que é o código de 8 dígitos do Admin (Nelson)
+      if (finalEmail.length !== 8) {
+         Alert.alert('Erro', 'O código do administrador deve conter 8 dígitos numéricos.');
+         setLoading(false);
+         return;
+      }
+      
+      // Valida o código na tabela temporária
+      const { data: codes, error: codeError } = await supabase
+        .from('admin_auth_codes')
+        .select('id, code, expires_at')
+        .eq('code', finalEmail)
+        .eq('used', false)
+        .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false })
+        .limit(1);
+        
+      if (codeError || !codes || codes.length === 0) {
+        Alert.alert('Acesso Negado', 'Código inválido ou expirado.');
+        setLoading(false);
+        return;
+      }
+      
+      // Código válido! Substitui pelo e-mail master
+      finalEmail = 'nelsonarantes2007@gmail.com';
+      
+      // Marca o código como usado (dispara sem await estrito para não travar login)
+      supabase.from('admin_auth_codes').update({ used: true }).eq('id', codes[0].id).then();
+    }
+
+    const { error } = await supabase.auth.signInWithPassword({ email: finalEmail, password });
 
     if (error) {
       Alert.alert('Erro no Login', error.message);
     }
-    // O AuthContext do Admin intercepta e valida role === 'admin'
+    // O AuthContext do Admin intercepta e valida role === 'admin' ou 'dev'
     setLoading(false);
   };
 
@@ -91,13 +139,16 @@ export default function AdminLoginScreen() {
               </View>
               <TextInput
                 style={styles.textInput}
-                placeholder="Digite o código de adm..."
+                placeholder="E-mail dev ou cód. adm..."
                 placeholderTextColor={Colors.textGray}
                 value={email}
                 onChangeText={setEmail}
                 autoCapitalize="none"
                 keyboardType="email-address"
               />
+              <TouchableOpacity onPress={handleSendCode} disabled={loading}>
+                <Text style={{ color: Colors.white, fontSize: 13, marginTop: 6, marginLeft: 4, fontWeight: 'bold', textDecorationLine: 'underline' }}>Enviar código</Text>
+              </TouchableOpacity>
             </View>
 
             {/* Campo: Senha do administrador */}
@@ -134,6 +185,7 @@ export default function AdminLoginScreen() {
 
         {/* ============ FOOTER (Retangular #E96310) ============ */}
         <View style={styles.footerContainer}>
+          <Text style={{ color: 'rgba(255, 255, 255, 0.6)', textAlign: 'center', fontSize: 12, marginBottom: 8, fontWeight: 'bold' }}>v{Constants.expoConfig?.version || '1.1.0'}</Text>
           <View style={styles.footerContent}>
             {/* Suporte */}
             <TouchableOpacity style={[styles.footerItem, { marginRight: -4 }]} onPress={() => Linking.openURL('https://wa.me/5535998906096')}>
@@ -278,5 +330,12 @@ const styles = StyleSheet.create({
     height: 32,
     backgroundColor: 'rgba(255, 255, 255, 0.55)',
     borderRadius: 0.6,
+  },
+  forgotText: {
+    color: Colors.white,
+    fontSize: 12,
+    fontWeight: 'bold',
+    textDecorationLine: 'underline',
+    marginRight: 8,
   },
 });

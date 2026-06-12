@@ -29,7 +29,7 @@ import AdmIcon from '../assets/tela2/header/Adm.svg';
 import MiniLogo from '../assets/tela2/header/Mini Logo.svg';
 
 interface AdminHeaderProps {
-  title?: 'home' | 'mapa' | 'gerenciar' | 'opcoes' | 'ver_pedidos' | 'historico_vendas' | 'registrar_produto' | 'editar_produto' | 'perfil_adm' | 'detalhes_pedido' | 'painel_vendas' | 'consultar_vendas';
+  title?: 'home' | 'mapa' | 'gerenciar' | 'opcoes' | 'ver_pedidos' | 'historico_vendas' | 'registrar_produto' | 'editar_produto' | 'perfil_adm' | 'detalhes_pedido' | 'painel_vendas' | 'consultar_vendas' | 'painel_caixa' | 'histórico_caixa';
   searchValue?: string;
   onSearchChange?: (text: string) => void;
 }
@@ -145,6 +145,8 @@ export default function AdminHeader({ title = 'home', searchValue = '', onSearch
         {title === 'detalhes_pedido' && <Text style={styles.textTitle}>Detalhes do pedido</Text>}
         {title === 'painel_vendas' && <Text style={styles.textTitle}>Painel de vendas</Text>}
         {title === 'consultar_vendas' && <Text style={styles.textTitle}>Consultar vendas</Text>}
+        {title === 'painel_caixa' && <Text style={styles.textTitle}>Painel do Caixa</Text>}
+        {title === 'histórico_caixa' && <Text style={styles.textTitle}>Histórico do Caixa</Text>}
       </View>
 
       {/* Right side: Adm text or Search Bar + Person Icon */}

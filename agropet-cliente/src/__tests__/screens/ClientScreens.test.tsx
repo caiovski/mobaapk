@@ -132,6 +132,7 @@ jest.mock('../../presentation/contexts/FilterContext', () => ({
     searchText: '',
     setSearchText: jest.fn(),
     clearFilters: jest.fn(),
+    categories: [],
   }),
 }));
 

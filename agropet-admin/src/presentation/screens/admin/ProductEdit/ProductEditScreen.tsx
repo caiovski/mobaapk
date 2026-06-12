@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  View, Text, Dimensions, StatusBar, TouchableOpacity, ScrollView, TextInput, Image, Modal, StyleSheet,
+  View, Text, Dimensions, StatusBar, TouchableOpacity, ScrollView, TextInput, Image, Modal, Animated,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import AdminHeader from '../../../components/AdminHeader';
@@ -14,23 +14,24 @@ import EditIconDesc from '../../../assets/tela9/formulario/descricao/Edit.svg';
 import EditIconPreco from '../../../assets/tela9/formulario/preco/Edit.svg';
 import EditIconQtd from '../../../assets/tela9/formulario/quantidade/Edit.svg';
 import { useProductEditScreen } from './useProductEditScreen';
+import { useCategories } from '../../../contexts/useCategories';
 import { styles } from './styles';
-
-const CATEGORIES = ['Ração', 'Pesca', 'Sementes', 'Adubo'];
 
 export default function ProductEditScreen() {
   const h = useProductEditScreen();
+  const { categories } = useCategories();
+  const [showUnitPicker, setShowUnitPicker] = useState(false);
 
-  const renderTag = (category: string) => {
-    const isSelected = h.activeCategory === category;
+  const renderTag = (cat: { id: string; name: string }) => {
+    const isSelected = h.activeCategory === cat.name;
     return (
       <TouchableOpacity
-        key={category}
-        onPress={() => { h.setActiveCategory(category); h.navigation.navigate('Gerenciar', { categories: [category] }); }}
+          key={cat.id}
+          onPress={() => { h.setActiveCategory(cat.name); h.navigation.navigate('Gerenciar', { categories: [cat.name] }); }}
         activeOpacity={0.7}
         style={[styles.tagItem, { backgroundColor: isSelected ? '#5B86E5' : 'transparent' }]}
       >
-        <Text style={[styles.tagText, { color: isSelected ? '#FFFFFF' : h.labelColor, fontWeight: isSelected ? 'bold' : 'normal' }]}>{category}</Text>
+        <Text style={[styles.tagText, { color: isSelected ? '#FFFFFF' : h.labelColor, fontWeight: isSelected ? 'bold' : 'normal' }]}>{cat.name}</Text>
       </TouchableOpacity>
     );
   };
@@ -138,7 +139,7 @@ export default function ProductEditScreen() {
           <Text style={[styles.categoryLabelText, { color: h.labelColor }]}>Categoria</Text>
           <View style={[styles.filterSep, { backgroundColor: h.sepColor }]} />
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoriesRow}>
-            {CATEGORIES.map(renderTag)}
+            {categories.map(renderTag)}
           </ScrollView>
         </View>
       </View>
@@ -174,7 +175,42 @@ export default function ProductEditScreen() {
             </View>
             <View style={styles.row}>
               <View style={styles.smallInputWrapper}>
-                {renderInput('product-quantity-input', h.quantity, h.setQuantity, h.qtyRef, h.isEditingQty, h.setIsEditingQty, EditIconQtd, { numeric: true })}
+                <View style={{ position: 'relative' }}>
+                  {renderInput('product-quantity-input', h.quantity, h.setQuantity, h.qtyRef, h.isEditingQty, h.setIsEditingQty, EditIconQtd, { numeric: true })}
+                  {// istanbul ignore next
+                  h.isBulk && (
+                    <>
+                      {h.quantity.length > 0 && (
+                        <View style={{ position: 'absolute', right: 54, top: 0, bottom: 0, justifyContent: 'center' }}>
+                          <Text style={{ fontSize: 14, fontWeight: '600', color: h.colors.textDark }}>{h.selectedUnit === 'kg' ? 'Kg' : 'g'}</Text>
+                        </View>
+                      )}
+                      <View style={{ position: 'absolute', right: 32, top: 0, bottom: 0, justifyContent: 'center' }}>
+                        <TouchableOpacity onPress={() => setShowUnitPicker(!showUnitPicker)} style={{ padding: 2 }} activeOpacity={0.7}>
+                          <Feather name="chevron-down" size={16} color={h.colors.textDark} />
+                        </TouchableOpacity>
+                      </View>
+                    </>
+                  )}
+                  {// istanbul ignore next
+                  h.isPerMeter && (
+                    <View style={{ position: 'absolute', right: 32, top: 0, bottom: 0, justifyContent: 'center' }}>
+                      <Text style={{ fontSize: 14, fontWeight: '600', color: h.colors.textDark }}>m</Text>
+                    </View>
+                  )}
+                </View>
+                {// istanbul ignore next
+                h.isBulk && showUnitPicker && (
+                  <View style={{ marginTop: 2, borderWidth: 1, borderColor: h.isDarkMode ? '#3E3E4A' : '#E3E4EB', borderRadius: 6, backgroundColor: h.isDarkMode ? '#2E2E38' : '#FFF' }}>
+                    <TouchableOpacity onPress={() => { h.setSelectedUnit('kg'); setShowUnitPicker(false); }} style={{ paddingHorizontal: 10, paddingVertical: 8 }}>
+                      <Text style={{ fontSize: 13, color: h.selectedUnit === 'kg' ? '#339914' : h.colors.textDark, fontWeight: h.selectedUnit === 'kg' ? 'bold' : 'normal' }}>Kilograma (Kg)</Text>
+                    </TouchableOpacity>
+                    <View style={{ height: 1, backgroundColor: h.isDarkMode ? '#3E3E4A' : '#E3E4EB' }} />
+                    <TouchableOpacity onPress={() => { h.setSelectedUnit('g'); setShowUnitPicker(false); }} style={{ paddingHorizontal: 10, paddingVertical: 8 }}>
+                      <Text style={{ fontSize: 13, color: h.selectedUnit === 'g' ? '#339914' : h.colors.textDark, fontWeight: h.selectedUnit === 'g' ? 'bold' : 'normal' }}>Grama (g)</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
               <View style={styles.smallInputWrapper}>
                 <TouchableOpacity style={styles.confirmBtn} onPress={h.handleConfirm} testID="save-product-btn">
@@ -182,6 +218,54 @@ export default function ProductEditScreen() {
                   <ConfirmarSvg width="70%" height={20} style={{ zIndex: 1 }} />
                 </TouchableOpacity>
               </View>
+            </View>
+            <TouchableOpacity style={styles.bulkToggleRow} onPress={() => h.setProductType(h.productType === 'bulk' ? 'unit' : 'bulk')} activeOpacity={0.7}>
+              <View style={{ width: 18, height: 18, borderRadius: 9, borderWidth: 1.5, borderColor: h.productType === 'bulk' ? '#339914' : '#A8A8B3', alignItems: 'center', justifyContent: 'center' }}>
+                {h.productType === 'bulk' && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#339914' }} />}
+              </View>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: h.colors.textDark }}>Produto à granel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.bulkToggleRow} onPress={() => h.setProductType(h.productType === 'per_meter' ? 'unit' : 'per_meter')} activeOpacity={0.7}>
+              <View style={{ width: 18, height: 18, borderRadius: 9, borderWidth: 1.5, borderColor: h.productType === 'per_meter' ? '#339914' : '#A8A8B3', alignItems: 'center', justifyContent: 'center' }}>
+                {h.productType === 'per_meter' && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#339914' }} />}
+              </View>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: h.colors.textDark }}>Produto por metro</Text>
+            </TouchableOpacity>
+            <View style={styles.row}>
+              <View style={styles.smallInputWrapper}>
+                <Animated.View style={[styles.stockFieldContainer, { borderColor: '#FF3B30', backgroundColor: h.isDarkMode ? '#2C1D1E' : '#FFF0F0', opacity: h.criticalBlink }]}>
+                  <Feather name="alert-circle" size={16} color="#FF3B30" style={{ marginRight: 6 }} />
+                  <TextInput
+                    testID="product-critical-stock-input"
+                    style={[styles.stockFieldInput, { color: '#FF3B30' }]}
+                    value={h.criticalStock}
+                    onChangeText={h.setCriticalStock}
+                    keyboardType="numeric"
+                    placeholder="Estoque crítico"
+                    placeholderTextColor="#FF3B30"
+                  />
+                </Animated.View>
+              </View>
+              <View style={styles.smallInputWrapper}>
+                <Animated.View style={[styles.stockFieldContainer, { borderColor: '#FFB300', backgroundColor: h.isDarkMode ? '#2C2B1D' : '#FFFDE6', opacity: h.moderateBlink }]}>
+                  <Feather name="alert-triangle" size={16} color="#FFB300" style={{ marginRight: 6 }} />
+                  <TextInput
+                    testID="product-moderate-stock-input"
+                    style={[styles.stockFieldInput, { color: '#FFB300' }]}
+                    value={h.moderateStock}
+                    onChangeText={h.setModerateStock}
+                    keyboardType="numeric"
+                    placeholder="Estoque moderado"
+                    placeholderTextColor="#FFB300"
+                  />
+                </Animated.View>
+              </View>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+              <Feather name="alert-circle" size={14} color="#00BFA5" />
+              <Text style={{ fontSize: 11, color: '#00BFA5', flexShrink: 1 }}>
+                Defina os valores mínimos para receber alertas visuais de estoque crítico (vermelho) e moderado (amarelo) na listagem de produtos.
+              </Text>
             </View>
           </View>
         </View>

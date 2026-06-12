@@ -4,3 +4,7 @@
 coverage/
 /documentation/
 /@documentation/
+# Temporary IDE and CLI files
+opencode.json
+supabase/.temp/
+commit.txt

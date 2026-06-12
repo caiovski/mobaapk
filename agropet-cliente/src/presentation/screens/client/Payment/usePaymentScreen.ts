@@ -92,7 +92,7 @@ export function usePaymentScreen() {
     const items = cart.map(item => ({
       product_id: item.id,
       quantity: item.quantity,
-      unit_price: item.price
+      unit_price: item.is_bulk ? item.price / 1000 : item.price
     }));
 
     setLoading(true);

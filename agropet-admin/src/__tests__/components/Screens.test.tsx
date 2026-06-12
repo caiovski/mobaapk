@@ -133,7 +133,7 @@ describe('Unified Admin Screens Tests', () => {
       </AuthContext.Provider>
     );
 
-    const emailInput = getByPlaceholderText('Digite o código de adm...');
+    const emailInput = getByPlaceholderText('E-mail dev ou cód. adm...');
     const passwordInput = getByPlaceholderText('Digite sua senha...');
     const submitBtn = getByTestId('admin-login-submit-btn');
 

@@ -19,6 +19,8 @@ export interface DBProduct {
   description?: string;
   category_id?: string;
   created_at?: string;
+  is_bulk?: boolean;
+  is_per_meter?: boolean;
 }
 
 export interface DBOrder {
@@ -56,5 +58,13 @@ export interface DBAgropetStoreLocation {
   name: string;
   latitude: number;
   longitude: number;
+  created_at?: string;
+}
+
+export interface DBCustomCategory {
+  id: string;
+  name: string;
+  keywords: string[];
+  active: boolean;
   created_at?: string;
 }

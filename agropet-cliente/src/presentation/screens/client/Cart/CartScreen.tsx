@@ -174,7 +174,13 @@ export default function CartScreen() {
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  <Text style={[styles.qtyNumber, { color: h.colors.textDark }]}>{item.quantity}</Text>
+                  <Text style={[styles.qtyNumber, { color: h.colors.textDark }, (item.is_bulk || item.is_per_meter) && { fontSize: 16 }]}>
+                    {item.is_bulk
+                      ? (item.quantity / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) + ' Kg'
+                      : item.is_per_meter
+                        ? `${item.quantity} m`
+                        : item.quantity}
+                  </Text>
                 )}
               </View>
             </View>

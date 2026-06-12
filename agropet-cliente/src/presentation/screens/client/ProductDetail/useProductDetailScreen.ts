@@ -4,8 +4,10 @@ import { CartContext } from '../../../contexts/CartContext';
 import { useUserMenu } from '../../../contexts/UserMenuContext';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { supabase } from '../../../../data/datasources/supabase/client';
-import { useFilter, CATEGORY_KEYWORDS } from '../../../contexts/FilterContext';
+import { useFilter } from '../../../contexts/FilterContext';
+import { fetchActiveCategories } from '../../../../services/categoryService';
 import { AuthContext } from '../../../contexts/AuthContext';
+import { formatStock } from '../../../../utils/formatStock';
 
 function getFirstImageUrl(url: string | null | undefined): string | null {
   if (!url) return null;
@@ -45,6 +47,10 @@ export default function useProductDetailScreen() {
   const [stock, setStock] = useState(product?.stock ?? 0);
   const [quantity, setQuantity] = useState(1);
   const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
+  const [bulkUnit, setBulkUnit] = useState<'kg' | 'g'>('kg');
+  const [bulkInput, setBulkInput] = useState('1');
+  const isBulk = product?.is_bulk === true;
+  const isPerMeter = product?.is_per_meter === true;
   const [loadingRelated, setLoadingRelated] = useState(true);
 
   const [photos, setPhotos] = useState<string[]>(() => getAllImageUrls(product?.image_url));
@@ -146,7 +152,7 @@ export default function useProductDetailScreen() {
       setLoadingRelated(true);
       const { data, error } = await supabase
         .from('products')
-        .select('id, name, description, price, stock, active, category_id, created_at')
+        .select('id, name, description, price, stock, active, category_id, created_at, image_url, is_bulk, is_per_meter')
         .eq('active', true)
         .neq('id', product.id);
 
@@ -155,11 +161,14 @@ export default function useProductDetailScreen() {
         const currentDesc = (product.description || '').toLowerCase();
         let matchedKeywords: string[] = [];
 
-        for (const [_cat, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
-          if (keywords.some(kw => currentName.includes(kw.toLowerCase()) || currentDesc.includes(kw.toLowerCase()))) {
-            matchedKeywords = [...matchedKeywords, ...keywords];
+        try {
+          const allCategories = await fetchActiveCategories();
+          for (const cat of allCategories) {
+            if (cat.keywords.some(kw => currentName.includes(kw.toLowerCase()) || currentDesc.includes(kw.toLowerCase()))) {
+              matchedKeywords = [...matchedKeywords, ...cat.keywords];
+            }
           }
-        }
+        } catch (_) {}
 
         let filtered = data.filter(p => {
           const name = (p.name || '').toLowerCase();
@@ -205,7 +214,15 @@ export default function useProductDetailScreen() {
   const decrement = () => setQuantity(q => (q > 1 ? q - 1 : 1));
 
   const handleAddToCart = () => {
-    addToCart(product, quantity);
+    if (isBulk) {
+      const grams = bulkUnit === 'kg' ? Math.round(parseFloat(bulkInput.replace(',', '.')) * 1000) : parseInt(bulkInput, 10);
+      addToCart(product, grams);
+    } else if (isPerMeter) {
+      const meters = parseFloat(bulkInput.replace(',', '.'));
+      addToCart(product, meters);
+    } else {
+      addToCart(product, quantity);
+    }
   };
 
   return {
@@ -218,6 +235,11 @@ export default function useProductDetailScreen() {
     increment,
     decrement,
     handleAddToCart,
+    isBulk,
+    isPerMeter,
+    bulkUnit, setBulkUnit,
+    bulkInput, setBulkInput,
+    formatStock,
     relatedProducts,
     loadingRelated,
     photos,

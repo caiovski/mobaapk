@@ -7,7 +7,9 @@ import {
   Dimensions,
   StatusBar,
   Linking,
+  Text
 } from 'react-native';
+import Constants from 'expo-constants';
 import { useNavigation } from '@react-navigation/native';
 import Colors from '../theme/colors';
 
@@ -101,6 +103,7 @@ export default function SplashScreen() {
 
         {/* ============ PARTE INFERIOR (Footer) ============ */}
         <View style={styles.footerContainer}>
+          <Text style={styles.versionText}>v{Constants.expoConfig?.version || '1.1.0'}</Text>
           <View style={styles.footerContent}>
             {/* Suporte */}
             <TouchableOpacity style={styles.footerItem} onPress={() => Linking.openURL('https://wa.me/5535998120517')}>
@@ -228,6 +231,13 @@ const styles = StyleSheet.create({
   },
   footerItem: {
     paddingHorizontal: 4,
+  },
+  versionText: {
+    color: Colors.whiteSemiTransparent,
+    textAlign: 'center',
+    fontSize: 12,
+    marginBottom: 8,
+    fontWeight: 'bold',
   },
 
   // Separador (linha vertical branca)

@@ -9,6 +9,8 @@ import AdminSalesHistoryScreen from '../screens/admin/AdminSalesHistory';
 import AdminOrderDetailScreen from '../screens/admin/AdminOrderDetail';
 import AdminDashboardScreen from '../screens/admin/AdminDashboard';
 import AdminConsultSalesScreen from '../screens/admin/AdminConsultSales';
+import CashRegisterScreen from '../screens/admin/CashRegister/CashRegisterScreen';
+import CashRegisterHistoryScreen from '../screens/admin/CashRegister/CashRegisterHistoryScreen';
 
 const Stack = createStackNavigator();
 
@@ -23,6 +25,8 @@ export default function AdminStack() {
       <Stack.Screen name="AdminOrderDetailScreen" component={AdminOrderDetailScreen} options={{ headerShown: false }} />
       <Stack.Screen name="AdminDashboardScreen" component={AdminDashboardScreen} options={{ headerShown: false }} />
       <Stack.Screen name="AdminConsultSalesScreen" component={AdminConsultSalesScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="CashRegisterScreen" component={CashRegisterScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="CashRegisterHistoryScreen" component={CashRegisterHistoryScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }

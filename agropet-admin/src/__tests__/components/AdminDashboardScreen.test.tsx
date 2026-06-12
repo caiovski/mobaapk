@@ -10,6 +10,22 @@ import { Alert, BackHandler, Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Feather } from '@expo/vector-icons';
 
+// ── Mock useCategories ──
+jest.mock('../../presentation/contexts/useCategories', () => ({
+  useCategories: () => ({
+    categories: [
+      { id: '1', name: 'Pesca', keywords: ['pesca', 'vara'], active: true },
+      { id: '2', name: 'Ração', keywords: ['ração', 'cachorro', 'purina'], active: true },
+    ],
+    allCategories: [],
+    loading: false,
+    reload: jest.fn(),
+    createCategory: jest.fn(),
+    toggleActive: jest.fn(),
+    deleteCategory: jest.fn(),
+  }),
+}));
+
 // Mock AsyncStorage
 jest.mock('@react-native-async-storage/async-storage', () => ({
   getItem: jest.fn().mockResolvedValue(null),
@@ -151,6 +167,10 @@ const renderScreen = (ScreenComponent: any, props: any = {}) => {
   );
 };
 
+const openVerOpcoes = (getByText: any) => {
+  fireEvent.press(getByText('Ver Opções'));
+};
+
 describe('AdminDashboardScreen - Deep Coverage', () => {
   let alertSpy: any;
 
@@ -191,6 +211,7 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
 
     const { getByText, getByPlaceholderText, queryByText } = renderScreen(AdminDashboardScreen);
 
+    openVerOpcoes(getByText);
     const pdvBtn = queryByText('Registrar Venda');
     if (pdvBtn) {
       fireEvent.press(pdvBtn);
@@ -226,13 +247,10 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
     const { getByText, getByPlaceholderText, queryByText, getAllByText, UNSAFE_getAllByProps } = renderScreen(AdminDashboardScreen);
 
     // 1. Enter PDV Mode
+    openVerOpcoes(getByText);
     await act(async () => {
       fireEvent.press(getByText('Registrar Venda'));
     });
-
-    // Category pills click
-    await waitFor(() => expect(getByText('Ração')).toBeTruthy());
-    fireEvent.press(getByText('Ração'));
 
     // Search input change
     const searchInput = getByPlaceholderText('Pesquisar produto...');
@@ -299,6 +317,7 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
     expect(alertSpy).toHaveBeenLastCalledWith('Sucesso', 'Venda registrada com sucesso!');
 
     // Close Modal option flow
+    openVerOpcoes(getByText);
     fireEvent.press(getByText('Registrar Venda'));
     fireEvent.press(getByText('Registrar venda')); // Open checkout modal again
     const checkoutCancelBtn = getAllByText('Cancelar');
@@ -314,6 +333,8 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
     (SecureStore.getItemAsync as jest.Mock).mockResolvedValue(JSON.stringify(storedSangrias));
 
     const { getByText, getByPlaceholderText, queryByText, getAllByText } = renderScreen(AdminDashboardScreen);
+
+    openVerOpcoes(getByText);
 
     await waitFor(() => {
       expect(getByText('Realizar Suprimento (Entrada de Caixa)')).toBeTruthy();
@@ -395,6 +416,7 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
     jest.spyOn(supabase, 'from').mockImplementation(() => createMockChain({ data: mockProducts }));
 
     const { getByText } = renderScreen(AdminDashboardScreen);
+    openVerOpcoes(getByText);
     fireEvent.press(getByText('Registrar Venda'));
 
     await waitFor(() => {
@@ -414,15 +436,12 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
     jest.spyOn(supabase, 'from').mockImplementation(() => createMockChain({ data: mockProducts }));
 
     const { getByText, queryByText } = renderScreen(AdminDashboardScreen);
+    openVerOpcoes(getByText);
     fireEvent.press(getByText('Registrar Venda'));
 
     await waitFor(() => {
       expect(getByText('Ração Premium')).toBeTruthy();
     });
-
-    // Click category pills to filter
-    fireEvent.press(getByText('Pesca'));
-    fireEvent.press(getByText('Ração'));
   });
 
   // ── dismissAlert ──
@@ -434,6 +453,7 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
     jest.spyOn(supabase, 'from').mockImplementation(() => createMockChain({ data: mockProducts }));
 
     const { getByText, UNSAFE_getAllByType } = renderScreen(AdminDashboardScreen);
+    openVerOpcoes(getByText);
     fireEvent.press(getByText('Registrar Venda'));
 
     await waitFor(() => {
@@ -582,6 +602,7 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
     const { getByText, getByPlaceholderText, getAllByText } = renderScreen(AdminDashboardScreen);
+    openVerOpcoes(getByText);
     await waitFor(() => {
       expect(getByText('Realizar Sangria (Retirada de Caixa)')).toBeTruthy();
     });
@@ -619,6 +640,7 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
     const { getByText, getAllByText, UNSAFE_getAllByProps } = renderScreen(AdminDashboardScreen);
 
     // Enter PDV
+    openVerOpcoes(getByText);
     fireEvent.press(getByText('Registrar Venda'));
     await waitFor(() => {
       expect(getByText('Feed Test')).toBeTruthy();
@@ -643,9 +665,24 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
     consoleSpy.mockRestore();
   });
 
+  // ── Navigate to CashRegisterScreen (line 71) ──
+  it('should navigate to CashRegisterScreen when Abertura/Fechamento do caixa is pressed', async () => {
+    const { getByText } = renderScreen(AdminDashboardScreen);
+    await waitFor(() => expect(getByText('Saldo Total em Caixa')).toBeTruthy());
+
+    // Open options menu
+    fireEvent.press(getByText('Ver Opções'));
+
+    // Press Abertura/Fechamento do caixa
+    fireEvent.press(getByText('Abertura/Fechamento do caixa'));
+
+    expect(mockNavigate).toHaveBeenCalledWith('CashRegisterScreen');
+  });
+
   // ── Navigate to ConsultSales ──
   it('should navigate to AdminConsultSalesScreen', async () => {
     const { getByText } = renderScreen(AdminDashboardScreen);
+    openVerOpcoes(getByText);
     await waitFor(() => {
       expect(getByText('Ver Vendas')).toBeTruthy();
     });
@@ -668,6 +705,7 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
   // ── Transaction modal payment method toggle ──
   it('should toggle payment method in transaction modal', async () => {
     const { getByText, getAllByText } = renderScreen(AdminDashboardScreen);
+    openVerOpcoes(getByText);
     await waitFor(() => {
       expect(getByText('Realizar Suprimento (Entrada de Caixa)')).toBeTruthy();
     });
@@ -705,6 +743,7 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
   // ── handleAmountChange edge cases ──
   it('should handle amount input with empty text', async () => {
     const { getByText, getByPlaceholderText, getAllByText } = renderScreen(AdminDashboardScreen);
+    openVerOpcoes(getByText);
     await waitFor(() => {
       expect(getByText('Realizar Sangria (Retirada de Caixa)')).toBeTruthy();
     });
@@ -829,6 +868,7 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
     const { getByText, getAllByText } = renderScreen(AdminDashboardScreen);
     
     // Enter PDV Mode
+    openVerOpcoes(getByText);
     await waitFor(() => {
       expect(getByText('Registrar Venda')).toBeTruthy();
     });
@@ -853,6 +893,7 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
     jest.spyOn(supabase, 'from').mockImplementation(() => createMockChain({ data: mockProducts }));
 
     const { getByText, UNSAFE_getAllByProps } = renderScreen(AdminDashboardScreen);
+    openVerOpcoes(getByText);
     fireEvent.press(getByText('Registrar Venda'));
 
     await waitFor(() => {
@@ -877,6 +918,7 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
     jest.spyOn(supabase, 'from').mockImplementation(() => createMockChain({ data: mockProducts }));
 
     const { getByText, UNSAFE_getAllByProps } = renderScreen(AdminDashboardScreen);
+    openVerOpcoes(getByText);
     fireEvent.press(getByText('Registrar Venda'));
 
     await waitFor(() => {
@@ -903,6 +945,7 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
     });
 
     const { getByText } = renderScreen(AdminDashboardScreen);
+    openVerOpcoes(getByText);
     await waitFor(() => expect(getByText('Registrar Venda')).toBeTruthy());
 
     // Enter PDV mode so isPDVMode = true — useFocusEffect re-registers with new closure
@@ -935,6 +978,7 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
     const fromSpy = jest.spyOn(supabase, 'from').mockImplementation(() => createMockChain({ data: mockProducts }));
 
     const { getByText } = renderScreen(AdminDashboardScreen);
+    openVerOpcoes(getByText);
     await waitFor(() => expect(getByText('Registrar Venda')).toBeTruthy());
 
     fireEvent.press(getByText('Registrar Venda'));
@@ -1132,6 +1176,7 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
     jest.spyOn(supabase, 'from').mockImplementation(() => createMockChain({ data: mockProducts }));
 
     const { getByText } = renderScreen(AdminDashboardScreen);
+    openVerOpcoes(getByText);
     await waitFor(() => expect(getByText('Registrar Venda')).toBeTruthy());
     fireEvent.press(getByText('Registrar Venda'));
 
@@ -1157,6 +1202,7 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
     jest.spyOn(supabase, 'from').mockImplementation(() => createMockChain({ data: mockProducts }));
 
     const { getByText, UNSAFE_getAllByProps } = renderScreen(AdminDashboardScreen);
+    openVerOpcoes(getByText);
     await waitFor(() => expect(getByText('Registrar Venda')).toBeTruthy());
     fireEvent.press(getByText('Registrar Venda'));
 
@@ -1180,6 +1226,7 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
     jest.spyOn(supabase, 'from').mockImplementation(() => createMockChain({ data: mockProducts }));
 
     const { getByText } = renderScreen(AdminDashboardScreen);
+    openVerOpcoes(getByText);
     await waitFor(() => expect(getByText('Registrar Venda')).toBeTruthy());
     fireEvent.press(getByText('Registrar Venda'));
 
@@ -1249,6 +1296,7 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
     jest.spyOn(supabase, 'from').mockImplementation(() => createMockChain({ data: mockProducts }));
 
     const { getByText } = renderScreen(AdminDashboardScreen);
+    openVerOpcoes(getByText);
     await waitFor(() => expect(getByText('Registrar Venda')).toBeTruthy());
     fireEvent.press(getByText('Registrar Venda'));
 
@@ -1291,6 +1339,7 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
     jest.spyOn(supabase, 'from').mockImplementation(() => createMockChain({ data: mockProducts }));
 
     const { getByText, getAllByText, UNSAFE_getAllByProps } = renderScreen(AdminDashboardScreen);
+    openVerOpcoes(getByText);
     await waitFor(() => expect(getByText('Registrar Venda')).toBeTruthy());
     fireEvent.press(getByText('Registrar Venda'));
 
@@ -1452,6 +1501,7 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
   // ── Transaction modal suprimento save description variant ──
   it('should show sangria description in validation alert', async () => {
     const { getByText, getByPlaceholderText, getAllByText } = renderScreen(AdminDashboardScreen);
+    openVerOpcoes(getByText);
     await waitFor(() => expect(getByText('Realizar Sangria (Retirada de Caixa)')).toBeTruthy());
 
     fireEvent.press(getByText('Realizar Sangria (Retirada de Caixa)'));
@@ -1535,6 +1585,7 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
 
     // Render screen
     const { getByText, getByTestId, getAllByText, getByPlaceholderText, queryByText, queryAllByText, UNSAFE_getAllByProps } = renderScreen(AdminDashboardScreen);
+    openVerOpcoes(getByText);
 
     // Call focus listener
     if (focusCb) {
@@ -1644,6 +1695,7 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
 
     const { getByText } = renderScreen(AdminDashboardScreen);
     await waitFor(() => expect(getByText('Saldo Total em Caixa')).toBeTruthy());
+    openVerOpcoes(getByText);
 
     // Enter POS Mode wrapped in act
     await act(async () => {
@@ -1700,6 +1752,7 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
     const { getByText, queryByText, UNSAFE_getAllByProps, getAllByText, queryAllByText } = renderScreen(AdminDashboardScreen);
 
     // Enter PDV Mode
+    openVerOpcoes(getByText);
     await act(async () => {
       fireEvent.press(getByText('Registrar Venda'));
     });

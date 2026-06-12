@@ -13,10 +13,26 @@ export class Product {
     public readonly categoryId: string,
     public readonly active: boolean,
     public readonly imageUrl?: string,
-    public readonly description?: string
+    public readonly description?: string,
+    public readonly criticalStock?: number,
+    public readonly moderateStock?: number
   ) {
     this.priceVO = new Price(price);
     this.stockVO = new Stock(stock);
+  }
+
+  get effectiveCriticalStock(): number {
+    return this.criticalStock ?? 10;
+  }
+
+  get effectiveModerateStock(): number {
+    return this.moderateStock ?? 29;
+  }
+
+  get stockLevel(): 'critical' | 'moderate' | 'ok' {
+    if (this.stock < this.effectiveCriticalStock) return 'critical';
+    if (this.stock <= this.effectiveModerateStock) return 'moderate';
+    return 'ok';
   }
 
   hasLowStock(warningMargin: number): boolean {
@@ -36,7 +52,9 @@ export class Product {
       this.categoryId,
       false,
       this.imageUrl,
-      this.description
+      this.description,
+      this.criticalStock,
+      this.moderateStock
     );
   }
 

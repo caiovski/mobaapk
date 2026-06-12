@@ -2,7 +2,7 @@
   "expo": {
     "name": "Agropet Admin",
     "slug": "agropet-admin",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -34,12 +34,7 @@
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_LOCATION"
       ],
-      "package": "com.caiovski.agropetadmin",
-      "config": {
-        "googleMaps": {
-          "apiKey": "AIzaSyDv0N8MyMGo-BAbi2Qw4oJ9J4Dk5i8uz4I"
-        }
-      }
+      "package": "com.caiovski.agropetadmin"
     },
     "web": {
       "favicon": "./assets/favicon.png"

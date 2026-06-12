@@ -13,6 +13,22 @@ import { Feather } from '@expo/vector-icons';
 import ManageProductsScreen from '../../presentation/screens/admin/ManageProducts';
 import ProductCreateScreen from '../../presentation/screens/admin/ProductCreate';
 
+// ── Mock useCategories ──
+jest.mock('../../presentation/contexts/useCategories', () => ({
+  useCategories: () => ({
+    categories: [
+      { id: '1', name: 'Pesca', keywords: ['pesca', 'vara'], active: true },
+      { id: '2', name: 'Sementes', keywords: ['sementes', 'girassol'], active: true },
+    ],
+    allCategories: [],
+    loading: false,
+    reload: jest.fn(),
+    createCategory: jest.fn(),
+    toggleActive: jest.fn(),
+    deleteCategory: jest.fn(),
+  }),
+}));
+
 // ── Mock expo-image-picker ──
 jest.mock('expo-image-picker', () => ({
   getCameraPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted' }),
@@ -237,6 +253,14 @@ describe('ProductCreateScreen - Deep Coverage', () => {
     if (useThemeSpy) useThemeSpy.mockRestore();
   });
 
+  it('should render SVG placeholders when inputs are empty (line 99)', () => {
+    const { getByTestId } = renderScreen(ProductCreateScreen);
+    expect(getByTestId('product-name-input')).toBeTruthy();
+    expect(getByTestId('product-description-input')).toBeTruthy();
+    expect(getByTestId('product-price-input')).toBeTruthy();
+    expect(getByTestId('product-quantity-input')).toBeTruthy();
+  });
+
   it('should cover focus listener form state reset, search text navigate, and category tag clicks', async () => {
     const { getByText, UNSAFE_getAllByType, getByTestId } = renderScreen(ProductCreateScreen);
 
@@ -356,13 +380,15 @@ describe('ProductCreateScreen - Deep Coverage', () => {
     await act(async () => {
       fireEvent.press(saveBtn);
     });
-    expect(alertSpy).toHaveBeenCalledWith('Atenção', 'Por favor, preencha todos os campos do formulário.');
+    expect(alertSpy).toHaveBeenCalledWith('Atenção', 'Por favor, preencha todos os campos obrigatórios, incluindo estoque crítico e estoque moderado.');
 
     // Populate text inputs
     fireEvent.changeText(getByTestId('product-name-input'), 'Ração Premium Super');
     fireEvent.changeText(getByTestId('product-description-input'), 'Alta qualidade');
     fireEvent.changeText(getByTestId('product-price-input'), '150.00');
     fireEvent.changeText(getByTestId('product-quantity-input'), '50');
+    fireEvent.changeText(getByTestId('product-critical-stock-input'), '3');
+    fireEvent.changeText(getByTestId('product-moderate-stock-input'), '8');
 
     // 2. Database error insertion path
     (supabase.from as jest.Mock).mockImplementationOnce(() => createMockChain({ error: new Error('Insert query error') }));
@@ -497,6 +523,8 @@ describe('ProductCreateScreen - Deep Coverage', () => {
       fireEvent.changeText(getByTestId('product-description-input'), 'Saborosa');
       fireEvent.changeText(getByTestId('product-price-input'), '89,90');
       fireEvent.changeText(getByTestId('product-quantity-input'), '25');
+      fireEvent.changeText(getByTestId('product-critical-stock-input'), '3');
+      fireEvent.changeText(getByTestId('product-moderate-stock-input'), '8');
     });
 
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
@@ -585,6 +613,8 @@ describe('ProductCreateScreen - Deep Coverage', () => {
       fireEvent.changeText(getByTestId('product-description-input'), 'Desc');
       fireEvent.changeText(getByTestId('product-price-input'), '10.00');
       fireEvent.changeText(getByTestId('product-quantity-input'), '5');
+      fireEvent.changeText(getByTestId('product-critical-stock-input'), '3');
+      fireEvent.changeText(getByTestId('product-moderate-stock-input'), '8');
     });
 
     const insertSpy = jest.fn().mockResolvedValue({ data: {}, error: null });
@@ -607,6 +637,48 @@ describe('ProductCreateScreen - Deep Coverage', () => {
     cameraLaunchSpy.mockRestore();
     galleryPermSpy.mockRestore();
     galleryLaunchSpy.mockRestore();
+    alertSpy.mockRestore();
+  });
+
+  it('should toggle SVG placeholders when filling and clearing inputs (line 99 branch coverage)', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    const { getByTestId } = renderScreen(ProductCreateScreen);
+
+    expect(getByTestId('product-name-input')).toBeTruthy();
+    expect(getByTestId('product-description-input')).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.changeText(getByTestId('product-name-input'), 'Test');
+    });
+
+    await act(async () => {
+      fireEvent.changeText(getByTestId('product-name-input'), '');
+    });
+
+    await act(async () => {
+      fireEvent.changeText(getByTestId('product-description-input'), 'Some description');
+    });
+
+    await act(async () => {
+      fireEvent.changeText(getByTestId('product-description-input'), '');
+    });
+
+    await act(async () => {
+      fireEvent.changeText(getByTestId('product-price-input'), '99.90');
+    });
+
+    await act(async () => {
+      fireEvent.changeText(getByTestId('product-price-input'), '');
+    });
+
+    await act(async () => {
+      fireEvent.changeText(getByTestId('product-quantity-input'), '10');
+    });
+
+    await act(async () => {
+      fireEvent.changeText(getByTestId('product-quantity-input'), '');
+    });
+
     alertSpy.mockRestore();
   });
 });

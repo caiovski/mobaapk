@@ -1,14 +1,21 @@
-import React, { useContext } from 'react';
-import { render, act, fireEvent } from '@testing-library/react-native';
+import React from 'react';
+import { render, act, fireEvent, waitFor } from '@testing-library/react-native';
 import { Text, Button, View } from 'react-native';
 import {
   FilterContext,
   FilterProvider,
   useFilter,
-  getProductCategory,
-  isProductInCategories,
-  CATEGORY_KEYWORDS
 } from '../../presentation/contexts/FilterContext';
+import { fetchActiveCategories, getProductCategory, isProductInCategories } from '../../services/categoryService';
+import { supabase } from '../../data/datasources/supabase/client';
+import type { DBCustomCategory } from '../../db/schema';
+
+const MOCK_CATEGORIES: DBCustomCategory[] = [
+  { id: '1', name: 'Ração', keywords: ['ração', 'cachorro', 'cachorros', 'canino', 'caninos', 'felino', 'felinos', 'racao', 'dog chow', 'pedigree', 'besser', 'purina', 'whiskas', 'granplus', 'premium', 'cão', 'cães', 'gato', 'gatos', 'vaca', 'porco', 'frango', 'galinha', 'galinhas'], active: true },
+  { id: '2', name: 'Pesca', keywords: ['pesca', 'vara', 'anzol', 'linha', 'molinete', 'boia', 'bóia', 'isca', 'carretilha', 'pescaria'], active: true },
+  { id: '3', name: 'Sementes', keywords: ['semente', 'semeadura', 'sementes', 'girassol', 'milho', 'alpiste', 'grão', 'grãos', 'erva', 'ervas', 'erva-doce', 'ervadoce'], active: true },
+  { id: '4', name: 'Adubo', keywords: ['adubo', 'fertilizante', 'terra', 'substrato', 'humus', 'húmus', 'calpiso', 'calcario'], active: true },
+];
 
 function FilterConsumer() {
   const { selectedCategories, toggleCategory, searchText, setSearchText, clearFilters } = useFilter();
@@ -31,37 +38,28 @@ function FilterConsumer() {
 describe('FilterContext & Helper Functions', () => {
   describe('getProductCategory', () => {
     it('should return null for undefined/null products', () => {
-      expect(getProductCategory(null)).toBeNull();
-      expect(getProductCategory(undefined)).toBeNull();
+      expect(getProductCategory(null, MOCK_CATEGORIES)).toBeNull();
+      expect(getProductCategory(undefined, MOCK_CATEGORIES)).toBeNull();
     });
 
     it('should correctly match keywords in name or description case insensitively', () => {
-      // Test Ração
-      expect(getProductCategory({ name: 'Ração de Cachorro Premium', description: '' })).toBe('Ração');
-      expect(getProductCategory({ name: '', description: 'purina pro plan' })).toBe('Ração');
-
-      // Test Pesca
-      expect(getProductCategory({ name: 'Vara de molinete carbono', description: '' })).toBe('Pesca');
-
-      // Test Sementes
-      expect(getProductCategory({ name: 'Semente de Girassol', description: '' })).toBe('Sementes');
-
-      // Test Adubo
-      expect(getProductCategory({ name: 'Húmus de minhoca', description: '' })).toBe('Adubo');
-
-      // Test no match
-      expect(getProductCategory({ name: 'Produto Aleatório', description: 'Nenhum match' })).toBeNull();
+      expect(getProductCategory({ name: 'Ração de Cachorro Premium', description: '' }, MOCK_CATEGORIES)).toBe('Ração');
+      expect(getProductCategory({ name: '', description: 'purina pro plan' }, MOCK_CATEGORIES)).toBe('Ração');
+      expect(getProductCategory({ name: 'Vara de molinete carbono', description: '' }, MOCK_CATEGORIES)).toBe('Pesca');
+      expect(getProductCategory({ name: 'Semente de Girassol', description: '' }, MOCK_CATEGORIES)).toBe('Sementes');
+      expect(getProductCategory({ name: 'Húmus de minhoca', description: '' }, MOCK_CATEGORIES)).toBe('Adubo');
+      expect(getProductCategory({ name: 'Produto Aleatório', description: 'Nenhum match' }, MOCK_CATEGORIES)).toBeNull();
     });
   });
 
   describe('isProductInCategories', () => {
     it('should return true if no categories are selected', () => {
-      expect(isProductInCategories({ name: 'Vara' }, [])).toBe(true);
-      expect(isProductInCategories({ name: 'Vara' }, null as any)).toBe(true);
+      expect(isProductInCategories({ name: 'Vara' }, [], MOCK_CATEGORIES)).toBe(true);
+      expect(isProductInCategories({ name: 'Vara' }, null as any, MOCK_CATEGORIES)).toBe(true);
     });
 
     it('should return false if product is null', () => {
-      expect(isProductInCategories(null, ['Ração'])).toBe(false);
+      expect(isProductInCategories(null, ['Ração'], MOCK_CATEGORIES)).toBe(false);
     });
 
     it('should return true if product matches keywords of any selected category', () => {
@@ -69,19 +67,21 @@ describe('FilterContext & Helper Functions', () => {
       const prodPesca = { name: 'carretilha metal', description: '' };
       const selected = ['Ração', 'Pesca'];
 
-      expect(isProductInCategories(prodRacao, selected)).toBe(true);
-      expect(isProductInCategories(prodPesca, selected)).toBe(true);
-      expect(isProductInCategories({ name: 'Semente' }, selected)).toBe(false);
+      expect(isProductInCategories(prodRacao, selected, MOCK_CATEGORIES)).toBe(true);
+      expect(isProductInCategories(prodPesca, selected, MOCK_CATEGORIES)).toBe(true);
+      expect(isProductInCategories({ name: 'Semente' }, selected, MOCK_CATEGORIES)).toBe(false);
     });
 
     it('should fallback to lowercase category name if not defined in keywords dictionary', () => {
-      // For a custom category e.g. "Brinquedos", keywords fallback to ["brinquedos"]
-      expect(isProductInCategories({ name: 'Brinquedos Gato', description: '' }, ['Brinquedos'])).toBe(true);
-      expect(isProductInCategories({ name: 'Outro', description: '' }, ['Brinquedos'])).toBe(false);
+      const customCat: DBCustomCategory[] = [
+        { id: '5', name: 'Brinquedos', keywords: ['brinquedos', 'brinquedo'], active: true },
+      ];
+      expect(isProductInCategories({ name: 'Brinquedos Gato', description: '' }, ['Brinquedos'], customCat)).toBe(true);
+      expect(isProductInCategories({ name: 'Outro', description: '' }, ['Brinquedos'], customCat)).toBe(false);
     });
 
     it('should match correctly if product name is missing or falsy', () => {
-      expect(isProductInCategories({ description: 'purina dog' }, ['Ração'])).toBe(true);
+      expect(isProductInCategories({ description: 'purina dog' }, ['Ração'], MOCK_CATEGORIES)).toBe(true);
     });
   });
 
@@ -93,37 +93,31 @@ describe('FilterContext & Helper Functions', () => {
         </FilterProvider>
       );
 
-      // Verify defaults
       expect(getByTestId('search-text').props.children).toBe('');
       expect(getByTestId('categories-count').props.children).toBe(0);
 
-      // Toggle Ração
       await act(async () => {
         fireEvent.press(getByText('Toggle Ração'));
       });
       expect(getByTestId('categories-count').props.children).toBe(1);
       expect(getByTestId('selected-Ração')).toBeTruthy();
 
-      // Toggle Pesca (now multiple selected)
       await act(async () => {
         fireEvent.press(getByText('Toggle Pesca'));
       });
       expect(getByTestId('categories-count').props.children).toBe(2);
       expect(getByTestId('selected-Pesca')).toBeTruthy();
 
-      // Toggle Ração again (removes it) — covers prev.filter branch
       await act(async () => {
         fireEvent.press(getByText('Toggle Ração'));
       });
       expect(getByTestId('categories-count').props.children).toBe(1);
 
-      // Set Search text — covers setSearchTextState
       await act(async () => {
         fireEvent.press(getByText('Set Search'));
       });
       expect(getByTestId('search-text').props.children).toBe('purina');
 
-      // Clear Filters — covers clearFilters
       await act(async () => {
         fireEvent.press(getByText('Clear'));
       });
@@ -174,8 +168,37 @@ describe('FilterContext & Helper Functions', () => {
     });
 
     it('should cover isProductInCategories with product name missing', () => {
-      expect(isProductInCategories({ name: '', description: 'ração' }, ['Ração'])).toBe(true);
-      expect(isProductInCategories({ description: 'semente' }, ['Sementes'])).toBe(true);
+      expect(isProductInCategories({ name: '', description: 'ração' }, ['Ração'], MOCK_CATEGORIES)).toBe(true);
+      expect(isProductInCategories({ description: 'semente' }, ['Sementes'], MOCK_CATEGORIES)).toBe(true);
+    });
+  });
+
+  describe('fetchActiveCategories error branch', () => {
+    it('should throw if supabase query returns error', async () => {
+      const chain = supabase.from();
+      chain.order.mockReturnValueOnce(Promise.resolve({ data: null, error: new Error('DB error') }));
+
+      await expect(fetchActiveCategories()).rejects.toThrow('DB error');
+    });
+
+    it('should handle fetch error silently in FilterProvider catch handler', async () => {
+      const chain = supabase.from();
+      chain.order.mockReturnValueOnce(Promise.reject(new Error('Network error')));
+
+      function SilentConsumer() {
+        const { categories } = useFilter();
+        return <Text testID="cat-count">{categories.length}</Text>;
+      }
+
+      const { getByTestId } = render(
+        <FilterProvider>
+          <SilentConsumer />
+        </FilterProvider>
+      );
+
+      await waitFor(() => {
+        expect(getByTestId('cat-count').props.children).toBe(0);
+      });
     });
   });
 });

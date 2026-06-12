@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Dimensions, ActivityIndicator, Animated } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import Svg, { Path, Circle, Defs, LinearGradient, Stop, Line, G, Text as SvgText } from 'react-native-svg';
@@ -21,6 +21,7 @@ interface DashboardOverviewProps {
   pulseAnim: any;
   onNavigateConsultSales: () => void;
   onEnterPDV: () => void;
+  onOpenCashRegister: () => void;
   onOpenSuprimento: () => void;
   onOpenSangria: () => void;
   getDynamicTitle: () => string;
@@ -52,12 +53,13 @@ export default function DashboardOverview({
   isDarkMode, colors, saldoTotalCaixaGeral, totalCreditoGeral,
   totalDebitoGeral, totalPixGeral, totalDinheiroCaixaGeral,
   formatCurrency, pulseAnim, onNavigateConsultSales, onEnterPDV,
-  onOpenSuprimento, onOpenSangria, getDynamicTitle, hasFiltered,
+  onOpenCashRegister, onOpenSuprimento, onOpenSangria, getDynamicTitle, hasFiltered,
   isRange, startDate, endDate, onFilterPress, loading, points,
   maxVal, gWidth, gHeight, paddingBottom, paddingLeft, pathD, areaD,
   ticketMedio, volumeVendas, topMethod, activeTransactions,
   cashFlowFilter, onCashFlowFilterPress
 }: DashboardOverviewProps) {
+  const [showOptions, setShowOptions] = useState(false);
   return (
     <>
       <View style={[styles.caixaCard, { backgroundColor: isDarkMode ? '#2E2E38' : '#1C2434' }]}>
@@ -111,39 +113,61 @@ export default function DashboardOverview({
 
       <TouchableOpacity
         activeOpacity={0.8}
-        style={[styles.sangriaTriggerBtn, { backgroundColor: '#2D8CE5', borderColor: '#2D8CE5', marginBottom: 12 }]}
-        onPress={onNavigateConsultSales}
+        style={[styles.sangriaTriggerBtn, { backgroundColor: isDarkMode ? '#1E1E24' : '#1C2434', borderColor: isDarkMode ? '#3E3E4A' : '#1C2434', marginBottom: 12 }]}
+        onPress={() => setShowOptions(!showOptions)}
       >
-        <Feather name="list" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-        <Text style={[styles.sangriaTriggerText, { color: '#FFFFFF' }]}>Ver Vendas</Text>
+        <Feather name={showOptions ? 'chevron-up' : 'menu'} size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+        <Text style={[styles.sangriaTriggerText, { color: '#FFFFFF' }]}>{showOptions ? 'Mostrar menos' : 'Ver Opções'}</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity
-        activeOpacity={0.8}
-        style={[styles.sangriaTriggerBtn, { backgroundColor: '#FF5C00', borderColor: '#FF5C00', marginBottom: 12 }]}
-        onPress={onEnterPDV}
-      >
-        <Feather name="shopping-cart" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-        <Text style={[styles.sangriaTriggerText, { color: '#FFFFFF' }]}>Registrar Venda</Text>
-      </TouchableOpacity>
+      {showOptions && (
+        <>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={[styles.sangriaTriggerBtn, { backgroundColor: '#339914', borderColor: '#339914', marginBottom: 12 }]}
+            onPress={onOpenCashRegister}
+          >
+            <Feather name="dollar-sign" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+            <Text style={[styles.sangriaTriggerText, { color: '#FFFFFF' }]}>Abertura/Fechamento do caixa</Text>
+          </TouchableOpacity>
 
-      <TouchableOpacity
-        activeOpacity={0.8}
-        style={[styles.sangriaTriggerBtn, { backgroundColor: isDarkMode ? '#1E1E24' : '#E8F5E9', borderColor: isDarkMode ? '#3E3E4A' : '#C8E6C9', marginBottom: 12 }]}
-        onPress={onOpenSuprimento}
-      >
-        <Feather name="plus-circle" size={20} color="#4CAF50" style={{ marginRight: 8 }} />
-        <Text style={[styles.sangriaTriggerText, { color: isDarkMode ? '#FFFFFF' : '#1C2434' }]}>Realizar Suprimento (Entrada de Caixa)</Text>
-      </TouchableOpacity>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={[styles.sangriaTriggerBtn, { backgroundColor: '#2D8CE5', borderColor: '#2D8CE5', marginBottom: 12 }]}
+            onPress={onNavigateConsultSales}
+          >
+            <Feather name="list" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+            <Text style={[styles.sangriaTriggerText, { color: '#FFFFFF' }]}>Ver Vendas</Text>
+          </TouchableOpacity>
 
-      <TouchableOpacity
-        activeOpacity={0.8}
-        style={[styles.sangriaTriggerBtn, { backgroundColor: isDarkMode ? '#1E1E24' : '#FFEBEE', borderColor: isDarkMode ? '#3E3E4A' : '#FFCDD2', marginBottom: 20 }]}
-        onPress={onOpenSangria}
-      >
-        <Feather name="minus-circle" size={20} color="#FF3B30" style={{ marginRight: 8 }} />
-        <Text style={[styles.sangriaTriggerText, { color: isDarkMode ? '#FFFFFF' : '#1C2434' }]}>Realizar Sangria (Retirada de Caixa)</Text>
-      </TouchableOpacity>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={[styles.sangriaTriggerBtn, { backgroundColor: '#FF5C00', borderColor: '#FF5C00', marginBottom: 12 }]}
+            onPress={onEnterPDV}
+          >
+            <Feather name="shopping-cart" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+            <Text style={[styles.sangriaTriggerText, { color: '#FFFFFF' }]}>Registrar Venda</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={[styles.sangriaTriggerBtn, { backgroundColor: isDarkMode ? '#1E1E24' : '#E8F5E9', borderColor: isDarkMode ? '#3E3E4A' : '#C8E6C9', marginBottom: 12 }]}
+            onPress={onOpenSuprimento}
+          >
+            <Feather name="plus-circle" size={20} color="#4CAF50" style={{ marginRight: 8 }} />
+            <Text style={[styles.sangriaTriggerText, { color: isDarkMode ? '#FFFFFF' : '#1C2434' }]}>Realizar Suprimento (Entrada de Caixa)</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={[styles.sangriaTriggerBtn, { backgroundColor: isDarkMode ? '#1E1E24' : '#FFEBEE', borderColor: isDarkMode ? '#3E3E4A' : '#FFCDD2', marginBottom: 20 }]}
+            onPress={onOpenSangria}
+          >
+            <Feather name="minus-circle" size={20} color="#FF3B30" style={{ marginRight: 8 }} />
+            <Text style={[styles.sangriaTriggerText, { color: isDarkMode ? '#FFFFFF' : '#1C2434' }]}>Realizar Sangria (Retirada de Caixa)</Text>
+          </TouchableOpacity>
+        </>
+      )}
 
       <View style={styles.filterRow}>
         <Text style={{

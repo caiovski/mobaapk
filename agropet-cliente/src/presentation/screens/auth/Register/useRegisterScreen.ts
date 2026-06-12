@@ -38,8 +38,11 @@ export function useRegisterScreen() {
     if (error) {
       Alert.alert('Erro ao cadastrar', error.message);
     } else if (data.session == null) {
-      Alert.alert('Sucesso!', 'Verifique seu e-mail para confirmar a conta (caso ativado no Supabase).');
-      navigation.goBack();
+      // Quando for confirmado via E-mail
+      navigation.navigate('OTPVerificationScreen', { email, type: 'signup' });
+    } else {
+      // Se a confirmação de e-mail estiver desligada
+      navigation.navigate('OTPVerificationScreen', { email, type: 'signup' });
     }
     setLoading(false);
   };

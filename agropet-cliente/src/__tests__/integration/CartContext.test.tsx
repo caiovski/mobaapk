@@ -31,6 +31,8 @@ function CartConsumer() {
       <Button title="Remove A" onPress={() => removeFromCart('p-1')} />
       <Button title="Clear" onPress={() => clearCart()} />
       <Button title="Add Invalid" onPress={() => addToCart({ name: 'No ID' } as any)} />
+      <Button title="Add Bulk" onPress={() => addToCart({ id: 'p-4', name: 'Bulk Item', price: 10, is_bulk: true, image_url: '' }, 1000)} />
+      <Button title="Add Meter" onPress={() => addToCart({ id: 'p-5', name: 'Meter Item', price: 5, is_per_meter: true, image_url: '' }, 3)} />
     </View>
   );
 }
@@ -114,7 +116,7 @@ describe('CartContext & CartProvider', () => {
     expect(mockDb.getFirstAsync).toHaveBeenCalledWith(expect.any(String), ['p-1']);
     expect(mockDb.runAsync).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO cart'),
-      ['p-1', 'Product A', 10, 2, 'img']
+      ['p-1', 'Product A', 10, 2, 'img', 0, 0]
     );
   });
 
@@ -135,7 +137,7 @@ describe('CartContext & CartProvider', () => {
 
     expect(mockDb.runAsync).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO cart'),
-      ['p-2', 'Product B', 20, 1, '']
+      ['p-2', 'Product B', 20, 1, '', 0, 0]
     );
   });
 
@@ -157,8 +159,8 @@ describe('CartContext & CartProvider', () => {
     });
 
     expect(mockDb.runAsync).toHaveBeenCalledWith(
-      expect.stringContaining('UPDATE cart SET quantity = ? WHERE id = ?'),
-      [4, 'p-1']
+      expect.stringContaining('UPDATE cart SET quantity = ?, is_bulk = ?, is_per_meter = ? WHERE id = ?'),
+      [4, 0, 0, 'p-1']
     );
   });
 
@@ -386,7 +388,7 @@ describe('CartContext & CartProvider', () => {
 
     expect(mockDb.runAsync).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO cart'),
-      ['p-3', 'Product C', 5, 1, '']
+      ['p-3', 'Product C', 5, 1, '', 0, 0]
     );
   });
 
@@ -421,5 +423,110 @@ describe('CartContext & CartProvider', () => {
 
     expect(warnSpy).toHaveBeenCalledWith('Cannot add product without a valid id');
     warnSpy.mockRestore();
+  });
+
+  it('should add item with is_bulk flag and cover ternary branches', async () => {
+    const { getByText } = render(
+      <CartProvider>
+        <CartConsumer />
+      </CartProvider>
+    );
+
+    await waitFor(() => {
+      expect(initDB).toHaveBeenCalled();
+    });
+
+    await act(async () => {
+      fireEvent.press(getByText('Add Bulk'));
+    });
+
+    expect(mockDb.runAsync).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO cart'),
+      ['p-4', 'Bulk Item', 10, 1000, '', 1, 0]
+    );
+  });
+
+  it('should add item with is_per_meter flag', async () => {
+    mockDb.getAllAsync.mockResolvedValue([]);
+    const { getByText } = render(
+      <CartProvider>
+        <CartConsumer />
+      </CartProvider>
+    );
+
+    await waitFor(() => {
+      expect(initDB).toHaveBeenCalled();
+    });
+
+    await act(async () => {
+      fireEvent.press(getByText('Add Meter'));
+    });
+
+    expect(mockDb.runAsync).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO cart'),
+      ['p-5', 'Meter Item', 5, 3, '', 0, 1]
+    );
+  });
+
+  it('should update existing item with is_bulk flags', async () => {
+    mockDb.getFirstAsync.mockResolvedValue({ id: 'p-4', name: 'Bulk Item', price: 10, quantity: 1000, image_url: '', is_bulk: 1 });
+
+    const { getByText } = render(
+      <CartProvider>
+        <CartConsumer />
+      </CartProvider>
+    );
+
+    await waitFor(() => {
+      expect(initDB).toHaveBeenCalled();
+    });
+
+    await act(async () => {
+      fireEvent.press(getByText('Add Bulk'));
+    });
+
+    expect(mockDb.runAsync).toHaveBeenCalledWith(
+      expect.stringContaining('UPDATE cart SET quantity = ?, is_bulk = ?, is_per_meter = ? WHERE id = ?'),
+      [2000, 1, 0, 'p-4']
+    );
+  });
+
+  it('should calculate total with is_bulk items using division by 1000', async () => {
+    mockDb.getAllAsync.mockResolvedValue([
+      { id: 'p-4', name: 'Bulk Item', price: 10, quantity: 2000, image_url: '', is_bulk: 1, is_per_meter: 0 },
+    ]);
+
+    const { getByTestId } = render(
+      <CartProvider>
+        <CartConsumer />
+      </CartProvider>
+    );
+
+    await waitFor(() => {
+      expect(getByTestId('cart-total').props.children).toBe(20);
+    });
+  });
+
+  it('should update existing item with is_per_meter flag', async () => {
+    mockDb.getFirstAsync.mockResolvedValue({ id: 'p-5', name: 'Meter Item', price: 5, quantity: 3, image_url: '', is_per_meter: 1 });
+
+    const { getByText } = render(
+      <CartProvider>
+        <CartConsumer />
+      </CartProvider>
+    );
+
+    await waitFor(() => {
+      expect(initDB).toHaveBeenCalled();
+    });
+
+    await act(async () => {
+      fireEvent.press(getByText('Add Meter'));
+    });
+
+    expect(mockDb.runAsync).toHaveBeenCalledWith(
+      expect.stringContaining('UPDATE cart SET quantity = ?, is_bulk = ?, is_per_meter = ? WHERE id = ?'),
+      [6, 0, 1, 'p-5']
+    );
   });
 });

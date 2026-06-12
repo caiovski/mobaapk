@@ -116,6 +116,20 @@ export const styles = StyleSheet.create({
   textArea: {
     height: 100,
   },
+  stockFieldContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    minHeight: 45,
+  },
+  stockFieldInput: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: 'bold',
+    paddingVertical: 8,
+  },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -167,5 +181,12 @@ export const styles = StyleSheet.create({
     height: 1,
     backgroundColor: '#333333',
     width: '100%',
+  },
+  bulkToggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
   },
 });

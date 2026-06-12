@@ -34,6 +34,9 @@ const createProps = (overrides = {}) => ({
   onSearchChange: jest.fn(),
   pdvActiveCategories: [],
   onCategoryToggle: jest.fn(),
+  pdvSortOption: 'alpha' as const,
+  onSortChange: jest.fn(),
+  categories: [],
   pdvSelectMode: false,
   pdvCart: baseCart,
   pdvProducts: [baseProduct],
@@ -61,7 +64,7 @@ describe('PDVSection', () => {
     const { getByText } = render(<PDVSection {...createProps()} />);
     expect(getByText('Test Product')).toBeTruthy();
     expect(getByText('R$ 50,00')).toBeTruthy();
-    expect(getByText('15')).toBeTruthy();
+    expect(getByText('15 unidades')).toBeTruthy();
   });
 
   it('should render product with no image_url (falsy branch)', () => {
@@ -73,7 +76,7 @@ describe('PDVSection', () => {
   it('should render product with stock = 0 (falsy branch)', () => {
     const productNoStock = { ...baseProduct, stock: 0 };
     const { getByText } = render(<PDVSection {...createProps({ pdvProducts: [productNoStock] })} />);
-    expect(getByText('0')).toBeTruthy();
+    expect(getByText('0 unidades')).toBeTruthy();
   });
 
   it('should render low stock alert (stock < 10)', () => {
@@ -143,13 +146,6 @@ describe('PDVSection', () => {
     expect(queryByText('Filtro de água')).toBeNull();
   });
 
-  it('should call onCategoryToggle when category pressed', () => {
-    const onCategoryToggle = jest.fn();
-    const { getByText } = render(<PDVSection {...createProps({ onCategoryToggle })} />);
-    fireEvent.press(getByText('Pesca'));
-    expect(onCategoryToggle).toHaveBeenCalledWith('Pesca');
-  });
-
   it('should call onRegisterPress when register button pressed', () => {
     const onRegisterPress = jest.fn();
     const { getByText } = render(<PDVSection {...createProps({ onRegisterPress })} />);
@@ -175,16 +171,6 @@ describe('PDVSection', () => {
     expect(getByText('Test Product')).toBeTruthy();
   });
 
-  it('should render selected category in dark mode (line 71-74 isSelected=true, isDarkMode=true)', () => {
-    const { getByText } = render(<PDVSection {...createProps({ isDarkMode: true, pdvActiveCategories: ['Ração'] })} />);
-    expect(getByText('Ração')).toBeTruthy();
-  });
-
-  it('should render selected category in light mode (line 71-74 isSelected=true, isDarkMode=false)', () => {
-    const { getByText } = render(<PDVSection {...createProps({ isDarkMode: false, pdvActiveCategories: ['Ração'] })} />);
-    expect(getByText('Ração')).toBeTruthy();
-  });
-
   it('should cover null name match branch (line 119 || fallback)', () => {
     const nullNameProduct = { id: 'p-null', name: null as any, price: 10, stock: 5 };
     const { queryByText } = render(
@@ -197,5 +183,289 @@ describe('PDVSection', () => {
       />
     );
     expect(queryByText('R$ 10,00')).toBeNull();
+  });
+
+  it('should open sort modal when sort button pressed', () => {
+    const { getByText } = render(<PDVSection {...createProps()} />);
+    fireEvent.press(getByText('Ordenar por:'));
+    expect(getByText('Ordenar por')).toBeTruthy();
+  });
+
+  it('should select each sort option from modal', () => {
+    const onSortChange = jest.fn();
+    const { getByText } = render(<PDVSection {...createProps({ onSortChange })} />);
+
+    fireEvent.press(getByText('Ordenar por:'));
+    fireEvent.press(getByText('Produtos mais novos'));
+    expect(onSortChange).toHaveBeenCalledWith('newest');
+
+    fireEvent.press(getByText('Ordenar por:'));
+    fireEvent.press(getByText('Produtos mais velhos'));
+    expect(onSortChange).toHaveBeenCalledWith('oldest');
+
+    fireEvent.press(getByText('Ordenar por:'));
+    fireEvent.press(getByText('Mais estoque'));
+    expect(onSortChange).toHaveBeenCalledWith('most_stock');
+
+    fireEvent.press(getByText('Ordenar por:'));
+    fireEvent.press(getByText('Maior preço'));
+    expect(onSortChange).toHaveBeenCalledWith('highest_price');
+
+    fireEvent.press(getByText('Ordenar por:'));
+    fireEvent.press(getByText('Menor preço'));
+    expect(onSortChange).toHaveBeenCalledWith('lowest_price');
+  });
+
+  it('should sort products by newest', () => {
+    const products = [
+      { ...baseProduct, id: 'p1', name: 'Old', price: 50, stock: 15, created_at: '2020-01-01' },
+      { ...baseProduct, id: 'p2', name: 'New', price: 50, stock: 15, created_at: '2023-01-01' },
+    ];
+    const { getByText } = render(
+      <PDVSection {...createProps({ pdvProducts: products, pdvSortOption: 'newest' })} />
+    );
+    expect(getByText('New')).toBeTruthy();
+    expect(getByText('Old')).toBeTruthy();
+  });
+
+  it('should sort products by oldest', () => {
+    const products = [
+      { ...baseProduct, id: 'p1', name: 'Old', price: 50, stock: 15, created_at: '2020-01-01' },
+      { ...baseProduct, id: 'p2', name: 'New', price: 50, stock: 15, created_at: '2023-01-01' },
+    ];
+    const { getByText } = render(
+      <PDVSection {...createProps({ pdvProducts: products, pdvSortOption: 'oldest' })} />
+    );
+    expect(getByText('Old')).toBeTruthy();
+    expect(getByText('New')).toBeTruthy();
+  });
+
+  it('should sort products by most stock', () => {
+    const products = [
+      { ...baseProduct, id: 'p1', name: 'Low stock', price: 50, stock: 5 },
+      { ...baseProduct, id: 'p2', name: 'High stock', price: 50, stock: 50 },
+    ];
+    const { getByText } = render(
+      <PDVSection {...createProps({ pdvProducts: products, pdvSortOption: 'most_stock' })} />
+    );
+    expect(getByText('High stock')).toBeTruthy();
+    expect(getByText('Low stock')).toBeTruthy();
+  });
+
+  it('should sort products by highest price', () => {
+    const products = [
+      { ...baseProduct, id: 'p1', name: 'Cheap', price: 10, stock: 15 },
+      { ...baseProduct, id: 'p2', name: 'Expensive', price: 100, stock: 15 },
+    ];
+    const { getByText } = render(
+      <PDVSection {...createProps({ pdvProducts: products, pdvSortOption: 'highest_price' })} />
+    );
+    expect(getByText('Expensive')).toBeTruthy();
+    expect(getByText('Cheap')).toBeTruthy();
+  });
+
+  it('should sort products by lowest price', () => {
+    const products = [
+      { ...baseProduct, id: 'p1', name: 'Cheap', price: 10, stock: 15 },
+      { ...baseProduct, id: 'p2', name: 'Expensive', price: 100, stock: 15 },
+    ];
+    const { getByText } = render(
+      <PDVSection {...createProps({ pdvProducts: products, pdvSortOption: 'lowest_price' })} />
+    );
+    expect(getByText('Cheap')).toBeTruthy();
+    expect(getByText('Expensive')).toBeTruthy();
+  });
+
+  it('should show current sort option label on button', () => {
+    const { getByText, queryByText } = render(
+      <PDVSection {...createProps({ pdvSortOption: 'most_stock' })} />
+    );
+    expect(getByText('Mais estoque')).toBeTruthy();
+  });
+
+  it('should close sort modal when backdrop pressed', () => {
+    const { getByText, queryByText, UNSAFE_getAllByType } = render(<PDVSection {...createProps()} />);
+
+    fireEvent.press(getByText('Ordenar por:'));
+    expect(getByText('Ordenar por')).toBeTruthy();
+
+    const { TouchableOpacity } = require('react-native');
+    const touchables = UNSAFE_getAllByType(TouchableOpacity);
+    const backdrop = touchables.find(t => {
+      try {
+        return t.props.style?.flex === 1 && t.props.style?.backgroundColor === 'rgba(0,0,0,0.5)';
+      } catch (_) { return false; }
+    });
+    if (backdrop) {
+      fireEvent.press(backdrop);
+    }
+  });
+
+  it('should handle default sort case gracefully', () => {
+    const products = [
+      { ...baseProduct, id: 'p1', name: 'A', price: 50, stock: 15 },
+      { ...baseProduct, id: 'p2', name: 'B', price: 30, stock: 10 },
+    ];
+    const { getByText } = render(
+      <PDVSection {...createProps({ pdvProducts: products, pdvSortOption: 'unknown_sort' as any })} />
+    );
+    expect(getByText('A')).toBeTruthy();
+    expect(getByText('B')).toBeTruthy();
+  });
+
+  it('should fallback to defaults when product fields are null across all sort modes', () => {
+    const nullProduct = { id: 'p1', name: null as any, price: 0, stock: 0, created_at: null as any, image_url: null };
+    const normalProduct = { ...baseProduct, id: 'p2', name: 'B', price: 30, stock: 10, created_at: '2023-01-01', image_url: null };
+    const products = [nullProduct, normalProduct];
+    const cart = {};
+    const modes = ['alpha', 'newest', 'oldest', 'most_stock', 'highest_price', 'lowest_price'] as const;
+
+    for (const mode of modes) {
+      const { getByText } = render(
+        <PDVSection {...createProps({ pdvProducts: products, pdvCart: cart, pdvSortOption: mode })} />
+      );
+      expect(getByText('B')).toBeTruthy();
+    }
+  });
+
+  it('should sort alpha with null name fallback', () => {
+    const products = [
+      { ...baseProduct, id: 'p1', name: null as any },
+      { ...baseProduct, id: 'p2', name: 'Z' },
+    ];
+    const { getByText } = render(
+      <PDVSection {...createProps({ pdvProducts: products, pdvSortOption: 'alpha' })} />
+    );
+    expect(getByText('Z')).toBeTruthy();
+  });
+
+  it('should sort newest with null created_at fallback', () => {
+    const products = [
+      { ...baseProduct, id: 'p1', name: 'Old', created_at: null as any },
+      { ...baseProduct, id: 'p2', name: 'New', created_at: '2024-06-01' },
+    ];
+    const { getByText } = render(
+      <PDVSection {...createProps({ pdvProducts: products, pdvSortOption: 'newest' })} />
+    );
+    expect(getByText('New')).toBeTruthy();
+  });
+
+  it('should sort oldest with null created_at fallback', () => {
+    const products = [
+      { ...baseProduct, id: 'p1', name: 'Old', created_at: '2020-01-01' },
+      { ...baseProduct, id: 'p2', name: 'New', created_at: null as any },
+    ];
+    const { getByText } = render(
+      <PDVSection {...createProps({ pdvProducts: products, pdvSortOption: 'oldest' })} />
+    );
+    expect(getByText('Old')).toBeTruthy();
+  });
+
+  it('should sort most_stock with null stock fallback', () => {
+    const products = [
+      { ...baseProduct, id: 'p1', name: 'High', stock: 50 },
+      { ...baseProduct, id: 'p2', name: 'Low', stock: null as any },
+    ];
+    const { getByText } = render(
+      <PDVSection {...createProps({ pdvProducts: products, pdvSortOption: 'most_stock' })} />
+    );
+    expect(getByText('High')).toBeTruthy();
+  });
+
+  it('should sort highest_price with null price fallback', () => {
+    const products = [
+      { ...baseProduct, id: 'p1', name: 'Exp', price: 100 },
+      { ...baseProduct, id: 'p2', name: 'Cheap', price: null as any },
+    ];
+    const { getByText } = render(
+      <PDVSection {...createProps({ pdvProducts: products, pdvSortOption: 'highest_price', pdvSelectMode: true, pdvCart: { p1: { qty: 1, checked: false }, p2: { qty: 1, checked: false } } })} />
+    );
+    expect(getByText('Exp')).toBeTruthy();
+  });
+
+  it('should sort lowest_price with null price fallback', () => {
+    const products = [
+      { ...baseProduct, id: 'p1', name: 'Cheap', price: null as any },
+      { ...baseProduct, id: 'p2', name: 'Exp', price: 100 },
+    ];
+    const { getByText } = render(
+      <PDVSection {...createProps({ pdvProducts: products, pdvSortOption: 'lowest_price', pdvSelectMode: true, pdvCart: { p1: { qty: 1, checked: false }, p2: { qty: 1, checked: false } } })} />
+    );
+    expect(getByText('Cheap')).toBeTruthy();
+  });
+
+  it('should trigger || fallback in alpha sort when both names are null', () => {
+    const products = [
+      { id: 'p1', name: null as any, price: 10, stock: 5 },
+      { id: 'p2', name: null as any, price: 20, stock: 5 },
+    ];
+    expect(() => render(
+      <PDVSection {...createProps({ pdvProducts: products, pdvSortOption: 'alpha', pdvCart: {} })} />
+    )).not.toThrow();
+  });
+
+  it('should trigger || 0 fallback in newest sort when both created_at are null', () => {
+    const products = [
+      { id: 'p1', name: 'A', price: 10, stock: 5, created_at: null as any },
+      { id: 'p2', name: 'B', price: 20, stock: 5, created_at: null as any },
+    ];
+    expect(() => render(
+      <PDVSection {...createProps({ pdvProducts: products, pdvSortOption: 'newest', pdvCart: {} })} />
+    )).not.toThrow();
+  });
+
+  it('should trigger || 0 fallback in lowest_price sort when both prices are null', () => {
+    const products = [
+      { id: 'p1', name: 'A', price: null as any, stock: 5 },
+      { id: 'p2', name: 'B', price: null as any, stock: 5 },
+    ];
+    const cartEntries = { p1: { qty: 1, checked: false }, p2: { qty: 1, checked: false } };
+    expect(() => render(
+      <PDVSection {...createProps({ pdvProducts: products, pdvSortOption: 'lowest_price', pdvCart: cartEntries, pdvSelectMode: true })} />
+    )).not.toThrow();
+  });
+
+  it('should trigger || 0 fallback in oldest sort when both created_at are null', () => {
+    const products = [
+      { id: 'p1', name: 'A', price: 10, stock: 5, created_at: null as any },
+      { id: 'p2', name: 'B', price: 20, stock: 5, created_at: null as any },
+    ];
+    expect(() => render(
+      <PDVSection {...createProps({ pdvProducts: products, pdvSortOption: 'oldest', pdvCart: {} })} />
+    )).not.toThrow();
+  });
+
+  it('should trigger || 0 fallback in most_stock sort when both stocks are null', () => {
+    const products = [
+      { id: 'p1', name: 'A', price: 10, stock: null as any },
+      { id: 'p2', name: 'B', price: 20, stock: null as any },
+    ];
+    expect(() => render(
+      <PDVSection {...createProps({ pdvProducts: products, pdvSortOption: 'most_stock', pdvCart: {} })} />
+    )).not.toThrow();
+  });
+
+  it('should trigger || 0 fallback in highest_price sort when both prices are null', () => {
+    const products = [
+      { id: 'p1', name: 'A', price: null as any, stock: 5 },
+      { id: 'p2', name: 'B', price: null as any, stock: 5 },
+    ];
+    const cartEntries = { p1: { qty: 1, checked: false }, p2: { qty: 1, checked: false } };
+    expect(() => render(
+      <PDVSection {...createProps({ pdvProducts: products, pdvSortOption: 'highest_price', pdvCart: cartEntries, pdvSelectMode: true })} />
+    )).not.toThrow();
+  });
+
+  it('should cover || fallback in filter name match with null name and empty search', () => {
+    const nullName = { id: 'p1', name: null as any, price: 10, stock: 5 };
+    expect(() => render(
+      <PDVSection
+        {...createProps({
+          pdvProducts: [nullName],
+          pdvSearchText: '',
+          pdvCart: {},
+        })}
+      />
+    )).not.toThrow();
   });
 });

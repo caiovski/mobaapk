@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { getFirstImageUrl } from '../../../../utils/imageUtils';
+import { formatStock } from '../../../../utils/formatStock';
 import EditIcon from '../../../assets/tela7/produtos/produto 1/Adicionar/Remover/Edit.svg';
 import TrashIcon from '../../../assets/tela7/produtos/produto 1/Adicionar/Remover/Trash.svg';
 import AtivoSvg from '../../../assets/tela7/produtos/produto 1/Adicionar/Remover/Ativo.svg';
@@ -16,10 +17,12 @@ export const ProductCard = React.memo(({ item, selectionMode, isSelected, onTogg
   const { colors, isDarkMode } = useTheme();
   const isActive = item.active !== false;
   const stock = item.stock || 0;
-  const stockColor = stock < 10 ? '#FF3B30' : (stock <= 29 ? '#FFE082' : '#00BFA5');
+  const criticalThreshold = item.critical_stock ?? 10;
+  const moderateThreshold = item.moderate_stock ?? 29;
+  const stockColor = stock <= criticalThreshold ? '#FF3B30' : (stock <= moderateThreshold ? '#FFE082' : '#00BFA5');
 
   const renderWarning = () => {
-    if (stock < 10) return (
+    if (stock <= criticalThreshold) return (
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderRadius: 10, backgroundColor: isDarkMode ? '#2C1D1E' : '#FFF0F0', borderColor: '#FF3B30', marginHorizontal: 8, marginBottom: 8, marginTop: 4 }}>
         <Feather name="alert-circle" size={14} color="#FF3B30" style={{ marginRight: 6 }} />
         <Text style={{ fontSize: 11, fontWeight: 'bold', color: isDarkMode ? '#FF8A8A' : '#D32F2F', flexShrink: 1, lineHeight: 15, paddingRight: 16 }}>{item.name} está esgotando, adicione mais ao estoque para manter ativo ou espere acabar para auto-desativação.</Text>
@@ -28,10 +31,10 @@ export const ProductCard = React.memo(({ item, selectionMode, isSelected, onTogg
         </TouchableOpacity>
       </View>
     );
-    if (stock <= 29) return (
+    if (stock <= moderateThreshold) return (
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderRadius: 10, backgroundColor: isDarkMode ? '#2C2B1D' : '#FFFDE6', borderColor: '#FFB300', marginHorizontal: 8, marginBottom: 8, marginTop: 4 }}>
         <Feather name="alert-triangle" size={14} color="#FFB300" style={{ marginRight: 6 }} />
-        <Text style={{ fontSize: 11, fontWeight: 'bold', color: isDarkMode ? '#FFE082' : '#B78103', flexShrink: 1, lineHeight: 15, paddingRight: 16 }}>{item.name} está com estoque moderado ({stock} unidades). Considere reabastecer em breve.</Text>
+        <Text style={{ fontSize: 11, fontWeight: 'bold', color: isDarkMode ? '#FFE082' : '#B78103', flexShrink: 1, lineHeight: 15, paddingRight: 16 }}>{item.name} está com estoque moderado ({formatStock(stock, item.is_bulk)}). Considere reabastecer em breve.</Text>
         <TouchableOpacity onPress={() => onDismissAlert(item.id)} style={{ position: 'absolute', right: 8, top: 8, padding: 2 }}>
           <Feather name="x" size={14} color={isDarkMode ? '#FFE082' : '#B78103'} />
         </TouchableOpacity>
@@ -73,7 +76,7 @@ export const ProductCard = React.memo(({ item, selectionMode, isSelected, onTogg
         <View style={{ width: 1, height: '100%', backgroundColor: isDarkMode ? '#18181C' : '#F5F5F5' }} />
         <View style={styles.quantityColumn}>
           <Text style={[styles.columnHeader, { color: colors.textDark }]}>Quantidade</Text>
-          <Text style={[styles.quantityValue, { color: stockColor }]}>{stock}</Text>
+          <Text style={[styles.quantityValue, { color: stockColor, fontSize: item.is_per_meter ? 20 : item.is_bulk ? 16 : 24 }]}>{item.is_bulk ? formatStock(stock, true) : item.is_per_meter ? `${stock} m` : stock}</Text>
         </View>
         <View style={{ width: 1, height: '100%', backgroundColor: isDarkMode ? '#18181C' : '#F5F5F5' }} />
         <View style={styles.statusColumn}>

@@ -36,6 +36,8 @@ jest.mock('../../utils/shopHours', () => ({
 import AdminLoginScreen from '../../presentation/screens/auth/AdminLoginScreen';
 import AdminHomeScreen from '../../presentation/screens/admin/AdminHome';
 import OrdersScreen from '../../presentation/screens/admin/OrdersScreen';
+import ProductCreateScreen from '../../presentation/screens/admin/ProductCreate/ProductCreateScreen';
+import ProductEditScreen from '../../presentation/screens/admin/ProductEdit/ProductEditScreen';
 
 // ── Mock Navigation Hooks ──
 const mockNavigate = jest.fn();
@@ -74,6 +76,9 @@ jest.mock('../../data/datasources/supabase/client', () => ({
       unsubscribe: jest.fn(),
     })),
     removeChannel: jest.fn(),
+    functions: {
+      invoke: jest.fn().mockResolvedValue({ data: {}, error: null }),
+    },
     from: jest.fn().mockImplementation(() => {
       const mockResult: any = {
         select: jest.fn().mockReturnThis(),
@@ -83,6 +88,8 @@ jest.mock('../../data/datasources/supabase/client', () => ({
         order: jest.fn().mockReturnThis(),
         gte: jest.fn().mockReturnThis(),
         lte: jest.fn().mockReturnThis(),
+        gt: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
         single: jest.fn().mockResolvedValue({ data: { name: 'Admin Teste', role: 'admin' }, error: null }),
         insert: jest.fn().mockReturnThis(),
         update: jest.fn().mockReturnThis(),
@@ -458,7 +465,7 @@ describe('Deep Coverage - AdminLoginScreen', () => {
 
   it('should show error alert when only email is provided', async () => {
     const { getByTestId, getByPlaceholderText } = renderLogin();
-    const emailInput = getByPlaceholderText('Digite o código de adm...');
+    const emailInput = getByPlaceholderText('E-mail dev ou cód. adm...');
 
     fireEvent.changeText(emailInput, 'admin@test.com');
 
@@ -476,7 +483,7 @@ describe('Deep Coverage - AdminLoginScreen', () => {
     });
 
     const { getByTestId, getByPlaceholderText } = renderLogin();
-    const emailInput = getByPlaceholderText('Digite o código de adm...');
+    const emailInput = getByPlaceholderText('E-mail dev ou cód. adm...');
     const passwordInput = getByPlaceholderText('Digite sua senha...');
 
     fireEvent.changeText(emailInput, 'admin@test.com');
@@ -498,7 +505,7 @@ describe('Deep Coverage - AdminLoginScreen', () => {
     );
 
     const { getByTestId, getByPlaceholderText } = renderLogin();
-    const emailInput = getByPlaceholderText('Digite o código de adm...');
+    const emailInput = getByPlaceholderText('E-mail dev ou cód. adm...');
     const passwordInput = getByPlaceholderText('Digite sua senha...');
 
     fireEvent.changeText(emailInput, 'admin@test.com');
@@ -567,6 +574,165 @@ describe('Deep Coverage - AdminLoginScreen', () => {
     });
 
     expect(mockNavigate).toHaveBeenCalledWith('LegalPages', { type: 'terms' });
+  });
+
+  it('should call handleSendCode when Enviar código link is pressed', async () => {
+    const { getByText } = renderLogin();
+    const sendCodeLink = getByText('Enviar código');
+
+    await act(async () => {
+      fireEvent.press(sendCodeLink);
+    });
+
+    expect(supabase.functions.invoke).toHaveBeenCalledWith('smooth-worker');
+  });
+
+  it('should show error when handleSendCode fails', async () => {
+    (supabase.functions.invoke as jest.Mock).mockRejectedValue(new Error('Network error'));
+
+    const { getByText } = renderLogin();
+    const sendCodeLink = getByText('Enviar código');
+
+    await act(async () => {
+      fireEvent.press(sendCodeLink);
+    });
+
+    expect(Alert.alert).toHaveBeenCalledWith('Erro', 'Não foi possível enviar o código.');
+  });
+
+  it('should show error when handleSendCode resolves with error (line 43 branch)', async () => {
+    (supabase.functions.invoke as jest.Mock).mockResolvedValue({ data: {}, error: new Error('Server error') });
+
+    const { getByText } = renderLogin();
+    const sendCodeLink = getByText('Enviar código');
+
+    await act(async () => {
+      fireEvent.press(sendCodeLink);
+    });
+
+    expect(Alert.alert).toHaveBeenCalledWith('Erro', 'Não foi possível enviar o código.');
+  });
+
+  it('should show error when admin code is not 8 digits', async () => {
+    const { getByTestId, getByPlaceholderText } = renderLogin();
+    const emailInput = getByPlaceholderText('E-mail dev ou cód. adm...');
+    const passwordInput = getByPlaceholderText('Digite sua senha...');
+    const submitBtn = getByTestId('admin-login-submit-btn');
+
+    fireEvent.changeText(emailInput, '12345');
+    fireEvent.changeText(emailInput, '1234567');
+    fireEvent.changeText(passwordInput, 'any-password');
+
+    await act(async () => {
+      fireEvent.press(submitBtn);
+    });
+
+    expect(Alert.alert).toHaveBeenCalledWith('Erro', 'O código do administrador deve conter 8 dígitos numéricos.');
+  });
+
+  it('should reject expired or invalid admin code', async () => {
+    (supabase.from as jest.Mock).mockImplementation(() => ({
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      gt: jest.fn().mockReturnThis(),
+      order: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockResolvedValue({ data: [], error: null }),
+    }));
+
+    const { getByTestId, getByPlaceholderText } = renderLogin();
+    const emailInput = getByPlaceholderText('E-mail dev ou cód. adm...');
+    const passwordInput = getByPlaceholderText('Digite sua senha...');
+    const submitBtn = getByTestId('admin-login-submit-btn');
+
+    fireEvent.changeText(emailInput, '12345678');
+    fireEvent.changeText(passwordInput, 'any-password');
+
+    await act(async () => {
+      fireEvent.press(submitBtn);
+    });
+
+    expect(Alert.alert).toHaveBeenCalledWith('Acesso Negado', 'Código inválido ou expirado.');
+  });
+
+  it('should reject admin code when query returns error', async () => {
+    (supabase.from as jest.Mock).mockImplementation(() => ({
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      gt: jest.fn().mockReturnThis(),
+      order: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockResolvedValue({ data: null, error: { message: 'DB error' } }),
+    }));
+
+    const { getByTestId, getByPlaceholderText } = renderLogin();
+    const emailInput = getByPlaceholderText('E-mail dev ou cód. adm...');
+    const passwordInput = getByPlaceholderText('Digite sua senha...');
+    const submitBtn = getByTestId('admin-login-submit-btn');
+
+    fireEvent.changeText(emailInput, '87654321');
+    fireEvent.changeText(passwordInput, 'any-password');
+
+    await act(async () => {
+      fireEvent.press(submitBtn);
+    });
+
+    expect(Alert.alert).toHaveBeenCalledWith('Acesso Negado', 'Código inválido ou expirado.');
+  });
+
+  it('should reject admin code when data is null with no error (!codes branch)', async () => {
+    (supabase.from as jest.Mock).mockImplementation(() => ({
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      gt: jest.fn().mockReturnThis(),
+      order: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockResolvedValue({ data: null, error: null }),
+    }));
+
+    const { getByTestId, getByPlaceholderText } = renderLogin();
+    const emailInput = getByPlaceholderText('E-mail dev ou cód. adm...');
+    const passwordInput = getByPlaceholderText('Digite sua senha...');
+    const submitBtn = getByTestId('admin-login-submit-btn');
+
+    fireEvent.changeText(emailInput, '11111111');
+    fireEvent.changeText(passwordInput, 'any-password');
+
+    await act(async () => {
+      fireEvent.press(submitBtn);
+    });
+
+    expect(Alert.alert).toHaveBeenCalledWith('Acesso Negado', 'Código inválido ou expirado.');
+  });
+
+  it('should login successfully with valid 8-digit admin code', async () => {
+    const validCodeData = [{ id: 'code-1', code: '12345678', expires_at: '2099-01-01' }];
+    (supabase.from as jest.Mock).mockImplementation(() => {
+      const chain: any = {
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        gt: jest.fn().mockReturnThis(),
+        order: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockResolvedValue({ data: validCodeData, error: null }),
+        update: jest.fn().mockReturnThis(),
+        then: jest.fn().mockResolvedValue(undefined),
+      };
+      return chain;
+    });
+
+    const { getByTestId, getByPlaceholderText } = renderLogin();
+    const emailInput = getByPlaceholderText('E-mail dev ou cód. adm...');
+    const passwordInput = getByPlaceholderText('Digite sua senha...');
+    const submitBtn = getByTestId('admin-login-submit-btn');
+
+    fireEvent.changeText(emailInput, '12345678');
+    fireEvent.changeText(passwordInput, 'any-password');
+
+    await act(async () => {
+      fireEvent.press(submitBtn);
+    });
+
+    expect(supabase.auth.signInWithPassword).toHaveBeenCalledWith({
+      email: 'nelsonarantes2007@gmail.com',
+      password: 'any-password',
+    });
   });
 });
 
@@ -758,5 +924,213 @@ describe('Deep Coverage - OrdersScreen', () => {
     await waitFor(() => {
       expect(getByTextNull('Nenhum pedido recebido ainda.')).toBeTruthy();
     });
+  });
+});
+
+describe('Deep Coverage - ProductCreateScreen', () => {
+  const mockUser = { id: 'admin-userid-123', email: 'admin@test.com' };
+  const authVal = { session: null, user: mockUser as any, isLoading: false, signOut: async () => {} };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (SecureStore.getItemAsync as jest.Mock).mockResolvedValue(null);
+    (supabase.from as jest.Mock).mockImplementation(() => ({
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      order: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({ data: null, error: null }),
+      insert: jest.fn().mockResolvedValue({ error: null }),
+    }));
+  });
+
+  const renderScreen = () => {
+    return render(
+      <AuthContext.Provider value={authVal}>
+        <ThemeProvider>
+          <UserMenuProvider>
+            <ProductCreateScreen />
+          </UserMenuProvider>
+        </ThemeProvider>
+      </AuthContext.Provider>
+    );
+  };
+
+  it('should toggle bulk product type and show unit picker', async () => {
+    const { getByText, queryByText } = renderScreen();
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    const bulkToggle = getByText('Produto à granel');
+    fireEvent.press(bulkToggle);
+
+    const kgOption = queryByText('Kilograma (Kg)');
+    expect(kgOption).toBeNull();
+
+    const chevron = queryByText('Kg');
+    expect(chevron).toBeTruthy();
+
+    fireEvent.press(bulkToggle);
+  });
+
+  it('should toggle per meter product type', async () => {
+    const { getByText, queryByText } = renderScreen();
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    fireEvent.press(getByText('Produto por metro'));
+    fireEvent.press(getByText('Produto por metro'));
+  });
+
+  it('should open unit picker and switch units for bulk product', async () => {
+    const screen = renderScreen();
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    const { TouchableOpacity } = require('react-native');
+    let allTouchables = screen.UNSAFE_getAllByType(TouchableOpacity);
+    const bulkToggle = allTouchables.find((t: any) => {
+      const children = t.props.children;
+      if (Array.isArray(children)) {
+        return children.some((c: any) => c && c.props && c.props.children === 'Produto à granel');
+      }
+      return false;
+    });
+
+    if (bulkToggle) {
+      await act(async () => {
+        fireEvent.press(bulkToggle);
+      });
+    }
+
+    allTouchables = screen.UNSAFE_getAllByType(TouchableOpacity);
+    const unitToggle = allTouchables.find((t: any) => {
+      const children = t.props.children;
+      if (Array.isArray(children)) {
+        return children.some((c: any) => c && c.props && c.props.children && c.props.children === 'Kg');
+      }
+      return false;
+    });
+
+    if (unitToggle) {
+      await act(async () => {
+        fireEvent.press(unitToggle);
+      });
+    }
+
+    const gramaOption = screen.queryByText('Grama (g)');
+    if (gramaOption) {
+      await act(async () => {
+        fireEvent.press(gramaOption);
+      });
+    }
+
+    const kgOption = screen.queryByText('Kilograma (Kg)');
+    if (kgOption) {
+      await act(async () => {
+        fireEvent.press(kgOption);
+      });
+    }
+  });
+});
+
+describe('Deep Coverage - ProductEditScreen', () => {
+  const mockUser = { id: 'admin-userid-123', email: 'admin@test.com' };
+  const authVal = { session: null, user: mockUser as any, isLoading: false, signOut: async () => {} };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (SecureStore.getItemAsync as jest.Mock).mockResolvedValue(null);
+    (supabase.from as jest.Mock).mockImplementation(() => ({
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      order: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({ data: null, error: null }),
+      update: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ error: null }) }),
+    }));
+  });
+
+  const renderScreen = () => {
+    return render(
+      <AuthContext.Provider value={authVal}>
+        <ThemeProvider>
+          <UserMenuProvider>
+            <ProductEditScreen />
+          </UserMenuProvider>
+        </ThemeProvider>
+      </AuthContext.Provider>
+    );
+  };
+
+  it('should toggle bulk product type in edit screen', async () => {
+    const { getByText } = renderScreen();
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    await act(async () => {
+      fireEvent.press(getByText('Produto à granel'));
+    });
+
+    await act(async () => {
+      fireEvent.press(getByText('Produto à granel'));
+    });
+  });
+
+  it('should toggle per meter product type in edit screen', async () => {
+    const { getByText } = renderScreen();
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    await act(async () => {
+      fireEvent.press(getByText('Produto por metro'));
+    });
+
+    await act(async () => {
+      fireEvent.press(getByText('Produto por metro'));
+    });
+  });
+
+  it('should open unit picker and switch units in edit screen', async () => {
+    const screen = renderScreen();
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('Produto à granel'));
+    });
+
+    const { TouchableOpacity } = require('react-native');
+    const touchables = screen.UNSAFE_getAllByType(TouchableOpacity);
+    const chevronToggle = touchables.find((t: any) => {
+      const children = t.props.children;
+      if (Array.isArray(children)) {
+        return children.some((c: any) => c && c.props && c.props.name === 'chevron-down');
+      }
+      return false;
+    });
+
+    if (chevronToggle) {
+      await act(async () => {
+        fireEvent.press(chevronToggle);
+      });
+    }
+
+    const gramaOption = screen.queryByText('Grama (g)');
+    if (gramaOption) {
+      await act(async () => {
+        fireEvent.press(gramaOption);
+      });
+    }
   });
 });

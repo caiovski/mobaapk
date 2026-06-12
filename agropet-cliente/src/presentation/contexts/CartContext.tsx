@@ -3,11 +3,13 @@ import { initDB } from '../../data/datasources/sqlite/database';
 import * as SQLite from 'expo-sqlite';
 
 export interface CartItem {
-  id: string; // productId do Supabase
+  id: string;
   name: string;
   price: number;
   quantity: number;
   image_url: string;
+  is_bulk: boolean;
+  is_per_meter: boolean;
 }
 
 interface CartContextProps {
@@ -43,8 +45,13 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   const loadCart = async (database: SQLite.SQLiteDatabase) => {
     try {
-      const allRows = await database.getAllAsync<CartItem>('SELECT * FROM cart');
-      setCart(allRows || []);
+      const allRows: any[] = await database.getAllAsync('SELECT * FROM cart');
+      const mapped: CartItem[] = (allRows || []).map(row => ({
+        ...row,
+        is_bulk: row.is_bulk === 1 || row.is_bulk === true,
+        is_per_meter: row.is_per_meter === 1 || row.is_per_meter === true,
+      }));
+      setCart(mapped);
     } catch (error) {
       console.error('Failed to load cart from SQLite:', error);
     }
@@ -60,8 +67,10 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
     
+    const isBulk = product.is_bulk === true;
+    const isPerMeter = product.is_per_meter === true;
+    
     try {
-      // Verifica primeiro direto no banco para evitar conflitos (race conditions de async state)
       const existing: any = await db.getFirstAsync('SELECT * FROM cart WHERE id = ?', [product.id]);
       
       if (existing) {
@@ -69,12 +78,12 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         if (newQty <= 0) {
           await db.runAsync('DELETE FROM cart WHERE id = ?', [product.id]);
         } else {
-          await db.runAsync('UPDATE cart SET quantity = ? WHERE id = ?', [newQty, product.id]);
+          await db.runAsync('UPDATE cart SET quantity = ?, is_bulk = ?, is_per_meter = ? WHERE id = ?', [newQty, isBulk ? 1 : 0, isPerMeter ? 1 : 0, product.id]);
         }
       } else if (qty > 0) {
         await db.runAsync(
-          'INSERT INTO cart (id, name, price, quantity, image_url) VALUES (?, ?, ?, ?, ?)',
-          [product.id, product.name, product.price, qty, product.image_url ?? '']
+          'INSERT INTO cart (id, name, price, quantity, image_url, is_bulk, is_per_meter) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [product.id, product.name, product.price, qty, product.image_url ?? '', isBulk ? 1 : 0, isPerMeter ? 1 : 0]
         );
       }
       
@@ -104,7 +113,10 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const total = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+  const total = cart.reduce((acc, item) => {
+    const effectiveQty = item.is_bulk ? item.quantity / 1000 : item.quantity;
+    return acc + (item.price * effectiveQty);
+  }, 0);
 
   return (
     <CartContext.Provider value={{ cart, addToCart, removeFromCart, clearCart, total }}>

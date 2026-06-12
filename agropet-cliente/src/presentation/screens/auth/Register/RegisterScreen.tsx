@@ -10,6 +10,7 @@ import {
   Text,
   Linking,
 } from 'react-native';
+import Constants from 'expo-constants';
 import Colors from '../../../theme/colors';
 
 import MiniLogo from '../../../assets/tela2/MiniLogo.svg';
@@ -150,6 +151,7 @@ export default function RegisterScreen() {
         </View>
 
         <View style={styles.footerContainer}>
+          <Text style={{ color: 'rgba(255, 255, 255, 0.6)', textAlign: 'center', fontSize: 12, marginBottom: 8, fontWeight: 'bold' }}>v{Constants.expoConfig?.version || '1.1.0'}</Text>
           <View style={styles.footerContent}>
             <TouchableOpacity style={styles.footerItem} onPress={h.handleOpenWhatsApp}>
               <Suporte width={85} height={23} />

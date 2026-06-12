@@ -90,8 +90,7 @@ describe('RegisterScreen', () => {
       },
     });
 
-    expect(alertSpy).toHaveBeenCalledWith('Sucesso!', expect.any(String));
-    expect(mockGoBack).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith('OTPVerificationScreen', { email: 'client@email.com', type: 'signup' });
     alertSpy.mockRestore();
   });
 
@@ -214,6 +213,7 @@ describe('RegisterScreen', () => {
     });
 
     expect(mockSignUp).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith('OTPVerificationScreen', { email: 'client@email.com', type: 'signup' });
   });
 
   it('should cover stylesheet iOS branch', () => {

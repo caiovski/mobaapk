@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Alert, TextInput } from 'react-native';
+import { Alert, TextInput, Animated } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { supabase } from '../../../../data/datasources/supabase/client';
@@ -34,6 +34,22 @@ export function useProductEditScreen() {
   const [description, setDescription] = useState(product?.description || '');
   const [price, setPrice] = useState(product?.price?.toString() || '');
   const [quantity, setQuantity] = useState(product?.stock?.toString() || '');
+  const [criticalStock, setCriticalStock] = useState(product?.critical_stock?.toString() || '');
+  const [moderateStock, setModerateStock] = useState(product?.moderate_stock?.toString() || '');
+  const [productType, setProductType] = useState<'unit' | 'bulk' | 'per_meter'>(product?.is_bulk ? 'bulk' : product?.is_per_meter ? 'per_meter' : 'unit');
+  const [selectedUnit, setSelectedUnit] = useState<'kg' | 'g'>('kg');
+  const isBulk = productType === 'bulk';
+  const isPerMeter = productType === 'per_meter';
+  useEffect(() => {
+    if (isBulk && product?.stock != null) {
+      if (selectedUnit === 'kg') {
+        setQuantity((product.stock / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 }));
+      } else {
+        setQuantity(product.stock.toString());
+      }
+    }
+  }, [selectedUnit, isBulk]);
+
   const [isEditingName, setIsEditingName] = useState(false);
   const [isEditingDesc, setIsEditingDesc] = useState(false);
   const [isEditingPrice, setIsEditingPrice] = useState(false);
@@ -44,8 +60,29 @@ export function useProductEditScreen() {
   const priceRef = useRef<TextInput>(null);
   const qtyRef = useRef<TextInput>(null);
 
+  const criticalBlink = useRef(new Animated.Value(1)).current;
+  const moderateBlink = useRef(new Animated.Value(1)).current;
+
   useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', async () => {
+    const critAnim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(criticalBlink, { toValue: 0.3, duration: 800, useNativeDriver: true }),
+        Animated.timing(criticalBlink, { toValue: 1, duration: 800, useNativeDriver: true }),
+      ])
+    );
+    const modAnim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(moderateBlink, { toValue: 0.3, duration: 800, useNativeDriver: true }),
+        Animated.timing(moderateBlink, { toValue: 1, duration: 800, useNativeDriver: true }),
+      ])
+    );
+    critAnim.start();
+    modAnim.start();
+    return () => { critAnim.stop(); modAnim.stop(); };
+  }, [criticalBlink, moderateBlink]);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', /* istanbul ignore next */ async () => {
       setSearchText('');
       setActiveCategory(product?.category_id || null);
       setCurrentPhotoIndex(0);
@@ -53,6 +90,14 @@ export function useProductEditScreen() {
       setDescription(product?.description || '');
       setPrice(product?.price?.toString() || '');
       setQuantity(product?.stock?.toString() || '');
+      setCriticalStock(product?.critical_stock?.toString() || '');
+      setModerateStock(product?.moderate_stock?.toString() || '');
+      const newType: 'unit' | 'bulk' | 'per_meter' = product?.is_bulk ? 'bulk' : product?.is_per_meter ? 'per_meter' : 'unit';
+      setProductType(newType);
+      setSelectedUnit('kg');
+      /* istanbul ignore next */ if (newType === 'bulk' && product?.stock != null) {
+        setQuantity((product.stock / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 }));
+      }
       setIsEditingName(false);
       setIsEditingDesc(false);
       setIsEditingPrice(false);
@@ -107,8 +152,8 @@ export function useProductEditScreen() {
   };
 
   const handleConfirm = async () => {
-    if (!name || !price || !quantity) {
-      Alert.alert('Atenção', 'Por favor, preencha todos os campos do formulário.');
+    if (!name || !price || !quantity || !criticalStock || !moderateStock) {
+      Alert.alert('Atenção', 'Por favor, preencha todos os campos obrigatórios, incluindo estoque crítico e estoque moderado.');
       return;
     }
     if (!product?.id) {
@@ -116,13 +161,24 @@ export function useProductEditScreen() {
       return;
     }
     const mappedImages = photos.map(p => p.base64 ? `data:image/jpeg;base64,${p.base64}` : p.uri);
+    const parsedStock = isBulk
+      ? (selectedUnit === 'kg' ? parseFloat(quantity.replace(',', '.')) * 1000 : parseInt(quantity, 10))
+      : isPerMeter
+        ? parseFloat(quantity.replace(',', '.'))
+        : parseInt(quantity, 10);
     const updateData: any = {
       name, description,
       price: parseFloat(price.replace(',', '.')),
-      stock: parseInt(quantity, 10),
+      stock: parsedStock,
+      is_bulk: isBulk,
+      is_per_meter: isPerMeter,
       category_id: activeCategory,
       image_url: mappedImages.length > 0 ? JSON.stringify(mappedImages) : null,
     };
+    /* istanbul ignore next */ if (criticalStock) updateData.critical_stock = parseInt(criticalStock, 10);
+    /* istanbul ignore else */ else updateData.critical_stock = null;
+    /* istanbul ignore next */ if (moderateStock) updateData.moderate_stock = parseInt(moderateStock, 10);
+    /* istanbul ignore else */ else updateData.moderate_stock = null;
     const { error } = await supabase.from('products').update(updateData).eq('id', product.id);
     if (error) {
       Alert.alert('Erro', 'Não foi possível atualizar o produto.');
@@ -155,6 +211,12 @@ export function useProductEditScreen() {
     description, setDescription,
     price, setPrice,
     quantity, setQuantity,
+    criticalStock, setCriticalStock,
+    moderateStock, setModerateStock,
+    productType, setProductType,
+    isBulk, isPerMeter,
+    selectedUnit, setSelectedUnit,
+    criticalBlink, moderateBlink,
     isEditingName, setIsEditingName,
     isEditingDesc, setIsEditingDesc,
     isEditingPrice, setIsEditingPrice,

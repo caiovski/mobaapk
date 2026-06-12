@@ -75,6 +75,7 @@ describe('CatalogHeader & CatalogFilter', () => {
       setSearchText: mockSetSearchText,
       selectedCategories: [],
       toggleCategory: mockToggleCategory,
+      categories: [],
     });
 
     (useRoute as jest.Mock).mockReturnValue({ name: 'Menu' });
@@ -264,6 +265,11 @@ describe('CatalogHeader & CatalogFilter', () => {
     });
   });
 
+  const MOCK_CATEGORIES = [
+    { id: '1', name: 'Ração', keywords: ['ração'], active: true },
+    { id: '2', name: 'Pesca', keywords: ['pesca'], active: true },
+  ];
+
   describe('CatalogFilter', () => {
     it('should render filter tags and active labels correctly', () => {
       (useFilter as jest.Mock).mockReturnValue({
@@ -271,6 +277,7 @@ describe('CatalogHeader & CatalogFilter', () => {
         setSearchText: mockSetSearchText,
         selectedCategories: ['Ração'],
         toggleCategory: mockToggleCategory,
+        categories: MOCK_CATEGORIES,
       });
 
       const { getByText } = render(<CatalogFilter />);
@@ -282,6 +289,13 @@ describe('CatalogHeader & CatalogFilter', () => {
 
     it('should toggle category selection and navigate to catalog Menu if on another screen', async () => {
       (useRoute as jest.Mock).mockReturnValue({ name: 'CartScreen' });
+      (useFilter as jest.Mock).mockReturnValue({
+        searchText: '',
+        setSearchText: mockSetSearchText,
+        selectedCategories: [],
+        toggleCategory: mockToggleCategory,
+        categories: MOCK_CATEGORIES,
+      });
 
       const { getByText } = render(<CatalogFilter />);
 
@@ -295,6 +309,14 @@ describe('CatalogHeader & CatalogFilter', () => {
 
     it('should toggle category selection and not navigate if already on Menu', async () => {
       (useRoute as jest.Mock).mockReturnValue({ name: 'Menu' });
+      (useFilter as jest.Mock).mockReturnValue({
+        searchText: '',
+        setSearchText: mockSetSearchText,
+        selectedCategories: [],
+        toggleCategory: mockToggleCategory,
+        categories: MOCK_CATEGORIES,
+      });
+
       const { getByText } = render(<CatalogFilter />);
 
       await act(async () => {
@@ -320,6 +342,7 @@ describe('CatalogHeader & CatalogFilter', () => {
         setSearchText: mockSetSearchText,
         selectedCategories: ['Ração'],
         toggleCategory: mockToggleCategory,
+        categories: MOCK_CATEGORIES,
       });
 
       const { getByText } = render(<CatalogFilter />);

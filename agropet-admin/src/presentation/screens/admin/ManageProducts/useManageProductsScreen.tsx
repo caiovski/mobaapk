@@ -1,26 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Alert } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../../../../data/datasources/supabase/client';
 import { useTheme } from '../../../contexts/ThemeContext';
+import { useCategories } from '../../../contexts/useCategories';
+import { isProductInCategories } from '../../../../services/categoryService';
+import type { SortOption } from './FilterModal';
 
-export const CATEGORY_KEYWORDS: Record<string, string[]> = {
-  'Ração': ['ração', 'cachorro', 'cachorros', 'canino', 'caninos', 'felino', 'felinos', 'racao', 'dog chow', 'pedigree', 'besser', 'purina', 'whiskas', 'granplus', 'premium', 'cão', 'cães', 'gato', 'gatos', 'vaca', 'porco', 'frango', 'galinha', 'galinhas'],
-  'Pesca': ['pesca', 'vara', 'anzol', 'linha', 'molinete', 'boia', 'bóia', 'isca', 'carretilha', 'pescaria'],
-  'Sementes': ['semente', 'semeadura', 'sementes', 'girassol', 'milho', 'alpiste', 'grão', 'grãos', 'erva', 'ervas', 'erva-doce', 'ervadoce'],
-  'Adubo': ['adubo', 'fertilizante', 'terra', 'substrato', 'humus', 'húmus', 'calpiso', 'calcario'],
-};
-
-const isProductInCategories = (product: any, categories: string[]) => {
-  if (!categories || categories.length === 0) return true;
-  /* istanbul ignore next */ if (!product) return false;
-  const name = (product.name || '').toLowerCase();
-  const description = (product.description || '').toLowerCase();
-  return categories.some(cat => {
-    const keywords = CATEGORY_KEYWORDS[cat] || [cat.toLowerCase()];
-    return keywords.some(kw => name.includes(kw.toLowerCase()) || description.includes(kw.toLowerCase()));
-  });
-};
+const SORT_OPTION_KEY = '@agropet_sort_option';
 
 export function getFirstImageUrl(url: string | null | undefined): string | null {
   if (!url) return null;
@@ -35,6 +23,7 @@ export function useManageProductsScreen() {
   const { colors, isDarkMode } = useTheme();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
+  const { categories, allCategories, loading: catLoading, createCategory, toggleActive: toggleCategoryActive, deleteCategory, reload: reloadCategories } = useCategories();
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
@@ -47,6 +36,9 @@ export function useManageProductsScreen() {
   const [tempStatusFilter, setTempStatusFilter] = useState<'Todos' | 'Ativos' | 'Inativos'>('Todos');
   const [tempAlertYellowFilter, setTempAlertYellowFilter] = useState(false);
   const [tempAlertRedFilter, setTempAlertRedFilter] = useState(false);
+  const [sortOption, setSortOption] = useState<SortOption>('alpha');
+  const [tempSortOption, setTempSortOption] = useState<SortOption>('alpha');
+  const [sortLoaded, setSortLoaded] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
   const [dismissedProductIds, setDismissedProductIds] = useState<Set<string>>(new Set());
@@ -54,11 +46,28 @@ export function useManageProductsScreen() {
 
   const fetchProducts = async () => {
     setLoading(true); setHasError(false);
-    const { data, error } = await supabase.from('products').select('id, name, description, price, stock, active, category_id, created_at, image_url').order('created_at', { ascending: false }).limit(200);
+    const { data, error } = await supabase.from('products').select('id, name, description, price, stock, critical_stock, moderate_stock, active, category_id, created_at, image_url, is_bulk, is_per_meter').order('created_at', { ascending: false }).limit(200);
     /* istanbul ignore next */ if (!error) setProducts(data || []);
     else { setProducts([]); setHasError(true); }
     setLoading(false);
   };
+
+  useEffect(() => {
+    AsyncStorage.getItem(SORT_OPTION_KEY).then(saved => {
+      if (saved) {
+        const parsed = saved as SortOption;
+        setSortOption(parsed);
+        setTempSortOption(parsed);
+      }
+      setSortLoaded(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (sortLoaded) {
+      AsyncStorage.setItem(SORT_OPTION_KEY, sortOption);
+    }
+  }, [sortOption, sortLoaded]);
 
   useEffect(() => { fetchProducts(); }, []);
 
@@ -101,19 +110,21 @@ export function useManageProductsScreen() {
     ]);
   };
 
-  const filteredProductsRaw = products.filter(p => {
+  const filteredProductsRaw = useMemo(() => products.filter(p => {
     const name = (p.name || '').toLowerCase();
     const desc = (p.description || '').toLowerCase();
     const q = searchText.toLowerCase();
     const matchesSearch = name.includes(q) || desc.includes(q);
-    const matchesCategory = isProductInCategories(p, activeCategories);
+    const matchesCategory = isProductInCategories(p, activeCategories, categories);
     const isActive = p.active !== false;
     const stock = p.stock || 0;
+    const critThreshold = p.critical_stock ?? 10;
+    const modThreshold = p.moderate_stock ?? 29;
     if (statusFilter === 'Ativos' && !isActive) return false;
     if (statusFilter === 'Inativos' && isActive) return false;
     if (alertYellowFilter || alertRedFilter) {
-      const isRed = stock < 10;
-      const isYellow = stock >= 10 && stock <= 29;
+      const isRed = stock < critThreshold;
+      const isYellow = stock >= critThreshold && stock <= modThreshold;
       if (alertYellowFilter && alertRedFilter) {
         if (!isRed && !isYellow) return false;
       } else if (alertRedFilter && !isRed) {
@@ -123,18 +134,63 @@ export function useManageProductsScreen() {
       }
     }
     return matchesSearch && matchesCategory;
-  });
+  }), [products, searchText, activeCategories, categories, statusFilter, alertYellowFilter, alertRedFilter]);
 
-  /* istanbul ignore next */ const filteredProducts = (alertYellowFilter || alertRedFilter)
-    ? [...filteredProductsRaw].sort((a, b) => {
+  const filteredProducts = useMemo(() => {
+    const list = [...filteredProductsRaw];
+    switch (sortOption) {
+      case 'alpha':
+        list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        break;
+      case 'newest':
+        list.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+        break;
+      case 'oldest':
+        list.sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
+        break;
+      case 'most_stock':
+        /* istanbul ignore next */ list.sort((a, b) => (b.stock || 0) - (a.stock || 0));
+        break;
+      case 'highest_price':
+        /* istanbul ignore next */ list.sort((a, b) => (b.price || 0) - (a.price || 0));
+        break;
+      case 'lowest_price':
+        /* istanbul ignore next */ list.sort((a, b) => (a.price || 0) - (b.price || 0));
+        break;
+    }
+    if (alertYellowFilter || alertRedFilter) {
+      /* istanbul ignore next */ list.sort((a, b) => {
         const sA = a.stock || 0, sB = b.stock || 0;
-        const rA = sA < 10, rB = sB < 10;
-        const yA = sA >= 10 && sA <= 29, yB = sB >= 10 && sB <= 29;
+        const critA = a.critical_stock ?? 10, critB = b.critical_stock ?? 10;
+        const modA = a.moderate_stock ?? 29, modB = b.moderate_stock ?? 29;
+        const rA = sA < critA, rB = sB < critB;
+        const yA = sA >= critA && sA <= modA, yB = sB >= critB && sB <= modB;
         if (rA && !rB) return -1; if (!rA && rB) return 1;
         if (yA && !yB && !rB) return -1; if (!yA && yB && !rA) return 1;
         return 0;
-      })
-    : filteredProductsRaw;
+      });
+    }
+    return list;
+  }, [filteredProductsRaw, sortOption, alertYellowFilter, alertRedFilter]);
+
+  const allProductsInactive = products.length > 0 && products.every(p => p.active === false);
+
+  const handleReactivateAll = () => {
+    const inactiveProducts = products.filter(p => p.active === false);
+    if (inactiveProducts.length === 0) { Alert.alert('Aviso', 'Não há produtos inativos para reativar.'); return; }
+    Alert.alert('Reativar Produtos', `Tem certeza de que deseja reativar todos os ${inactiveProducts.length} produtos inativos simultaneamente?`, [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Reativar Todos', onPress: async () => {
+        setLoading(true);
+        try {
+          const { error } = await supabase.from('products').update({ active: true }).in('id', inactiveProducts.map(p => p.id));
+          /* istanbul ignore next */ if (!error) { setProducts(prev => prev.map(p => inactiveProducts.find(x => x.id === p.id) ? { ...p, active: true } : p)); Alert.alert('Sucesso', 'Todos os produtos foram reativados.'); }
+          else Alert.alert('Erro', 'Não foi possível reativar os produtos.');
+        } catch (err) { console.error(err); Alert.alert('Erro', 'Ocorreu um erro ao reativar os produtos.'); }
+        finally { setLoading(false); }
+      }}
+    ]);
+  };
 
   const handleSelectAllBtn = () => {
     const allIds = filteredProducts.map(p => p.id);
@@ -193,14 +249,18 @@ export function useManageProductsScreen() {
     tempStatusFilter, setTempStatusFilter,
     tempAlertYellowFilter, setTempAlertYellowFilter,
     tempAlertRedFilter, setTempAlertRedFilter,
+    sortOption, setSortOption,
+    tempSortOption, setTempSortOption,
     selectionMode, setSelectionMode,
     selectedProductIds, setSelectedProductIds,
     dismissedProductIds,
     showConfirmDeleteModal, setShowConfirmDeleteModal,
     fetchProducts,
     dismissAlert, toggleProductStatus, deleteProduct,
-    filteredProducts,
-    handleSelectAllBtn, handleDeactivateAll,
+    filteredProducts, allProductsInactive,
+    handleSelectAllBtn, handleDeactivateAll, handleReactivateAll,
     handleMassDelete, confirmMassDelete, toggleSelection,
+    categories, allCategories, catLoading,
+    createCategory, toggleCategoryActive, deleteCategory, reloadCategories,
   };
 }

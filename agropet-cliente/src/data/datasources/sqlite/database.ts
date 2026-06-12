@@ -21,6 +21,16 @@ export function initDB(): Promise<SQLite.SQLiteDatabase> {
       } catch {
         // Coluna já existe — ignorar
       }
+      try {
+        await db.execAsync('ALTER TABLE cart ADD COLUMN is_bulk INTEGER DEFAULT 0');
+      } catch {
+        // Coluna já existe — ignorar
+      }
+      try {
+        await db.execAsync('ALTER TABLE cart ADD COLUMN is_per_meter INTEGER DEFAULT 0');
+      } catch {
+        // Coluna já existe — ignorar
+      }
     } catch (e) {
       initPromise = null;
       throw e;

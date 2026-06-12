@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Animated, Alert, BackHandler } from 'react-native';
 import { supabase } from '../../../../data/datasources/supabase/client';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import type { SortOption } from './components/PDVSection';
 
 export function useAdminDashboardPdv(onSaleComplete?: () => void) {
   const navigation = useNavigation<any>();
@@ -10,6 +11,7 @@ export function useAdminDashboardPdv(onSaleComplete?: () => void) {
   const [pdvProducts, setPdvProducts] = useState<any[]>([]);
   const [pdvSearchText, setPdvSearchText] = useState('');
   const [pdvActiveCategories, setPdvActiveCategories] = useState<string[]>([]);
+  const [pdvSortOption, setPdvSortOption] = useState<SortOption>('alpha');
   const [pdvCart, setPdvCart] = useState<Record<string, { qty: number; checked: boolean }>>({});
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [dropdownExpanded, setDropdownExpanded] = useState(false);
@@ -181,11 +183,11 @@ export function useAdminDashboardPdv(onSaleComplete?: () => void) {
   };
 
   return {
-    isPDVMode, pdvSelectMode, pdvProducts, pdvSearchText, pdvActiveCategories,
+    isPDVMode, pdvSelectMode, pdvProducts, pdvSearchText, pdvActiveCategories, pdvSortOption,
     pdvCart, showCheckoutModal, dropdownExpanded, checkoutPaymentMethod,
     pdvLoading, dismissedProductIds, cancelOpacity, pulseAnim,
     setIsPDVMode, setPdvSelectMode, setPdvProducts,
-    setPdvSearchText, setPdvActiveCategories, setPdvCart,
+    setPdvSearchText, setPdvActiveCategories, setPdvCart, setPdvSortOption,
     setShowCheckoutModal, setDropdownExpanded, setCheckoutPaymentMethod,
     setPdvLoading, setDismissedProductIds,
     dismissAlert,

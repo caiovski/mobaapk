@@ -5,6 +5,7 @@ import {
   StatusBar,
   TouchableOpacity,
   Text,
+  TextInput,
   ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -39,6 +40,11 @@ export default function ProductDetailScreen() {
     increment,
     decrement,
     handleAddToCart,
+    isBulk,
+    isPerMeter,
+    bulkUnit, setBulkUnit,
+    bulkInput, setBulkInput,
+    formatStock,
     relatedProducts,
     loadingRelated,
     photos,
@@ -68,35 +74,21 @@ export default function ProductDetailScreen() {
                   <Text style={{ color: isDarkMode ? '#888' : '#999', fontSize: 12 }}>Sem Foto</Text>
                 </View>
               ) : (
-                <View style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: '100%', height: '80%' }}>
-                    <View style={{ width: 18, height: '70%', justifyContent: 'center', alignItems: 'center' }}>
-                      {currentPhotoIndex > 0 ? (
-                        <TouchableOpacity activeOpacity={0.7} onPress={() => setCurrentPhotoIndex(currentPhotoIndex - 1)}>
-                          <Image source={{ uri: photos[currentPhotoIndex - 1] }} style={{ width: 12, height: '100%', borderRadius: 4, opacity: 0.3 }} contentFit="cover" cachePolicy="disk" />
-                        </TouchableOpacity>
-                      ) : null}
-                    </View>
-                    <View style={{ flex: 1, height: '100%', marginHorizontal: 4, borderRadius: 8, overflow: 'hidden' }}>
-                      <Image source={{ uri: photos[currentPhotoIndex] }} style={{ width: '100%', height: '100%' }} contentFit="contain" cachePolicy="disk" />
-                    </View>
-                    <View style={{ width: 18, height: '70%', justifyContent: 'center', alignItems: 'center' }}>
-                      {currentPhotoIndex < photos.length - 1 ? (
-                        <TouchableOpacity activeOpacity={0.7} onPress={() => setCurrentPhotoIndex(currentPhotoIndex + 1)}>
-                          <Image source={{ uri: photos[currentPhotoIndex + 1] }} style={{ width: 12, height: '100%', borderRadius: 4, opacity: 0.3 }} contentFit="cover" cachePolicy="disk" />
-                        </TouchableOpacity>
-                      ) : null}
-                    </View>
-                  </View>
+                <View style={{ width: '100%', height: '100%', borderRadius: 10, overflow: 'hidden' }}>
+                  <Image source={{ uri: photos[currentPhotoIndex] }} style={{ width: '100%', height: '100%' }} contentFit="cover" cachePolicy="disk" />
+                  {currentPhotoIndex > 0 && (
+                    <TouchableOpacity activeOpacity={0.7} onPress={() => setCurrentPhotoIndex(currentPhotoIndex - 1)} style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 28, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.2)' }}>
+                      <Feather name="chevron-left" size={18} color="#FFFFFF" />
+                    </TouchableOpacity>
+                  )}
+                  {currentPhotoIndex < photos.length - 1 && (
+                    <TouchableOpacity activeOpacity={0.7} onPress={() => setCurrentPhotoIndex(currentPhotoIndex + 1)} style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 28, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.2)' }}>
+                      <Feather name="chevron-right" size={18} color="#FFFFFF" />
+                    </TouchableOpacity>
+                  )}
                   {photos.length > 1 && (
-                    <View style={{ flexDirection: 'row', backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 10, width: 80, height: 22, alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, marginTop: 4 }}>
-                      <TouchableOpacity onPress={() => setCurrentPhotoIndex(prev => Math.max(0, prev - 1))} disabled={currentPhotoIndex === 0} style={{ opacity: currentPhotoIndex === 0 ? 0.3 : 1 }}>
-                        <Feather name="chevron-left" size={14} color="#FFFFFF" />
-                      </TouchableOpacity>
-                      <View style={{ width: 1, height: 10, backgroundColor: 'rgba(255,255,255,0.3)' }} />
-                      <TouchableOpacity onPress={() => setCurrentPhotoIndex(prev => Math.min(photos.length - 1, prev + 1))} disabled={currentPhotoIndex === photos.length - 1} style={{ opacity: currentPhotoIndex === photos.length - 1 ? 0.3 : 1 }}>
-                        <Feather name="chevron-right" size={14} color="#FFFFFF" />
-                      </TouchableOpacity>
+                    <View style={{ position: 'absolute', bottom: 4, alignSelf: 'center', flexDirection: 'row', backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 10, width: 60, height: 20, alignItems: 'center', justifyContent: 'center' }}>
+                      <Text style={{ color: '#FFFFFF', fontSize: 10 }}>{currentPhotoIndex + 1}/{photos.length}</Text>
                     </View>
                   )}
                 </View>
@@ -115,7 +107,7 @@ export default function ProductDetailScreen() {
                 )}
               </View>
               <Text style={{ fontSize: 14, fontWeight: 'bold', color: stock < 10 ? '#A72424' : (isDarkMode ? '#919191' : '#042A7D'), marginTop: 8, textAlign: 'left', paddingLeft: 4 }}>
-                {stock < 10 ? `Estoque: ${stock} unidades!!!` : `Estoque: ${stock} unidades`}
+                {stock < 10 ? `Estoque: ${formatStock(stock, isBulk, isPerMeter)}!!!` : `Estoque: ${formatStock(stock, isBulk, isPerMeter)}`}
               </Text>
             </View>
           </View>
@@ -130,25 +122,66 @@ export default function ProductDetailScreen() {
               </TouchableOpacity>
             </View>
           )}
-          <Text style={[styles.precoText, { color: colors.textDark }]}>R$ {product.price?.toFixed(2)} Un.</Text>
+          <Text style={[styles.precoText, { color: colors.textDark }]}>R$ {product.price?.toFixed(2)}{isBulk ? ' / Kg' : isPerMeter ? ' / m' : ' Un.'}</Text>
           <View style={styles.cartSection}>
-            <View style={styles.quantityBar}>
-              <View style={{ width: 65 }} />
-              <Text style={styles.quantityLabel}>Quantidade:</Text>
-              <View style={styles.quantitySep} />
-              <View style={styles.quantityControls}>
-                <TouchableOpacity style={styles.btnMinus} onPress={decrement}>
-                  <View style={styles.minusLine} />
-                </TouchableOpacity>
-                <View style={styles.quantityNum}>
-                  <Text style={styles.quantityNumText}>{quantity}</Text>
+            {isBulk ? (
+              <View style={styles.quantityBar}>
+                <View style={{ width: 65 }} />
+                <Text style={styles.quantityLabel}>Quantidade:</Text>
+                <View style={styles.quantitySep} />
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 4 }}>
+                  <TextInput
+                    style={[styles.quantityNum, { height: 35, textAlign: 'center', fontSize: 14, color: colors.textDark }]}
+                    value={bulkInput}
+                    onChangeText={setBulkInput}
+                    keyboardType="numeric"
+                  />
+                  <View style={{ flexDirection: 'row', gap: 2 }}>
+                    <TouchableOpacity onPress={() => setBulkUnit('kg')} style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, backgroundColor: bulkUnit === 'kg' ? '#339914' : 'transparent' }}>
+                      <Text style={{ fontSize: 12, fontWeight: 'bold', color: bulkUnit === 'kg' ? '#FFFFFF' : '#919191' }}>Kg</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => setBulkUnit('g')} style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, backgroundColor: bulkUnit === 'g' ? '#339914' : 'transparent' }}>
+                      <Text style={{ fontSize: 12, fontWeight: 'bold', color: bulkUnit === 'g' ? '#FFFFFF' : '#919191' }}>g</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-                <TouchableOpacity style={styles.btnPlus} onPress={increment}>
-                  <View style={styles.plusLineH} />
-                  <View style={styles.plusLineV} />
-                </TouchableOpacity>
               </View>
-            </View>
+            ) : isPerMeter ? (
+              <View style={styles.quantityBar}>
+                <View style={{ width: 65 }} />
+                <Text style={styles.quantityLabel}>Quantidade:</Text>
+                <View style={styles.quantitySep} />
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 4 }}>
+                  <TextInput
+                    style={[styles.quantityNum, { height: 35, textAlign: 'center', fontSize: 14, color: colors.textDark }]}
+                    value={bulkInput}
+                    onChangeText={setBulkInput}
+                    keyboardType="numeric"
+                  />
+                  <View style={{ paddingHorizontal: 8, paddingVertical: 4 }}>
+                    <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#FFFFFF' }}>m</Text>
+                  </View>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.quantityBar}>
+                <View style={{ width: 65 }} />
+                <Text style={styles.quantityLabel}>Quantidade:</Text>
+                <View style={styles.quantitySep} />
+                <View style={styles.quantityControls}>
+                  <TouchableOpacity style={styles.btnMinus} onPress={decrement}>
+                    <View style={styles.minusLine} />
+                  </TouchableOpacity>
+                  <View style={styles.quantityNum}>
+                    <Text style={styles.quantityNumText}>{quantity}</Text>
+                  </View>
+                  <TouchableOpacity style={styles.btnPlus} onPress={increment}>
+                    <View style={styles.plusLineH} />
+                    <View style={styles.plusLineV} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
             <TouchableOpacity style={styles.cartBigBtn} onPress={handleAddToCart} activeOpacity={0.7}>
               <CartBig width={42} height={42} />
               <View style={styles.cartPlusBadge}>
@@ -168,7 +201,7 @@ export default function ProductDetailScreen() {
               <TouchableOpacity key={relProduct.id} onPress={() => navigation.replace('ProductDetail', { product: relProduct })} activeOpacity={0.7} style={[styles.relatedCard, { backgroundColor: colors.cardBackground }]}>
                 <View style={[styles.relatedPhotoBox, { backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF' }]}>
                   {relProduct.image_url ? (
-                    <Image source={{ uri: getFirstImageUrl(relProduct.image_url) || '' }} style={styles.relatedPhoto} contentFit="contain" cachePolicy="disk" />
+                    <Image source={{ uri: getFirstImageUrl(relProduct.image_url) || '' }} style={styles.relatedPhoto} contentFit="cover" cachePolicy="disk" />
                   ) : (
                     <View style={styles.relatedPhotoPlaceholder}>
                       <Text style={{ fontSize: 40 }}>📦</Text>

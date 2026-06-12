@@ -19,6 +19,10 @@ export interface DBProduct {
   description?: string;
   category_id?: string;
   created_at?: string;
+  critical_stock?: number;
+  moderate_stock?: number;
+  is_bulk?: boolean;
+  is_per_meter?: boolean;
 }
 
 export interface DBOrder {
@@ -57,4 +61,51 @@ export interface DBAgropetStoreLocation {
   latitude: number;
   longitude: number;
   created_at?: string;
+}
+
+export interface DBCustomCategory {
+  id: string;
+  name: string;
+  keywords: string[];
+  active: boolean;
+  created_at?: string;
+}
+
+export interface DBCashRegisterEntry {
+  id: string;
+  code: string;
+  date: string;
+  entry_type: 'opening' | 'closing';
+  bill_200: number;
+  bill_100: number;
+  bill_50: number;
+  bill_20: number;
+  bill_10: number;
+  bill_5: number;
+  bill_2: number;
+  coin_100: number;
+  coin_050: number;
+  coin_025: number;
+  coin_010: number;
+  coin_005: number;
+  total_value: number;
+  edited: boolean;
+  edited_at?: string;
+  created_by?: string;
+  created_at?: string;
+}
+
+export interface DenominationInput {
+  bill_200: number;
+  bill_100: number;
+  bill_50: number;
+  bill_20: number;
+  bill_10: number;
+  bill_5: number;
+  bill_2: number;
+  coin_100: number;
+  coin_050: number;
+  coin_025: number;
+  coin_010: number;
+  coin_005: number;
 }

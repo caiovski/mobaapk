@@ -1,7 +1,8 @@
 import React from 'react';
 import { render, fireEvent, act } from '@testing-library/react-native';
 import { View, Text, TouchableOpacity, Platform, Animated, Alert } from 'react-native';
-import { getFirstImageUrl, isProductInCategories } from '../../presentation/screens/admin/AdminDashboard/useAdminDashboard';
+import { getFirstImageUrl } from '../../presentation/screens/admin/AdminDashboard/useAdminDashboard';
+import { isProductInCategories } from '../../services/categoryService';
 import { useCaixaCalculations } from '../../presentation/screens/admin/AdminConsultSales/hooks/useCaixaCalculations';
 import { useAdminDashboardStats } from '../../presentation/screens/admin/AdminDashboard/useAdminDashboardStats';
 import { isNightTime } from '../../presentation/screens/admin/AdminMap/useAdminMapScreen';
@@ -158,17 +159,21 @@ describe('Exported pure functions', () => {
 
   describe('isProductInCategories', () => {
     const product = { name: 'Dog Chow Ração', description: 'Ração para cães adultos' };
+    const MOCK_CATS = [
+      { id: '1', name: 'Ração', keywords: ['ração', 'cachorro', 'purina'], active: true },
+      { id: '2', name: 'Pesca', keywords: ['pesca', 'vara'], active: true },
+    ];
 
     it('returns true if categories is empty', () => {
-      expect(isProductInCategories(product, [])).toBe(true);
+      expect(isProductInCategories(product, [], MOCK_CATS)).toBe(true);
     });
 
     it('returns true if product name matches category keyword', () => {
-      expect(isProductInCategories(product, ['Ração'])).toBe(true);
+      expect(isProductInCategories(product, ['Ração'], MOCK_CATS)).toBe(true);
     });
 
     it('returns false if product does not match any category', () => {
-      expect(isProductInCategories(product, ['Pesca'])).toBe(false);
+      expect(isProductInCategories(product, ['Pesca'], MOCK_CATS)).toBe(false);
     });
   });
 
@@ -690,15 +695,21 @@ describe('useAdminProfileBusiness', () => {
   });
 });
 
-describe('CATEGORY_KEYWORDS', () => {
-  it('isProductInCategories works with product description', () => {
+describe('isProductInCategories (categoryService)', () => {
+  const MOCK_CATS = [
+    { id: '1', name: 'Ração', keywords: ['ração', 'cachorro', 'purina'], active: true },
+    { id: '2', name: 'Pesca', keywords: ['pesca', 'vara'], active: true },
+    { id: '3', name: 'Adubo', keywords: ['adubo', 'fertilizante', 'terra'], active: true },
+  ];
+
+  it('works with product description', () => {
     const product = { name: 'Vara de Pesca', description: 'Vara de pesca profissional' };
-    expect(isProductInCategories(product, ['Pesca'])).toBe(true);
+    expect(isProductInCategories(product, ['Pesca'], MOCK_CATS)).toBe(true);
   });
 
-  it('isProductInCategories returns false for non-matching', () => {
+  it('returns false for non-matching', () => {
     const product = { name: 'Cama de Gato', description: 'Cama confortável' };
-    expect(isProductInCategories(product, ['Adubo'])).toBe(false);
+    expect(isProductInCategories(product, ['Adubo'], MOCK_CATS)).toBe(false);
   });
 });
 
@@ -709,14 +720,13 @@ describe('useAdminDashboard pure functions - edge branches', () => {
   });
 
   it('isProductInCategories with null fields and unknown category', () => {
-    const { isProductInCategories } = require('../../presentation/screens/admin/AdminDashboard/useAdminDashboard');
     const product = { name: null, description: null };
-    expect(isProductInCategories(product, ['unknown'])).toBe(false);
+    const cats = [{ id: 'x', name: 'unknown', keywords: ['unknown'], active: true }];
+    expect(isProductInCategories(product, ['unknown'], cats)).toBe(false);
   });
 
-  it('isProductInCategories null product guard (line 32)', () => {
-    const { isProductInCategories } = require('../../presentation/screens/admin/AdminDashboard/useAdminDashboard');
-    expect(isProductInCategories(null, ['Ração'])).toBe(false);
+  it('isProductInCategories null product guard', () => {
+    expect(isProductInCategories(null, ['Ração'], [])).toBe(false);
   });
 });
 

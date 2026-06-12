@@ -64,11 +64,19 @@ export default function PaymentScreen({ navigation }: any) {
               </View>
               <View style={[styles.tColDivider, { backgroundColor: h.isDarkMode ? '#121212' : '#F5F5F5' }]} />
               <View style={styles.tColQty}>
-                <Text style={styles.itemTextGrande}>{item.quantity}</Text>
+                <Text style={styles.itemTextGrande}>
+                  {item.is_bulk
+                    ? (item.quantity / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) + ' Kg'
+                    : item.is_per_meter
+                      ? `${item.quantity} m`
+                      : item.quantity}
+                </Text>
               </View>
               <View style={[styles.tColDivider, { backgroundColor: h.isDarkMode ? '#121212' : '#F5F5F5' }]} />
               <View style={styles.tColPreco}>
-                <Text style={styles.itemText}>R$ {item.price.toFixed(2)}</Text>
+                <Text style={styles.itemText}>
+                  R$ {item.price.toFixed(2)}{item.is_bulk ? ' /Kg' : item.is_per_meter ? ' /m' : ''}
+                </Text>
               </View>
             </View>
           ))}

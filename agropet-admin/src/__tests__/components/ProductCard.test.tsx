@@ -171,4 +171,16 @@ describe('ProductCard', () => {
     const { getByText } = render(<ProductCard {...defaultProps} item={itemNoStock} />);
     expect(getByText('0')).toBeTruthy();
   });
+
+  it('renders per meter product with meter suffix (line 79 is_per_meter branch)', () => {
+    const itemPerMeter = { ...baseItem, is_per_meter: true, stock: 5, is_bulk: false };
+    const { getByText } = render(<ProductCard {...defaultProps} item={itemPerMeter} />);
+    expect(getByText('5 m')).toBeTruthy();
+  });
+
+  it('renders bulk product with formatted stock (line 79 is_bulk branch)', () => {
+    const itemBulk = { ...baseItem, is_bulk: true, stock: 1500, is_per_meter: false };
+    const { getByText } = render(<ProductCard {...defaultProps} item={itemBulk} />);
+    expect(getByText('1,500 Kg')).toBeTruthy();
+  });
 });

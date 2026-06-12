@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity, ScrollView, Dimensions, StatusBar, TextInput, ActivityIndicator, Modal, Text } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 import Colors from '../../../theme/colors';
 
 import MiniLogo from '../../../assets/tela3/MiniLogo.svg';
@@ -103,6 +104,7 @@ export default function ClientLoginScreen() {
         </View>
 
         <View style={styles.footerContainer}>
+          <Text style={{ color: 'rgba(255, 255, 255, 0.6)', textAlign: 'center', fontSize: 12, marginBottom: 8, fontWeight: 'bold' }}>v{Constants.expoConfig?.version || '1.1.0'}</Text>
           <View style={styles.footerContent}>
             <TouchableOpacity style={styles.footerItem} onPress={h.handleOpenWhatsApp}>
               <Suporte width={85} height={23} />

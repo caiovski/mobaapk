@@ -94,4 +94,45 @@ describe('Product Entity', () => {
 
     Array.isArray = originalIsArray; // restore
   });
+
+  describe('effectiveCriticalStock', () => {
+    it('should return criticalStock when defined', () => {
+      const prod = new Product('1', 'Test', 10, 5, 'cat', true, undefined, undefined, 15);
+      expect(prod.effectiveCriticalStock).toBe(15);
+    });
+
+    it('should return default 10 when criticalStock is undefined', () => {
+      const prod = new Product('1', 'Test', 10, 5, 'cat', true);
+      expect(prod.effectiveCriticalStock).toBe(10);
+    });
+  });
+
+  describe('effectiveModerateStock', () => {
+    it('should return moderateStock when defined', () => {
+      const prod = new Product('1', 'Test', 10, 5, 'cat', true, undefined, undefined, undefined, 35);
+      expect(prod.effectiveModerateStock).toBe(35);
+    });
+
+    it('should return default 29 when moderateStock is undefined', () => {
+      const prod = new Product('1', 'Test', 10, 5, 'cat', true);
+      expect(prod.effectiveModerateStock).toBe(29);
+    });
+  });
+
+  describe('stockLevel', () => {
+    it('should return critical when stock < effectiveCriticalStock', () => {
+      const prod = new Product('1', 'Test', 10, 3, 'cat', true, undefined, undefined, 10, 30);
+      expect(prod.stockLevel).toBe('critical');
+    });
+
+    it('should return moderate when stock <= effectiveModerateStock', () => {
+      const prod = new Product('1', 'Test', 10, 25, 'cat', true, undefined, undefined, 10, 30);
+      expect(prod.stockLevel).toBe('moderate');
+    });
+
+    it('should return ok when stock > effectiveModerateStock', () => {
+      const prod = new Product('1', 'Test', 10, 50, 'cat', true, undefined, undefined, 10, 30);
+      expect(prod.stockLevel).toBe('ok');
+    });
+  });
 });

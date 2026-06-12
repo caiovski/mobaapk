@@ -192,7 +192,7 @@ interface CatalogFilterProps {
 
 export function CatalogFilter({ activeCategory }: CatalogFilterProps) {
   const { colors, isDarkMode } = useTheme();
-  const { selectedCategories, toggleCategory } = useFilter();
+  const { selectedCategories, toggleCategory, categories } = useFilter();
   const route = useRoute();
   const navigation = useNavigation<any>();
 
@@ -226,39 +226,25 @@ export function CatalogFilter({ activeCategory }: CatalogFilterProps) {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.categoriesRow}
         >
-          {['Ração', 'Pesca', 'Sementes', 'Adubo'].map((category) => {
-            const isSelected = selectedCategories.includes(category);
-
+          {categories.map((cat) => {
+            const isSelected = selectedCategories.includes(cat.name);
             let tagBg = 'transparent';
             if (isSelected) {
               tagBg = isDarkMode ? '#5B86E5' : '#E3DAD9';
             }
-
             let tagTextColor = isDarkMode ? '#FFFFFF' : '#8A7268';
             if (isSelected) {
               tagTextColor = isDarkMode ? '#FFFFFF' : '#9C3F07';
             }
-
             return (
               <TouchableOpacity
-                key={category}
-                onPress={() => handleCategoryPress(category)}
+                key={cat.id}
+                onPress={() => handleCategoryPress(cat.name)}
                 activeOpacity={0.7}
-                style={[
-                  styles.tagItem,
-                  { backgroundColor: tagBg }
-                ]}
+                style={[styles.tagItem, { backgroundColor: tagBg }]}
               >
-                <Text
-                  style={[
-                    styles.tagText,
-                    {
-                      color: tagTextColor,
-                      fontWeight: isSelected ? 'bold' : 'normal'
-                    }
-                  ]}
-                >
-                  {category}
+                <Text style={[styles.tagText, { color: tagTextColor, fontWeight: isSelected ? 'bold' : 'normal' }]}>
+                  {cat.name}
                 </Text>
               </TouchableOpacity>
             );

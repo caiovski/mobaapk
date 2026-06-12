@@ -68,6 +68,7 @@ export default function AdminDashboardScreen() {
             formatCurrency={d.formatCurrency}
             pulseAnim={d.pulseAnim}
             onNavigateConsultSales={() => navigation.navigate('AdminConsultSalesScreen')}
+            onOpenCashRegister={() => navigation.navigate('CashRegisterScreen')}
             onEnterPDV={() => { d.setIsPDVMode(true); d.setDismissedProductIds(new Set()); }}
             onOpenSuprimento={() => { d.setModalTransactionType('suprimento'); d.setShowTransactionModal(true); }}
             onOpenSangria={() => { d.setModalTransactionType('sangria'); d.setShowTransactionModal(true); }}
@@ -112,6 +113,8 @@ export default function AdminDashboardScreen() {
             onCategoryToggle={/* istanbul ignore next */ (cat) =>
               d.setPdvActiveCategories(prev => prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat])
             }
+            pdvSortOption={d.pdvSortOption}
+            onSortChange={d.setPdvSortOption}
             pdvSelectMode={d.pdvSelectMode}
             pdvCart={d.pdvCart}
             pdvProducts={d.pdvProducts}
@@ -136,6 +139,7 @@ export default function AdminDashboardScreen() {
             cancelOpacity={d.cancelOpacity}
             isDarkMode={isDarkMode}
             formatCurrency={d.formatCurrency}
+            categories={d.categories}
           />
         )}
       </ScrollView>
