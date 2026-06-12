@@ -138,7 +138,7 @@ export function useSettingsScreen() {
         lines.push('  Nenhum registro de atividade encontrado.');
       } else {
         for (const log of auditLogs) {
-          const actionLabel = {
+          const actionLabels: Record<string, string> = {
             export_user_data: 'Exportacao de dados (LGPD)',
             request_account_deletion: 'Solicitacao de exclusao de conta',
             cancel_account_deletion: 'Cancelamento de exclusao de conta',
@@ -146,7 +146,8 @@ export function useSettingsScreen() {
             update_password: 'Alteracao de senha',
             update_phone: 'Alteracao de telefone',
             update_profile: 'Alteracao de perfil',
-          }[log.action] || log.action;
+          };
+          const actionLabel = actionLabels[log.action] || log.action;
           lines.push('  - ' + actionLabel);
           lines.push('    Data: ' + (log.created_at || ''));
           if (log.details) {
@@ -279,6 +280,7 @@ export function useSettingsScreen() {
     setEmailInput: emailHook.setEmailInput,
     emailStatus: emailHook.emailStatus,
     emailError: emailHook.emailError,
+    setEmailError: emailHook.setEmailError,
     emailCode: emailHook.emailCode,
     setEmailCode: emailHook.setEmailCode,
     handleConfirmEmail: emailHook.handleConfirmEmail,
@@ -300,6 +302,7 @@ export function useSettingsScreen() {
     showConfirmNewPassword: passwordHook.showConfirmNewPassword,
     setShowConfirmNewPassword: passwordHook.setShowConfirmNewPassword,
     passwordError: passwordHook.passwordError,
+    setPasswordError: passwordHook.setPasswordError,
     showNestedModal: passwordHook.showNestedModal,
     setShowNestedModal: passwordHook.setShowNestedModal,
     handleSendOtpCode: passwordHook.handleSendOtpCode,

@@ -316,7 +316,7 @@ export function useAdminProfileBusiness(user: any, profileLoadedRef: React.Mutab
     addressSuggestions, setAddressSuggestions,
     isSearchingAddress,
     locationConfirmed, setLocationConfirmed,
-    showAddressValidationErrors,
+    showAddressValidationErrors, setShowAddressValidationErrors,
     firstEmptyField,
     addressErrorOpacity,
     ruaRef, bairroRef, cepRef, numeroRef,

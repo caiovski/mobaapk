@@ -178,7 +178,7 @@ export function useAdminConsultSales() {
   useFocusEffect(
     React.useCallback(() => {
       /* istanbul ignore next */ if (isLoaded) {
-        fetchSales(false);
+        fetchSales();
       }
     }, [isLoaded, isRange, startDate, endDate, hasFiltered])
   );

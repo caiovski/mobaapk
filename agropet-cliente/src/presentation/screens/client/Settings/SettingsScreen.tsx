@@ -62,7 +62,6 @@ export default function SettingsScreen() {
                   h.setNewPassword('');
                   h.setConfirmNewPassword('');
                   h.setPasswordCode('');
-                  h.setExpectedPasswordCode('');
                   h.setPasswordError('');
                   h.setShowPasswordModal(true);
                 }} style={styles.alterarBtnInside}>

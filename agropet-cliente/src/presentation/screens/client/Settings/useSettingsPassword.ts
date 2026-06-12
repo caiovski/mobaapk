@@ -95,7 +95,7 @@ export function useSettingsPassword(userEmail: string) {
     setShowNewPassword,
     showConfirmNewPassword,
     setShowConfirmNewPassword,
-    passwordError,
+    passwordError, setPasswordError,
     showNestedModal,
     setShowNestedModal,
     handleSendOtpCode,

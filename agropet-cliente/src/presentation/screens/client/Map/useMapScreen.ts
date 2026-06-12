@@ -10,7 +10,7 @@ export function useMapScreen(route: any, navigation: any) {
   const { colors, isDarkMode } = useTheme();
   const { user } = useContext(AuthContext);
   const [searchText, setSearchText] = useState('');
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<any>(null);
 
   const trackingOrderId = route?.params?.trackingOrderId || null;
 

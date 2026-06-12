@@ -320,7 +320,7 @@ export function useAdminOrderDetail({ route, navigation }: any) {
     if (enRouteCalledRef.current) return;
     enRouteCalledRef.current = true;
     setEnRouteTriggered(true);
-    setOrder(prev => ({ ...prev, en_route_at: new Date().toISOString() }));
+    setOrder((prev: any) => ({ ...prev, en_route_at: new Date().toISOString() }));
 
     try {
       const { data, error } = await supabase.rpc('mark_en_route', {
@@ -376,7 +376,7 @@ export function useAdminOrderDetail({ route, navigation }: any) {
         await NotificationService.sendOrderStatusNotification(data.user_id, order.id, target);
       }
 
-      setOrder(prev => ({ ...prev, status: target }));
+      setOrder((prev: any) => ({ ...prev, status: target }));
 
       if (target === 'completed') {
         setCompletedView(true);
@@ -415,7 +415,7 @@ export function useAdminOrderDetail({ route, navigation }: any) {
               }
 
               stopLocationWatch();
-              setOrder(prev => ({ ...prev, status: 'cancelled' }));
+              setOrder((prev: any) => ({ ...prev, status: 'cancelled' }));
               Alert.alert('Pedido Cancelado', 'O pedido foi cancelado com sucesso.');
             } catch {
               Alert.alert('Erro', 'Ocorreu um erro ao cancelar.');
