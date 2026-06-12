@@ -65,6 +65,7 @@ export default function MapScreen({ route, navigation }: any) {
           initialRegion={DEFAULT_STORE_LOCATION}
           onMapReady={fitMapToMarkers}
           customMapStyle={isNightTime() ? darkMapStyle : undefined}
+          showsBuildings={true}
           followsUserLocation={false}
         >
           <Marker

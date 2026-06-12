@@ -55,7 +55,7 @@ export default function AdminMapScreen() {
           </View>
         )}
 
-        <MapView ref={h.mapRef} style={styles.map} initialRegion={h.storeLocation} showsUserLocation showsMyLocationButton customMapStyle={mapStyle} followsUserLocation={false}>
+        <MapView ref={h.mapRef} style={styles.map} initialRegion={h.storeLocation} showsUserLocation showsMyLocationButton showsBuildings={true} customMapStyle={mapStyle} followsUserLocation={false}>
           <Marker
             draggable={h.isEditingLocation}
             onDragEnd={h.handleMarkerDragEnd}

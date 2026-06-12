@@ -143,6 +143,7 @@ export default function DeliveryMinimap({
           style={{ flex: 1 }}
           initialRegion={DEFAULT_STORE_LOCATION}
           customMapStyle={mapStyle}
+          showsBuildings={true}
           scrollEnabled={false}
           zoomEnabled={false}
           rotateEnabled={false}
