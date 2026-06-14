@@ -60,6 +60,15 @@ jest.mock('@react-navigation/native', () => ({
   },
 }));
 
+// Mock useCategories
+jest.mock('../../presentation/contexts/useCategories', () => {
+  const React = require('react');
+  return {
+    useCategories: () => ({ categories: [], allCategories: [], loading: false, reload: jest.fn(), createCategory: jest.fn(), toggleActive: jest.fn(), deleteCategory: jest.fn() }),
+    CategoriesProvider: ({ children }: any) => React.createElement(React.Fragment, null, children),
+  };
+});
+
 // Mock Supabase
 jest.mock('../../data/datasources/supabase/client', () => ({
   supabase: {

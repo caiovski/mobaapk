@@ -83,6 +83,11 @@ jest.mock('../../data/datasources/supabase/client', () => ({
         select: jest.fn().mockReturnThis(),
       };
     }),
+    channel: jest.fn().mockImplementation(() => ({
+      on: jest.fn().mockReturnThis(),
+      subscribe: jest.fn(),
+    })),
+    removeChannel: jest.fn(),
   },
 }));
 

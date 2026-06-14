@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useCashRegister } from '../../../../contexts/useCashRegister';
@@ -17,28 +17,17 @@ export function useCashRegisterScreen() {
       setSelectedDate(route.params.date);
     }
   }, [route.params?.date]);
+
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [quantityInputMode, setQuantityInputMode] = useState(false);
 
   const cr = useCashRegister(selectedDate);
+  const { handleEncerrar: crHandleEncerrar, ...restCr } = cr;
 
-  const isPast = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
-    return selectedDate < today;
-  }, [selectedDate]);
-
-  const canEdit = useMemo(() => {
-    if (isPast) return false;
-    if (cr.opening && !cr.isEditing) return false;
-    if (cr.closing && cr.closing.edited) return false;
-    if (cr.opening && !cr.opening.edited && cr.isEditing) return true;
-    if (cr.closing && !cr.closing.edited && cr.isEditing) return true;
-    return !cr.opening || cr.isEditing;
-  }, [isPast, cr.opening, cr.closing, cr.isEditing]);
-
-  const getSectionTitle = () => {
-    const fmt = selectedDate.split('-').reverse().join('-');
-    return selectedDate === new Date().toISOString().split('T')[0] ? 'Abertura do Caixa' : `Caixa - ${fmt}`;
-  };
+  const handleEncerrar = useCallback(async () => {
+    await crHandleEncerrar();
+    navigation.navigate('CashRegisterHistoryScreen', { highlightDate: selectedDate });
+  }, [crHandleEncerrar, navigation, selectedDate]);
 
   const handleHistoryPress = () => {
     navigation.navigate('CashRegisterHistoryScreen');
@@ -52,13 +41,33 @@ export function useCashRegisterScreen() {
     }
   };
 
+  const handleViewOpening = () => {
+    navigation.navigate('CashRegisterCompareScreen', { date: selectedDate, mode: 'opening' });
+  };
+
+  const handleViewClosing = () => {
+    navigation.navigate('CashRegisterCompareScreen', { date: selectedDate, mode: 'closing' });
+  };
+
+  const handleCompare = () => {
+    navigation.navigate('CashRegisterCompareScreen', { date: selectedDate, mode: 'compare' });
+  };
+
+  const handleCancel = () => {
+    navigation.goBack();
+  };
+
   return {
     colors, isDarkMode, navigation,
     selectedDate, showDatePicker, setShowDatePicker,
-    isPast, canEdit,
-    getSectionTitle,
-    ...cr,
+    quantityInputMode, setQuantityInputMode,
     handleHistoryPress,
     handleDateChange,
+    handleViewOpening,
+    handleViewClosing,
+    handleCompare,
+    handleCancel,
+    handleEncerrar,
+    ...restCr,
   };
 }

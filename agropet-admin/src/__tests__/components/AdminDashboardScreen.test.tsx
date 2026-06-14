@@ -148,6 +148,11 @@ jest.mock('../../data/datasources/supabase/client', () => ({
       getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'adm-123' } } }),
     },
     from: jest.fn().mockImplementation(() => createMockChain()),
+    channel: jest.fn().mockReturnValue({
+      on: jest.fn().mockReturnThis(),
+      subscribe: jest.fn(),
+    }),
+    removeChannel: jest.fn(),
   },
 }));
 
@@ -267,31 +272,80 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
     // Toggle PDV Cart select checkbox (using styling padding: 2 for checkbox)
     await act(async () => {
       const touchables = UNSAFE_getAllByProps({ activeOpacity: 0.7 });
-      const checkbox = touchables.find((t: any) => t.props.style && t.props.style.padding === 2);
+      const checkbox = touchables.find((t: any) => t.props.style && t.props.style.padding === 2 && t.props.onPress);
       if (checkbox) {
         fireEvent.press(checkbox);
       }
     });
 
-    // 2. Add product quantity delta
-    const addQtyBtn = getByText('plus');
-    fireEvent.press(addQtyBtn); // Qty = 2
-    fireEvent.press(addQtyBtn); // Qty = 3
-    fireEvent.press(addQtyBtn); // Qty = 4
-    fireEvent.press(addQtyBtn); // Qty = 5
-    fireEvent.press(addQtyBtn); // Qty = 6 (over stock=5)
+    // 2. Use quantity input mode to set qty=7
+    await act(async () => {
+      // Toggle the Switch "Ativar digitação" to enable qty TextInput
+      const switchToggle = UNSAFE_getAllByProps({ value: false }).find(
+        (t: any) => t.props.onValueChange
+      );
+      if (switchToggle) {
+        switchToggle.props.onValueChange(true);
+      }
+    });
+
+    // Find the qty TextInput (now visible in quantityInputMode)
+    await act(async () => {
+      const qtyTextInputs = UNSAFE_getAllByProps({ keyboardType: 'decimal-pad' });
+      if (qtyTextInputs.length > 0) {
+        fireEvent.changeText(qtyTextInputs[0], '7');
+      }
+    });
+
+    // Disable quantity input mode
+    await act(async () => {
+      const switchToggle = UNSAFE_getAllByProps({ value: true }).find(
+        (t: any) => t.props.onValueChange
+      );
+      if (switchToggle) {
+        switchToggle.props.onValueChange(false);
+      }
+    });
 
     // Click checkout trigger (Registrar venda opens Checkout Modal when pdvSelectMode is true)
     fireEvent.press(getByText('Registrar venda'));
 
     // Try Checkout (should trigger Out of Stock Warning)
     const checkoutConfirmBtn = getAllByText('Confirmar');
-    fireEvent.press(checkoutConfirmBtn[0]);
+    await act(async () => {
+      fireEvent.press(checkoutConfirmBtn[0]);
+    });
     expect(alertSpy).toHaveBeenCalledWith('Erro', 'Estoque insuficiente para Premium Feed Dog. (Disponível: 5)');
 
-    // Subtract quantity to fit stock
-    fireEvent.press(getByText('minus')); // Qty = 5
-    fireEvent.press(getByText('minus')); // Qty = 4
+    // Enable qty input mode again and set qty=4 (within stock)
+    await act(async () => {
+      const switchToggle = UNSAFE_getAllByProps({ value: false }).find(
+        (t: any) => t.props.onValueChange
+      );
+      // Check for both value=false (already off) and value=true (currently on)
+      const st = switchToggle || UNSAFE_getAllByProps({ value: true }).find(
+        (t: any) => t.props.onValueChange
+      );
+      if (st) {
+        st.props.onValueChange(true);
+      }
+    });
+
+    await act(async () => {
+      const qtyTextInputs = UNSAFE_getAllByProps({ keyboardType: 'decimal-pad' });
+      if (qtyTextInputs.length > 0) {
+        fireEvent.changeText(qtyTextInputs[0], '4');
+      }
+    });
+
+    await act(async () => {
+      const switchToggle = UNSAFE_getAllByProps({ value: true }).find(
+        (t: any) => t.props.onValueChange
+      );
+      if (switchToggle) {
+        switchToggle.props.onValueChange(false);
+      }
+    });
 
     // Open checkout modal again
     fireEvent.press(getByText('Registrar venda'));
@@ -360,7 +414,7 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
       const confirmButtons3 = getAllByText('Confirmar');
       fireEvent.press(confirmButtons3[1] || confirmButtons3[0]);
     });
-    expect(SecureStore.setItemAsync).toHaveBeenCalled();
+    expect(supabase.from).toHaveBeenCalledWith('cash_flow');
     expect(alertSpy).toHaveBeenLastCalledWith('Sucesso!', 'Suprimento realizado e caixa atualizado!');
 
     // 3. Sangria flow (Positive path)
@@ -598,8 +652,17 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
 
   // ── Transaction save error path ──
   it('should handle transaction save error', async () => {
-    (SecureStore.setItemAsync as jest.Mock).mockRejectedValueOnce(new Error('Save error'));
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    jest.spyOn(supabase, 'from').mockImplementation(() => {
+      const chain = createMockChain();
+      chain.insert = jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          single: jest.fn().mockRejectedValue(new Error('Save error'))
+        })
+      });
+      return chain;
+    });
 
     const { getByText, getByPlaceholderText, getAllByText } = renderScreen(AdminDashboardScreen);
     openVerOpcoes(getByText);
@@ -616,7 +679,7 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
       fireEvent.press(confirmBtns[1] || confirmBtns[0]);
     });
 
-    expect(alertSpy).toHaveBeenCalledWith('Erro', 'Não foi possível salvar a transação no dispositivo.');
+    expect(alertSpy).toHaveBeenCalledWith('Erro', 'Não foi possível salvar a transação.');
     consoleSpy.mockRestore();
   });
 
@@ -1109,7 +1172,13 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
       { id: 't-in', amount: 50, description: 'In range', date: new Date('2026-05-25T12:00:00.000Z').toISOString(), type: 'sangria', paymentMethod: 'dinheiro' },
       { id: 't-out', amount: 100, description: 'Out of range', date: new Date('2026-05-15T12:00:00.000Z').toISOString(), type: 'sangria', paymentMethod: 'dinheiro' },
     ];
-    (SecureStore.getItemAsync as jest.Mock).mockResolvedValue(JSON.stringify(storedTx));
+
+    jest.spyOn(supabase, 'from').mockImplementation(() => createMockChain({
+      data: storedTx.map(t => ({
+        id: t.id, amount: t.amount, description: t.description,
+        created_at: t.date, type: t.type, payment_method: t.paymentMethod,
+      }))
+    }));
 
     const { getByText, queryByText, getByTestId } = renderScreen(AdminDashboardScreen);
     await waitFor(() => expect(getByText('Saldo Total em Caixa')).toBeTruthy());
@@ -1124,12 +1193,18 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
     fireEvent.press(getByText('Início'));
     await waitFor(() => expect(getByTestId('mock-datetimepicker')).toBeTruthy());
     // Trigger onChange with start date
-    fireEvent(getByTestId('mock-datetimepicker'), 'change', { type: 'set' }, past);
+    const picker1 = getByTestId('mock-datetimepicker');
+    await act(async () => {
+      picker1.props.onChange({ type: 'set' }, past);
+    });
 
     // Press Fim date button — opens picker again
     fireEvent.press(getByText('Fim'));
     await waitFor(() => expect(getByTestId('mock-datetimepicker')).toBeTruthy());
-    fireEvent(getByTestId('mock-datetimepicker'), 'change', { type: 'set' }, future);
+    const picker2 = getByTestId('mock-datetimepicker');
+    await act(async () => {
+      picker2.props.onChange({ type: 'set' }, future);
+    });
 
     // Confirm filter
     fireEvent.press(getByText('Confirmar'));
@@ -1147,12 +1222,17 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
       { id: 'type-s', amount: 50, description: 'Sangria tipo', date: new Date().toISOString(), type: 'sangria', paymentMethod: 'dinheiro' },
       { id: 'type-sup', amount: 80, description: 'Suprimento tipo', date: new Date().toISOString(), type: 'suprimento', paymentMethod: 'pix' },
     ];
-    (SecureStore.getItemAsync as jest.Mock).mockResolvedValue(JSON.stringify(storedTx));
+
+    jest.spyOn(supabase, 'from').mockImplementation(() => createMockChain({
+      data: storedTx.map(t => ({
+        id: t.id, amount: t.amount, description: t.description,
+        created_at: t.date, type: t.type, payment_method: t.paymentMethod,
+      }))
+    }));
 
     const { getByText, queryByText } = renderScreen(AdminDashboardScreen);
-    // Transactions are loaded by loadSangrias - need to wait for them
     await waitFor(() => expect(queryByText('Sangria tipo')).toBeTruthy(), { timeout: 3000 });
-    expect(queryByText('Suprimento tipo')).toBeTruthy();
+    await waitFor(() => expect(queryByText('Suprimento tipo')).toBeTruthy());
   });
 
   // ── Ledger with suprimento type (lines 1060-1067) ──
@@ -1161,11 +1241,17 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
       { id: 'sup-1', amount: 200, description: 'Troco abertura', date: new Date().toISOString(), type: 'suprimento', paymentMethod: 'cartao_credito' },
       { id: 'sup-2', amount: 100, description: 'Pix supply', date: new Date().toISOString(), type: 'suprimento', paymentMethod: 'pix' },
     ];
-    (SecureStore.getItemAsync as jest.Mock).mockResolvedValue(JSON.stringify(storedTx));
+
+    jest.spyOn(supabase, 'from').mockImplementation(() => createMockChain({
+      data: storedTx.map(t => ({
+        id: t.id, amount: t.amount, description: t.description,
+        created_at: t.date, type: t.type, payment_method: t.paymentMethod,
+      }))
+    }));
 
     const { getByText } = renderScreen(AdminDashboardScreen);
     await waitFor(() => expect(getByText('Troco abertura')).toBeTruthy());
-    expect(getByText('Pix supply')).toBeTruthy();
+    await waitFor(() => expect(getByText('Pix supply')).toBeTruthy());
   });
 
   // ── PDV: Register without selecting items (line 1186-1187) ──
@@ -1277,12 +1363,16 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
       { id: 'v2', amount: 30, description: 'Venda PDV (Cancelada)', date: new Date().toISOString(), type: 'sangria', paymentMethod: 'dinheiro' },
       { id: 'v3', amount: 80, description: 'Sangria válida', date: new Date().toISOString(), type: 'sangria', paymentMethod: 'dinheiro' },
     ];
-    // Mock SecureStore from fetchDashboardData path
-    (SecureStore.getItemAsync as jest.Mock).mockResolvedValue(JSON.stringify(storedTx));
+
+    jest.spyOn(supabase, 'from').mockImplementation(() => createMockChain({
+      data: storedTx.map(t => ({
+        id: t.id, amount: t.amount, description: t.description,
+        created_at: t.date, type: t.type, payment_method: t.paymentMethod,
+      }))
+    }));
 
     const { queryByText } = renderScreen(AdminDashboardScreen);
     await waitFor(() => {
-      // 'Sangria válida' should appear, 'Venda PDV' should not
       expect(queryByText('Sangria válida')).toBeTruthy();
     });
   });

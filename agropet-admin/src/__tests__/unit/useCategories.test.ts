@@ -11,11 +11,16 @@ jest.mock('../../services/categoryService', () => ({
   deleteCategory: jest.fn(),
 }));
 
+import { CategoriesProvider } from '../../presentation/contexts/CategoriesContext';
+
 let hookResult: any;
 function TestComponent() {
   const r = useCategories();
   React.useEffect(() => { hookResult = r; }, [r]);
   return null;
+}
+function Wrapper({ children }: { children: React.ReactNode }) {
+  return React.createElement(CategoriesProvider, null, children);
 }
 
 describe('useCategories', () => {
@@ -27,7 +32,9 @@ describe('useCategories', () => {
 
   function setup() {
     hookResult = null;
-    render(React.createElement(TestComponent));
+    render(React.createElement(React.Fragment, null,
+      React.createElement(Wrapper, null, React.createElement(TestComponent))
+    ));
   }
 
   it('should load active and all categories on mount', async () => {
@@ -91,6 +98,21 @@ describe('useCategories', () => {
     });
     expect(service.deleteCategory).toHaveBeenCalledWith('1');
     await waitFor(() => expect(service.fetchActiveCategories).toHaveBeenCalled());
+  });
+
+  it('should throw when useCategoriesContext is used outside CategoriesProvider', () => {
+    const { useCategoriesContext } = require('../../presentation/contexts/CategoriesContext');
+    function BadComponent() {
+      useCategoriesContext();
+      return null;
+    }
+    try {
+      render(React.createElement(BadComponent));
+      // If we reach here, no error was thrown - fail the test
+      expect(true).toBe(false);
+    } catch (e: any) {
+      expect(e.message).toContain('useCategoriesContext must be used within CategoriesProvider');
+    }
   });
 
   it('should handle fetch error gracefully', async () => {

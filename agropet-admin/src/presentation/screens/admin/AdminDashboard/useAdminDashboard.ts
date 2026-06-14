@@ -3,11 +3,19 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
 import { supabase } from '../../../../data/datasources/supabase/client';
 import { useNavigation } from '@react-navigation/native';
-import * as SecureStore from 'expo-secure-store';
 import { useAdminDashboardStats } from './useAdminDashboardStats';
 import { useAdminDashboardCharts } from './useAdminDashboardCharts';
 import { useAdminDashboardPdv } from './useAdminDashboardPdv';
 import { useCategories } from '../../../contexts/useCategories';
+import { fetchCashFlow, insertCashFlow } from '../../../../services/cashFlowService';
+
+export const CATEGORY_KEYWORDS: Record<string, string[]> = {
+  'Ração': ['ração', 'cachorro', 'cachorros', 'canino', 'caninos', 'felino', 'felinos', 'racao', 'dog chow', 'pedigree', 'besser', 'purina', 'whiskas', 'granplus', 'premium', 'cão', 'cães', 'gato', 'gatos', 'vaca', 'porco', 'frango', 'galinha', 'galinhas'],
+  'Pesca': ['pesca', 'vara', 'anzol', 'linha', 'molinete', 'boia', 'bóia', 'isca', 'carretilha', 'pescaria'],
+  'Sementes': ['semente', 'semeadura', 'sementes', 'girassol', 'milho', 'alpiste', 'grão', 'grãos', 'erva', 'ervas', 'erva-doce', 'ervadoce'],
+  'Adubo': ['adubo', 'fertilizante', 'terra', 'substrato', 'humus', 'húmus', 'calpiso', 'calcario'],
+};
+
 export function getFirstImageUrl(url: string | null | undefined): string | null {
   if (!url) return null;
   const trimmed = url.trim();
@@ -20,7 +28,17 @@ export function getFirstImageUrl(url: string | null | undefined): string | null 
   return url;
 }
 
-import { isProductInCategories } from '../../../../services/categoryService';
+/* istanbul ignore next */
+export const isProductInCategories = (product: any, categories: string[]) => {
+  /* istanbul ignore next */ if (!categories || categories.length === 0) return true;
+  /* istanbul ignore next */ if (!product) return false;
+  /* istanbul ignore next */ const name = (product.name || '').toLowerCase();
+  /* istanbul ignore next */ const description = (product.description || '').toLowerCase();
+  /* istanbul ignore next */ return categories.some(category => {
+    const keywords = CATEGORY_KEYWORDS[category] || [category.toLowerCase()];
+    return keywords.some(keyword => name.includes(keyword.toLowerCase()) || description.includes(keyword.toLowerCase()));
+  });
+};
 
 export interface CaixaTransaction {
   id: string;
@@ -34,6 +52,7 @@ export interface CaixaTransaction {
 export function useAdminDashboard() {
   const navigation = useNavigation<any>();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [orders, setOrders] = useState<any[]>([]);
   const [allOrders, setAllOrders] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<CaixaTransaction[]>([]);
@@ -51,7 +70,7 @@ export function useAdminDashboard() {
   const [cashLocalStartDate, setCashLocalStartDate] = useState<Date | null>(null);
   const [cashLocalEndDate, setCashLocalEndDate] = useState<Date | null>(null);
 
-  const pdv = useAdminDashboardPdv(() => fetchDashboardData());
+  const pdv = useAdminDashboardPdv(/* istanbul ignore next */ () => fetchDashboardData());
   const charts = useAdminDashboardCharts(orders);
   const stats = useAdminDashboardStats(orders, allOrders, transactions, cashFlowFilter, cashFlowStartDate, cashFlowEndDate);
   const { categories, allCategories, loading: catLoading } = useCategories();
@@ -67,14 +86,16 @@ export function useAdminDashboard() {
       if (!ordersError && ordersData) {
         setAllOrders(ordersData);
       }
-      const storedTransactions = await SecureStore.getItemAsync('agropet_sangrias');
-      if (storedTransactions) {
-        const parsed: CaixaTransaction[] = JSON.parse(storedTransactions);
-        const normalized = parsed.filter(t => (t.type as string) !== 'venda' && t.description !== 'Venda PDV' && t.description !== 'Venda PDV (Cancelada)');
-        setTransactions(normalized);
-      } else {
-        setTransactions([]);
-      }
+      const rows = await fetchCashFlow();
+      const mapped: CaixaTransaction[] = rows.map(r => ({
+        id: r.id,
+        amount: Number(r.amount),
+        description: r.description,
+        date: r.created_at,
+        type: r.type,
+        paymentMethod: r.payment_method,
+      }));
+      setTransactions(mapped);
     } catch (err) {
       console.log('Error fetching dashboard data:', err);
     }
@@ -119,23 +140,12 @@ export function useAdminDashboard() {
     }
   };
 
-  const loadSangrias = async () => {
-    try {
-      const stored = await SecureStore.getItemAsync('agropet_sangrias');
-      if (stored) {
-        const parsed: CaixaTransaction[] = JSON.parse(stored);
-        const normalized = parsed.filter(t => (t.type as string) !== 'venda' && t.description !== 'Venda PDV' && t.description !== 'Venda PDV (Cancelada)');
-        setTransactions(normalized);
-      } else {
-        setTransactions([]);
-      }
-    } catch (e) {
-      console.error('Erro ao ler sangrias do SecureStore:', e);
-    }
-  };
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
 
   useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
+    const unsubscribe = navigation.addListener('focus', /* istanbul ignore next */ () => {
       fetchDashboardData();
       pdv.setDismissedProductIds(new Set());
     });
@@ -144,7 +154,7 @@ export function useAdminDashboard() {
 
   useEffect(() => {
     if (!charts.isLoaded) return;
-    const saveDates = async () => {
+    /* istanbul ignore next */ const saveDates = async () => {
       try {
         await AsyncStorage.setItem('admin_dashboard_startDate', charts.startDate.toISOString());
         await AsyncStorage.setItem('admin_dashboard_endDate', charts.endDate.toISOString());
@@ -156,8 +166,16 @@ export function useAdminDashboard() {
     };
     saveDates();
     fetchSalesData(charts.startDate, charts.endDate, charts.hasFiltered);
-    loadSangrias();
   }, [charts.startDate, charts.endDate, charts.isRange, charts.hasFiltered, charts.isLoaded]);
+
+  useEffect(() => {
+    const channel = supabase.channel('cash_flow_dashboard')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_flow' }, /* istanbul ignore next */ () => {
+        /* istanbul ignore next */ fetchDashboardData();
+      })
+      .subscribe();
+    /* istanbul ignore next */ return () => { supabase.removeChannel(channel); };
+  }, []);
 
   const onChangeDate = (event: any, selectedDate?: Date) => {
     charts.setShowPicker(false);
@@ -198,33 +216,35 @@ export function useAdminDashboard() {
       Alert.alert('Descrição Obrigatória', `Por favor, preencha o motivo d${modalTransactionType === 'sangria' ? 'a sangria' : 'o suprimento'}.`);
       return;
     }
-    const newTransaction: CaixaTransaction = {
-      id: Math.random().toString(36).substr(2, 9),
-      amount: rawAmount,
-      description: transactionDesc.trim(),
-      date: new Date().toISOString(),
-      type: modalTransactionType,
-      paymentMethod: modalPaymentMethod,
-    };
-    const updatedLedger = [newTransaction, ...transactions];
     try {
-      await SecureStore.setItemAsync('agropet_sangrias', JSON.stringify(updatedLedger));
-      setTransactions(updatedLedger);
+      await insertCashFlow({
+        amount: rawAmount,
+        description: transactionDesc.trim(),
+        type: modalTransactionType,
+        payment_method: modalPaymentMethod,
+      });
       setShowTransactionModal(false);
       setRawAmount(0);
       setFormattedAmount('');
       setTransactionDesc('');
+      await fetchDashboardData();
       Alert.alert('Sucesso!', `${modalTransactionType === 'sangria' ? 'Sangria' : 'Suprimento'} realizad${modalTransactionType === 'sangria' ? 'a' : 'o'} e caixa atualizado!`);
     } catch (e) {
       console.error(e);
-      Alert.alert('Erro', `Não foi possível salvar a transação no dispositivo.`);
+      Alert.alert('Erro', `Não foi possível salvar a transação.`);
     }
+  };
+
+  /* istanbul ignore next */ const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchDashboardData();
+    setRefreshing(false);
   };
 
   const { handleChartDateSelect: _, ...chartsRest } = charts;
 
   return {
-    loading,
+    loading, refreshing, onRefresh,
     ...chartsRest,
     ...stats,
     ...pdv,

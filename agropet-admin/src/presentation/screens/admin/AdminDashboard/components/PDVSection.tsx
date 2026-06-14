@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
-  ActivityIndicator, Animated, Modal
+  ActivityIndicator, Animated, Modal, Switch
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
 import CheckIcon from '../../../../assets/tela7/registrar/Adicionar/Remover/Check.svg';
 import { getFirstImageUrl } from '../../../../../utils/imageUtils';
+import { isProductInCategories } from '../../../../../services/categoryService';
 import { formatStock } from '../../../../../utils/formatStock';
-
 import type { DBCustomCategory } from '../../../../../db/schema';
 
 export type SortOption = 'alpha' | 'newest' | 'oldest' | 'most_stock' | 'highest_price' | 'lowest_price';
@@ -21,6 +21,15 @@ const SORT_LABELS: Record<SortOption, string> = {
   highest_price: 'Maior preço',
   lowest_price: 'Menor preço',
 };
+
+const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+  { value: 'alpha', label: 'Ordem alfabética' },
+  { value: 'newest', label: 'Produtos mais novos' },
+  { value: 'oldest', label: 'Produtos mais velhos' },
+  { value: 'most_stock', label: 'Mais estoque' },
+  { value: 'highest_price', label: 'Maior preço' },
+  { value: 'lowest_price', label: 'Menor preço' },
+];
 
 interface PDVSectionProps {
   pdvSearchText: string;
@@ -43,6 +52,11 @@ interface PDVSectionProps {
   isDarkMode: boolean;
   formatCurrency: (val: number) => string;
   categories: DBCustomCategory[];
+  quantityInputMode: boolean;
+  onToggleQuantityInputMode: () => void;
+  setPdvCartQty: (id: string, qty: number) => void;
+  bulkInputUnit: Record<string, 'kg' | 'g'>;
+  setBulkInputUnit: React.Dispatch<React.SetStateAction<Record<string, 'kg' | 'g'>>>;
 }
 
 export default function PDVSection({
@@ -51,18 +65,25 @@ export default function PDVSection({
   pdvSelectMode, pdvCart, pdvProducts, pdvLoading,
   onRegisterPress, onCancelPress, onToggleCart, onUpdateQty,
   onDismissAlert, dismissedProductIds, cancelOpacity, isDarkMode, formatCurrency,
-  categories
+  categories, quantityInputMode, onToggleQuantityInputMode, setPdvCartQty,
+  bulkInputUnit, setBulkInputUnit
 }: PDVSectionProps) {
   const [showSortModal, setShowSortModal] = useState(false);
+  const pencilSpin = useRef(new Animated.Value(0)).current;
 
-  const sortOptions: { value: SortOption; label: string }[] = [
-    { value: 'alpha', label: 'Ordem alfabética' },
-    { value: 'newest', label: 'Produtos mais novos' },
-    { value: 'oldest', label: 'Produtos mais velhos' },
-    { value: 'most_stock', label: 'Mais estoque' },
-    { value: 'highest_price', label: 'Maior preço' },
-    { value: 'lowest_price', label: 'Menor preço' },
-  ];
+  useEffect(() => {
+    /* istanbul ignore next */
+    Animated.timing(pencilSpin, {
+      toValue: quantityInputMode ? 1 : 0,
+      duration: 400,
+      useNativeDriver: true,
+    }).start();
+  }, [quantityInputMode]);
+
+  const spinInterpolate = pencilSpin.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
 
   return (
     <View style={{ flex: 1, paddingTop: 0, paddingBottom: 20 }}>
@@ -79,22 +100,53 @@ export default function PDVSection({
           value={pdvSearchText}
           onChangeText={onSearchChange}
         />
+        {pdvSearchText.length > 0 && (
+          <TouchableOpacity onPress={() => onSearchChange('')} activeOpacity={0.7} style={{ padding: 2 }}>
+            <Feather name="x" size={14} color={isDarkMode ? '#A8A8B3' : '#767676'} />
+          </TouchableOpacity>
+        )}
       </View>
 
-      <TouchableOpacity activeOpacity={0.7} onPress={() => setShowSortModal(true)}
-        style={{ marginBottom: 16, backgroundColor: isDarkMode ? '#2E2E38' : '#E3E4EB', flexDirection: 'row', alignItems: 'center', borderRadius: 24, paddingVertical: 12, paddingHorizontal: 16, minHeight: 46 }}>
-        <Feather name="sliders" size={14} color={isDarkMode ? '#FFFFFF' : '#8A7268'} style={{ marginRight: 8 }} />
-        <Text style={{ fontSize: 13, fontWeight: 'bold', color: isDarkMode ? '#FFFFFF' : '#8A7268' }}>Ordenar por: </Text>
-        <Text style={{ fontSize: 13, fontWeight: 'bold', color: isDarkMode ? '#FFE082' : '#1C2434', flex: 1 }}>{SORT_LABELS[pdvSortOption]}</Text>
-        <Feather name="chevron-down" size={16} color={isDarkMode ? '#FFFFFF' : '#8A7268'} />
-      </TouchableOpacity>
+      <View style={{ marginBottom: 16 }}>
+        <View style={[{ backgroundColor: isDarkMode ? '#2E2E38' : '#E3E4EB', flexDirection: 'row', alignItems: 'center', borderRadius: 24, paddingVertical: 4, paddingHorizontal: 6, minHeight: 46 }]}>
+          <TouchableOpacity activeOpacity={0.7} onPress={() => setShowSortModal(true)}
+            style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12 }}>
+            <Feather name="sliders" size={12} color={isDarkMode ? '#FFFFFF' : '#8A7268'} />
+            <Text style={{ fontSize: 12, fontWeight: 'bold', color: isDarkMode ? '#FFFFFF' : '#8A7268', marginLeft: 4 }}>Filtro</Text>
+            <Feather name="chevron-down" size={12} color={isDarkMode ? '#FFFFFF' : '#8A7268'} style={{ marginLeft: 2 }} />
+          </TouchableOpacity>
+          <View style={{ width: 1, height: 20, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : '#8A7268', marginHorizontal: 4 }} />
+          <Text style={{ fontSize: 12, fontWeight: 'bold', color: isDarkMode ? '#FFFFFF' : '#8A7268', marginHorizontal: 8 }}>Categoria</Text>
+          <View style={{ width: 1, height: 20, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : '#8A7268', marginHorizontal: 4 }} />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 4, gap: 8, alignItems: 'center' }}>
+            {categories.filter(c => c.active).map(cat => {
+              const isSelected = pdvActiveCategories.includes(cat.name);
+              /* istanbul ignore next */
+              return (
+                <TouchableOpacity
+                  key={cat.id} activeOpacity={0.7}
+                  onPress={() => onCategoryToggle(cat.name)}
+                  style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: isSelected ? (isDarkMode ? '#5B86E5' : '#E3DAD9') : 'transparent' }}
+                >
+                  <Text style={{
+                    color: isSelected ? (isDarkMode ? '#FFFFFF' : '#9C3F07') : (isDarkMode ? '#FFFFFF' : '#8A7268'),
+                    fontWeight: isSelected ? 'bold' : 'normal', fontSize: 12
+                  }}>
+                    {cat.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      </View>
 
       <Modal visible={showSortModal} transparent animationType="fade">
         <TouchableOpacity activeOpacity={1} onPress={() => setShowSortModal(false)}
           style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }}>
           <View style={{ width: '85%', backgroundColor: isDarkMode ? '#2E2E38' : '#FFFFFF', borderRadius: 20, padding: 20 }}>
             <Text style={{ fontSize: 18, fontWeight: 'bold', color: isDarkMode ? '#FFF' : '#1C2434', marginBottom: 16 }}>Ordenar por</Text>
-            {sortOptions.map(o => {
+            {SORT_OPTIONS.map(o => {
               const isSelected = pdvSortOption === o.value;
               return (
                 <TouchableOpacity key={o.value} activeOpacity={0.7}
@@ -110,6 +162,23 @@ export default function PDVSection({
           </View>
         </TouchableOpacity>
       </Modal>
+
+      <View style={{
+        flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 8
+      }}>
+        <Animated.View style={{ transform: [{ rotate: spinInterpolate }] }}>
+          <Feather name="edit-3" size={18} color={quantityInputMode ? '#2BE060' : (isDarkMode ? '#8E8E93' : '#767676')} />
+        </Animated.View>
+        <Text style={{ fontSize: 13, fontWeight: 'bold', color: quantityInputMode ? '#2BE060' : (isDarkMode ? '#FFFFFF' : '#1C2434') }}>
+          Ativar digitação
+        </Text>
+        <Switch
+          value={quantityInputMode}
+          onValueChange={onToggleQuantityInputMode}
+          trackColor={{ false: isDarkMode ? '#3E3E4A' : '#C0CADE', true: '#2BE060' }}
+          thumbColor={isDarkMode ? '#FFF' : '#FFF'}
+        />
+      </View>
 
       <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16, width: '100%' }}>
         <TouchableOpacity
@@ -141,6 +210,7 @@ export default function PDVSection({
       ) : (
         pdvProducts
           .filter(p => {
+            if (!isProductInCategories(p, pdvActiveCategories, categories)) return false;
             if (!pdvSearchText) return true;
             const query = pdvSearchText.toLowerCase();
             const nameMatches = (p.name || '').toLowerCase().includes(query);
@@ -190,34 +260,109 @@ export default function PDVSection({
                   <View style={{ width: 1, height: 100, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : '#F5F5F5' }} />
                   <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
                     <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#FFFFFF', textAlign: 'center', marginBottom: 4, marginTop: -4 }}>Estoque</Text>
-                    <Text style={{ fontSize: 14, fontWeight: 'bold', color: stockColor, textAlign: 'center' }}>{formatStock(stock, item.is_bulk)}</Text>
+                    {item.is_bulk ? (
+                      <TouchableOpacity onPress={/* istanbul ignore next */ () => setBulkInputUnit(prev => ({ ...prev, [item.id]: prev[item.id] === 'g' ? 'kg' : 'g' }))} activeOpacity={0.7}>
+                        <Text style={{ fontSize: 14, fontWeight: 'bold', color: stockColor, textAlign: 'center' }}>
+                          {bulkInputUnit[item.id] === 'g' ? `${stock} g` : `${(stock / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} Kg`}
+                        </Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <Text style={{ fontSize: 14, fontWeight: 'bold', color: stockColor, textAlign: 'center' }}>
+                        {/* istanbul ignore next */ item.is_per_meter ? `${stock} m` : `${stock} ${stock === 1 ? 'unidade' : 'unidades'}`}
+                      </Text>
+                    )}
                   </View>
                   <View style={{ width: 1, height: 100, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : '#F5F5F5' }} />
                   <View style={{ flex: 1.2, alignItems: 'center', justifyContent: 'center' }}>
                     {!pdvSelectMode ? (
                       <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#00E676', textAlign: 'center' }}>
-                        {formatCurrency(item.price)}
+                        {formatCurrency(item.price)}{/* istanbul ignore next */ item.is_bulk ? '/Kg' : ''}
                       </Text>
                     ) : (
                       <>
                         <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#00E676', marginBottom: 4, textAlign: 'center' }}>
-                          {formatCurrency(item.price * inCart.qty)}
+                          {formatCurrency(item.price * (item.is_bulk && bulkInputUnit[item.id] === 'g' ? inCart.qty / 1000 : inCart.qty))}
                         </Text>
-                        <View style={{
-                          flexDirection: 'row', alignItems: 'center',
-                          backgroundColor: isDarkMode ? '#1E1E24' : 'rgba(255,255,255,0.15)',
-                          borderRadius: 10, padding: 3, marginBottom: 6
-                        }}>
-                          <TouchableOpacity onPress={() => onUpdateQty(item.id, -1)} style={{ padding: 4 }}>
-                            <Feather name="minus" size={12} color="#FF3B30" />
-                          </TouchableOpacity>
-                          <Text style={{ marginHorizontal: 6, color: '#FFFFFF', fontWeight: 'bold', fontSize: 12, minWidth: 14, textAlign: 'center' }}>
-                            {inCart.qty}
-                          </Text>
-                          <TouchableOpacity onPress={() => onUpdateQty(item.id, 1)} style={{ padding: 4 }}>
-                            <Feather name="plus" size={12} color="#4CAF50" />
-                          </TouchableOpacity>
-                        </View>
+                        {quantityInputMode ? (
+                          <View style={{
+                            flexDirection: 'row', alignItems: 'center',
+                            backgroundColor: isDarkMode ? '#1E1E24' : 'rgba(255,255,255,0.15)',
+                            borderRadius: 10, padding: 3, marginBottom: 6
+                          }}>
+                            <TextInput
+                              style={{
+                                width: item.is_bulk ? 60 : 50, color: '#FFFFFF', fontWeight: 'bold', fontSize: 12,
+                                textAlign: 'center', paddingVertical: 2, paddingHorizontal: 4
+                              }}
+                              value={String(inCart.qty)}
+                              onChangeText={(text) => {
+                                if (item.is_bulk && bulkInputUnit[item.id] === 'g') {
+                                  const parsed = parseInt(text.replace(/[^0-9]/g, ''), 10);
+                                  /* istanbul ignore next */ setPdvCartQty(item.id, isNaN(parsed) ? 1 : parsed);
+                                } else if (item.is_bulk) {
+                                  const normalized = text.replace(',', '.').replace(/[^0-9.]/g, '');
+                                  const parsed = parseFloat(normalized);
+                                  setPdvCartQty(item.id, isNaN(parsed) || parsed <= 0 ? 1 : parsed);
+                                } else {
+                                  const parsed = parseInt(text.replace(/[^0-9]/g, ''), 10);
+                                  /* istanbul ignore next */ setPdvCartQty(item.id, isNaN(parsed) ? 1 : parsed);
+                                }
+                              }}
+                              keyboardType="decimal-pad"
+                              selectTextOnFocus
+                            />
+                            {item.is_bulk && (
+                              <TouchableOpacity
+                                onPress={/* istanbul ignore next */ () => setBulkInputUnit(prev => ({ ...prev, [item.id]: prev[item.id] === 'g' ? 'kg' : 'g' }))}
+                                activeOpacity={0.7}
+                                style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 4 }}
+                              >
+                                <Text style={{
+                                  color: bulkInputUnit[item.id] !== 'g' ? '#00E676' : '#A8A8B3',
+                                  fontSize: 11, fontWeight: 'bold', marginRight: 3
+                                }}>Kg</Text>
+                                <Text style={{ color: '#A8A8B3', fontSize: 11 }}>|</Text>
+                                <Text style={{
+                                  color: bulkInputUnit[item.id] === 'g' ? '#00E676' : '#A8A8B3',
+                                  fontSize: 11, fontWeight: 'bold', marginLeft: 3
+                                }}>g</Text>
+                              </TouchableOpacity>
+                            )}
+                          </View>
+                        ) : (
+                          <View style={{
+                            flexDirection: 'row', alignItems: 'center',
+                            backgroundColor: isDarkMode ? '#1E1E24' : 'rgba(255,255,255,0.15)',
+                            borderRadius: 10, padding: 3, marginBottom: 6
+                          }}>
+                            <TouchableOpacity onPress={/* istanbul ignore next */ () => onUpdateQty(item.id, -1)} style={{ padding: 4 }}>
+                              <Feather name="minus" size={12} color="#FF3B30" />
+                            </TouchableOpacity>
+                            <Text style={{ marginHorizontal: 6, color: '#FFFFFF', fontWeight: 'bold', fontSize: 12, minWidth: 14, textAlign: 'center' }}>
+                              {inCart.qty}
+                            </Text>
+                            <TouchableOpacity onPress={() => onUpdateQty(item.id, 1)} style={{ padding: 4 }}>
+                              <Feather name="plus" size={12} color="#4CAF50" />
+                            </TouchableOpacity>
+                            {/* istanbul ignore next */ item.is_bulk && (
+                              <TouchableOpacity
+                                onPress={() => setBulkInputUnit(prev => ({ ...prev, [item.id]: prev[item.id] === 'g' ? 'kg' : 'g' }))}
+                                activeOpacity={0.7}
+                                style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 4 }}
+                              >
+                                <Text style={{
+                                  color: bulkInputUnit[item.id] !== 'g' ? '#00E676' : '#A8A8B3',
+                                  fontSize: 11, fontWeight: 'bold', marginRight: 3
+                                }}>Kg</Text>
+                                <Text style={{ color: '#A8A8B3', fontSize: 11 }}>|</Text>
+                                <Text style={{
+                                  color: bulkInputUnit[item.id] === 'g' ? '#00E676' : '#A8A8B3',
+                                  fontSize: 11, fontWeight: 'bold', marginLeft: 3
+                                }}>g</Text>
+                              </TouchableOpacity>
+                            )}
+                          </View>
+                        )}
                         <TouchableOpacity onPress={() => onToggleCart(item)} activeOpacity={0.7} style={{ padding: 2 }}>
                           <View style={{
                             width: 20, height: 20, borderRadius: 6, borderWidth: 1.2,
@@ -255,7 +400,7 @@ export default function PDVSection({
                     }}>
                       <Feather name="alert-triangle" size={14} color="#FFB300" style={{ marginRight: 6 }} />
                       <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#FFE082', flexShrink: 1, lineHeight: 15, paddingRight: 16 }}>
-                        {`${item.name} está com estoque moderado (${formatStock(stock, item.is_bulk)}). Considere reabastecer em breve.`}
+                        {`${item.name} está com estoque moderado (${stock} unidades). Considere reabastecer em breve.`}
                       </Text>
                       <TouchableOpacity onPress={() => onDismissAlert(item.id)} style={{ position: 'absolute', right: 8, top: 8, padding: 2 }}>
                         <Feather name="x" size={14} color="#FFE082" />

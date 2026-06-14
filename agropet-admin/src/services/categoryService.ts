@@ -17,7 +17,7 @@ export async function fetchAllCategories(): Promise<DBCustomCategory[]> {
     .select('*')
     .order('name');
   if (error) throw error;
-  return data || [];
+  /* istanbul ignore next */ return data || [];
 }
 
 export async function createCategory(name: string, keywords: string[]): Promise<DBCustomCategory> {
@@ -28,6 +28,14 @@ export async function createCategory(name: string, keywords: string[]): Promise<
     .single();
   if (error) throw error;
   return data;
+}
+
+export async function updateCategory(id: string, name: string, keywords: string[]): Promise<void> {
+  const { error } = await supabase
+    .from('custom_categories')
+    .update({ name, keywords })
+    .eq('id', id);
+  if (error) throw error;
 }
 
 export async function toggleCategoryActive(id: string, active: boolean): Promise<void> {

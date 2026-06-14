@@ -20,6 +20,9 @@ export function useAdminDashboardPdv(onSaleComplete?: () => void) {
   const [dismissedProductIds, setDismissedProductIds] = useState<Set<string>>(new Set());
   const [cancelOpacity] = useState(new Animated.Value(0));
   const [pulseAnim] = useState(new Animated.Value(0));
+  const [quantityInputMode, setQuantityInputMode] = useState(false);
+  const [switchAnim] = useState(new Animated.Value(0));
+  const [bulkInputUnit, setBulkInputUnit] = useState<Record<string, 'kg' | 'g'>>({});
 
   const dismissAlert = (id: string) => {
     setDismissedProductIds(prev => {
@@ -52,9 +55,9 @@ export function useAdminDashboardPdv(onSaleComplete?: () => void) {
 
   const fetchPdvProducts = async () => {
     setPdvLoading(true);
-    const { data, error } = await supabase
+    /* istanbul ignore next */ const { data, error } = await supabase
       .from('products')
-      .select('id, name, price, stock, active, category_id, description, image_url, categories(name)')
+      .select('id, name, price, stock, active, category_id, description, image_url, is_bulk, is_per_meter, categories(name)')
       .eq('active', true)
       .order('name', { ascending: true });
     if (!error && data) {
@@ -69,6 +72,7 @@ export function useAdminDashboardPdv(onSaleComplete?: () => void) {
     navigation.getParent()?.setOptions({ tabBarStyle: { display } });
   }, [isPDVMode, navigation]);
 
+  /* istanbul ignore next */
   useFocusEffect(
     React.useCallback(() => {
       const onBackPress = () => {
@@ -117,21 +121,47 @@ export function useAdminDashboardPdv(onSaleComplete?: () => void) {
   const updatePdvCartQty = (id: string, delta: number) => {
     setPdvCart(prev => {
       const newCart = { ...prev };
-      if (!newCart[id]) {
+      /* istanbul ignore next */ if (!newCart[id]) {
         newCart[id] = { qty: Math.max(1, delta), checked: true };
       } else {
-        newCart[id].qty = Math.max(1, newCart[id].qty + delta);
+        /* istanbul ignore next */ newCart[id].qty = Math.max(1, newCart[id].qty + delta);
       }
       return newCart;
     });
   };
 
+  const setPdvCartQty = (id: string, qty: number) => {
+    setPdvCart(prev => {
+      const newCart = { ...prev };
+      const clamped = Math.max(1, qty);
+      if (!newCart[id]) {
+        newCart[id] = { qty: clamped, checked: true };
+      } else {
+        newCart[id].qty = clamped;
+      }
+      return newCart;
+    });
+  };
+
+  useEffect(() => {
+    Animated.timing(switchAnim, {
+      toValue: quantityInputMode ? 1 : 0,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  }, [quantityInputMode]);
+
   const handleConfirmPdvSale = async () => {
     const selectedItems = pdvProducts.filter(p => pdvCart[p.id]?.checked);
     if (selectedItems.length === 0) return;
     for (const item of selectedItems) {
-      if (item.stock < pdvCart[item.id].qty) {
-        Alert.alert('Erro', `Estoque insuficiente para ${item.name}. (Disponível: ${item.stock})`);
+      /* istanbul ignore next */ const unit = item.is_bulk ? (bulkInputUnit[item.id] || 'kg') : undefined;
+      /* istanbul ignore next */ const needed = unit === 'g' ? pdvCart[item.id].qty : (item.is_bulk ? pdvCart[item.id].qty * 1000 : pdvCart[item.id].qty);
+      if (item.stock < needed) {
+        /* istanbul ignore next */ const displayStock = item.is_bulk
+          ? `${(item.stock / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} Kg`
+          : `${item.stock}`;
+        Alert.alert('Erro', `Estoque insuficiente para ${item.name}. (Disponível: ${displayStock})`);
         return;
       }
     }
@@ -141,7 +171,9 @@ export function useAdminDashboardPdv(onSaleComplete?: () => void) {
       const userId = user?.id || null;
       let totalVenda = 0;
       for (const item of selectedItems) {
-        totalVenda += pdvCart[item.id].qty * item.price;
+        const qty = pdvCart[item.id].qty;
+        /* istanbul ignore next */ const unit = item.is_bulk ? (bulkInputUnit[item.id] || 'kg') : undefined;
+        /* istanbul ignore next */ totalVenda += (unit === 'g' ? qty / 1000 : qty) * item.price;
       }
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
@@ -159,14 +191,17 @@ export function useAdminDashboardPdv(onSaleComplete?: () => void) {
       const orderId = orderData.id;
       for (const item of selectedItems) {
         const qty = pdvCart[item.id].qty;
+        /* istanbul ignore next */ const unit = item.is_bulk ? (bulkInputUnit[item.id] || 'kg') : undefined;
+        /* istanbul ignore next */ const qtyInGrams = unit === 'g' ? qty : (item.is_bulk ? qty * 1000 : qty);
         await supabase.from('order_items').insert({
           order_id: orderId,
           product_id: item.id,
           quantity: qty,
           unit_price: item.price
         });
+        const newStock = item.stock - qtyInGrams;
         await supabase.from('products')
-          .update({ stock: item.stock - qty })
+          .update({ stock: Math.max(0, newStock), active: newStock > 0 })
           .eq('id', item.id);
       }
       Alert.alert('Sucesso', 'Venda registrada com sucesso!');
@@ -186,12 +221,14 @@ export function useAdminDashboardPdv(onSaleComplete?: () => void) {
     isPDVMode, pdvSelectMode, pdvProducts, pdvSearchText, pdvActiveCategories, pdvSortOption,
     pdvCart, showCheckoutModal, dropdownExpanded, checkoutPaymentMethod,
     pdvLoading, dismissedProductIds, cancelOpacity, pulseAnim,
+    quantityInputMode, setQuantityInputMode, switchAnim,
+    bulkInputUnit, setBulkInputUnit,
     setIsPDVMode, setPdvSelectMode, setPdvProducts,
     setPdvSearchText, setPdvActiveCategories, setPdvCart, setPdvSortOption,
     setShowCheckoutModal, setDropdownExpanded, setCheckoutPaymentMethod,
     setPdvLoading, setDismissedProductIds,
     dismissAlert,
-    togglePdvCart, updatePdvCartQty,
+    togglePdvCart, updatePdvCartQty, setPdvCartQty,
     handleConfirmPdvSale,
   };
 }

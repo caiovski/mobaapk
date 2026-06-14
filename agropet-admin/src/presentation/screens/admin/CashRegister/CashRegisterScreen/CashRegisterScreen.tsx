@@ -1,13 +1,13 @@
-import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useRef, useEffect } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Switch, ActivityIndicator, Animated } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import AdminHeader from '../../../../components/AdminHeader';
 import { AdminUserMenu } from '../../../../components/AdminUserMenu';
 import { DenominationRow } from './components/DenominationRow';
+import { GlowButton } from './components/GlowButton';
 import { useCashRegisterScreen } from './useCashRegisterScreen';
 import { styles } from './CashRegisterScreen.styles';
-import { isHoliday } from '../../../../../utils/shopHours';
 
 import type { DenominationInput } from '../../../../../db/schema';
 
@@ -33,12 +33,28 @@ const COINS: { key: DenomKey; label: string }[] = [
 
 export default function CashRegisterScreen() {
   const h = useCashRegisterScreen();
-  const textColor = h.isDarkMode ? '#FFFFFF' : '#1C2434';
-  const bgColor = h.isDarkMode ? '#18181C' : '#F5F5F5';
-  const cardBg = h.isDarkMode ? '#2E2E38' : '#FFFFFF';
-  const dimColor = h.isDarkMode ? '#8E8E93' : '#767676';
-  const sepColor = h.isDarkMode ? '#3E3E4A' : '#E3E4EB';
-  const headerColor = h.isDarkMode ? '#FFE082' : '#F97D01';
+  const isDarkMode = h.isDarkMode;
+  const textColor = isDarkMode ? '#FFFFFF' : '#1C2434';
+  const bgColor = isDarkMode ? '#18181C' : '#F5F5F5';
+  const cardBg = isDarkMode ? '#2E2E38' : '#FFFFFF';
+  const dimColor = isDarkMode ? '#8E8E93' : '#767676';
+  const sepColor = isDarkMode ? '#3E3E4A' : '#E3E4EB';
+  const headerColor = isDarkMode ? '#FFE082' : '#F97D01';
+  const orangeColor = '#F97D01';
+  const blueColor = '#2D8CE5';
+
+  const pencilSpin = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(pencilSpin, {
+      toValue: /* istanbul ignore next */ h.quantityInputMode ? 1 : 0,
+      duration: 400,
+      useNativeDriver: true,
+    }).start();
+  }, [h.quantityInputMode]);
+  const spinInterpolate = pencilSpin.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
 
   if (h.loading) {
     return (
@@ -47,12 +63,6 @@ export default function CashRegisterScreen() {
       </View>
     );
   }
-
-  const showSteppers = h.canEdit && !h.isPast;
-  const canConfirmClose = h.opening && !h.closing && h.isToday && h.canClose();
-  const canShowClose = h.opening && !h.closing && h.isToday;
-  const hasClosing = !!h.closing;
-  const openingAllowed = !h.isPast && !h.opening && h.canOpen();
 
   const renderSection = (title: string, items: { key: DenomKey; label: string }[]) => (
     <View style={{ backgroundColor: cardBg, borderRadius: 16, marginBottom: 16, overflow: 'hidden' }}>
@@ -66,9 +76,11 @@ export default function CashRegisterScreen() {
             : [1, 0.5, 0.25, 0.1, 0.05][idx]
           }
           quantity={h.denominations[item.key]}
-          editable={showSteppers}
+          editable={h.showSteppers}
+          quantityInputMode={h.quantityInputMode}
           onIncrement={() => h.increment(item.key)}
           onDecrement={() => h.decrement(item.key)}
+          onQuantityChange={/* istanbul ignore next */ (qty) => h.setDenominationQty(item.key, qty)}
           isDarkMode={h.isDarkMode}
         />
       ))}
@@ -96,99 +108,66 @@ export default function CashRegisterScreen() {
     </View>
   );
 
-  const renderActions = () => {
-    if (h.isPast) {
-      return (
-        <View style={{ flexDirection: 'row', gap: 10, marginTop: 20 }}>
-          {h.opening && (
-            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#2D8CE5' }]} activeOpacity={0.7}>
-              <Text style={styles.actionBtnText}>Ver abertura</Text>
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: h.closing ? '#2D8CE5' : dimColor, opacity: h.closing ? 1 : 0.5 }]}
-            activeOpacity={0.7}
-            disabled={!h.closing}
-          >
+  const renderViewModeActions = () => (
+    <View style={{ gap: 10, marginTop: 20 }}>
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        {h.hasOpening && (
+          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: blueColor }]} activeOpacity={0.7} onPress={h.handleViewOpening}>
+            <Text style={styles.actionBtnText}>Ver abertura</Text>
+          </TouchableOpacity>
+        )}
+        {h.hasClosing && (
+          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: blueColor }]} activeOpacity={0.7} onPress={h.handleViewClosing}>
             <Text style={styles.actionBtnText}>Ver fechamento</Text>
           </TouchableOpacity>
-        </View>
-      );
-    }
+        )}
+      </View>
+      {h.hasOpening && h.hasClosing && (
+        <TouchableOpacity style={[styles.actionBtn, { backgroundColor: orangeColor }]} activeOpacity={0.7} onPress={h.handleCompare}>
+          <Text style={styles.actionBtnText}>Comparar</Text>
+        </TouchableOpacity>
+      )}
+      {h.skipMessage && (
+        <Text style={{ color: dimColor, textAlign: 'center', marginTop: 12, fontSize: 13, lineHeight: 18 }}>
+          {h.skipMessage}
+        </Text>
+      )}
+      <TouchableOpacity style={[styles.cancelBtn, { borderColor: sepColor }]} activeOpacity={0.7} onPress={h.handleCancel}>
+        <Text style={{ color: textColor, fontWeight: 'bold', fontSize: 15 }}>Voltar</Text>
+      </TouchableOpacity>
+    </View>
+  );
 
-    if (!h.opening) {
-      return (
-        <View>
-          {!openingAllowed && (
-            <Text style={{ color: dimColor, textAlign: 'center', marginBottom: 8, fontSize: 13 }}>
-              Abertura permitida apenas das 07:30 às 09:00 em dias úteis. Domingos não permitem abertura.
-            </Text>
-          )}
-          <View style={styles.actionRow}>
-            <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: openingAllowed ? '#339914' : dimColor, opacity: openingAllowed ? 1 : 0.5 }]}
-              activeOpacity={0.7}
-              onPress={openingAllowed ? () => h.handleSave('opening') : undefined}
-              disabled={!openingAllowed}
-            >
-              <Text style={styles.actionBtnText}>Confirmar abertura</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: 'transparent', borderWidth: 1, borderColor: sepColor }]} activeOpacity={0.7} onPress={() => h.navigation.goBack()}>
-              <Text style={{ color: textColor, fontWeight: 'bold', fontSize: 15 }}>Cancelar</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      );
-    }
-
-    if (h.isEditing) {
-      return (
-        <View style={styles.actionRow}>
-          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#339914' }]} activeOpacity={0.7} onPress={h.handleUpdate}>
-            <Text style={styles.actionBtnText}>Confirmar</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: 'transparent', borderWidth: 1, borderColor: sepColor }]} activeOpacity={0.7} onPress={() => h.setIsEditing(false)}>
-            <Text style={{ color: textColor, fontWeight: 'bold', fontSize: 15 }}>Cancelar</Text>
-          </TouchableOpacity>
-        </View>
-      );
-    }
+  const renderEditModeActions = () => {
+    const lb = h.leftButton;
+    const rb = h.rightButton;
 
     return (
-      <View>
-        {canShowClose && !canConfirmClose && (
-          <Text style={{ color: dimColor, textAlign: 'center', marginBottom: 8, fontSize: 13 }}>
-            {(() => {
-              const now = new Date();
-              const dayOfWeek = now.getDay();
-              const isHol = isHoliday(now);
-              if (dayOfWeek === 6 || isHol) return 'Fechamento disponível apenas das 12:00 às 14:00 em sábados e feriados.';
-              return 'Fechamento disponível apenas das 17:00 às 19:00 em dias úteis.';
-            })()}
-          </Text>
-        )}
-        <View style={styles.actionRow}>
-          {h.opening && !h.opening.edited && (
-            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#2BE060' }]} activeOpacity={0.7} onPress={() => h.setIsEditing(true)}>
-              <Text style={styles.actionBtnText}>Editar abertura</Text>
-            </TouchableOpacity>
+      <View style={{ gap: 10, marginTop: 20 }}>
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          {lb && (
+            <GlowButton
+              label={lb.label}
+              backgroundColor={/* istanbul ignore next */ lb.enabled ? lb.color : dimColor}
+              enabled={lb.enabled}
+              onPress={/* istanbul ignore next */ lb.enabled ? () => h.handleAction(lb.action) : undefined}
+            />
           )}
-          {canShowClose && (
-            <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: canConfirmClose ? '#A72424' : dimColor, opacity: canConfirmClose ? 1 : 0.5 }]}
-              activeOpacity={0.7}
-              onPress={canConfirmClose ? () => h.handleSave('closing') : undefined}
-              disabled={!canConfirmClose}
-            >
-              <Text style={styles.actionBtnText}>Fechar caixa</Text>
-            </TouchableOpacity>
-          )}
-          {hasClosing && h.closing && !h.closing.edited && (
-            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#2BE060' }]} activeOpacity={0.7} onPress={() => h.setIsEditing(true)}>
-              <Text style={styles.actionBtnText}>Editar fechamento</Text>
-            </TouchableOpacity>
+          {rb && (
+            <GlowButton
+              label={rb.label}
+              backgroundColor={/* istanbul ignore next */ rb.enabled ? rb.color : dimColor}
+              enabled={rb.enabled}
+              onPress={/* istanbul ignore next */ rb.enabled ? () => h.handleAction(rb.action) : undefined}
+            />
           )}
         </View>
+        {h.showEncerrar && (
+          <GlowButton label="Encerrar caixa" backgroundColor={orangeColor} enabled={true} onPress={h.handleEncerrar} />
+        )}
+        <TouchableOpacity style={[styles.cancelBtn, { borderColor: sepColor }]} activeOpacity={0.7} onPress={h.handleCancel}>
+          <Text style={{ color: textColor, fontWeight: 'bold', fontSize: 15 }}>Cancelar</Text>
+        </TouchableOpacity>
       </View>
     );
   };
@@ -207,7 +186,7 @@ export default function CashRegisterScreen() {
           }</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={h.handleHistoryPress} activeOpacity={0.7}
-          style={{ paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, backgroundColor: '#2D8CE5' }}>
+          style={{ paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, backgroundColor: blueColor }}>
           <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 13 }}>Ver registro</Text>
         </TouchableOpacity>
       </View>
@@ -221,7 +200,25 @@ export default function CashRegisterScreen() {
         {renderSection('Cédulas', BILLS)}
         {renderSection('Moedas', COINS)}
         {renderTotals()}
-        {renderActions()}
+
+        {h.showSteppers && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: 8, marginBottom: 8, marginLeft: 8 }}>
+            <Animated.View style={{ transform: [{ rotate: spinInterpolate }] }}>
+              <Feather name="edit-3" size={18} color={/* istanbul ignore next */ h.quantityInputMode ? '#2BE060' : dimColor} />
+            </Animated.View>
+            <Text style={{ fontSize: 13, fontWeight: 'bold', color: /* istanbul ignore next */ h.quantityInputMode ? '#2BE060' : textColor }}>
+              Ativar digitação
+            </Text>
+            <Switch
+              value={h.quantityInputMode}
+              onValueChange={h.setQuantityInputMode}
+              trackColor={{ false: /* istanbul ignore next */ isDarkMode ? '#3E3E4A' : '#C0CADE', true: '#2BE060' }}
+              thumbColor="#FFF"
+            />
+          </View>
+        )}
+
+        {h.isViewMode ? renderViewModeActions() : renderEditModeActions()}
       </ScrollView>
 
       <AdminUserMenu />

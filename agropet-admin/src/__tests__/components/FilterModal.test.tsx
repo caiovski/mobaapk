@@ -1,6 +1,5 @@
 import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
-import { Feather } from '@expo/vector-icons';
 import { FilterModal } from '../../presentation/screens/admin/ManageProducts/FilterModal';
 
 describe('FilterModal', () => {
@@ -18,6 +17,7 @@ describe('FilterModal', () => {
     onSelectSort: jest.fn(),
     onApply: jest.fn(),
     onClose: jest.fn(),
+    onManageCategories: jest.fn(),
     allCategories: [],
     categories: [],
     onCreateCategory: jest.fn(),
@@ -38,7 +38,7 @@ describe('FilterModal', () => {
     expect(getByText('Estoque Crítico (Alerta Vermelho)')).toBeTruthy();
   });
 
-  it('should disable toggles when Inativos is selected (covers line 26 disabled style)', () => {
+  it('should disable toggles when Inativos is selected', () => {
     const { getByText } = render(
       <FilterModal {...baseProps} tempStatusFilter="Inativos" />
     );
@@ -69,121 +69,69 @@ describe('FilterModal', () => {
     expect(onSelectSort).toHaveBeenCalledWith('most_stock');
   });
 
-  it('should render empty categories message when allCategories is empty', () => {
-    const { getByText } = render(<FilterModal {...baseProps} allCategories={[]} />);
-    expect(getByText('Nenhuma categoria cadastrada.')).toBeTruthy();
-  });
-
-  it('should render category items and toggle active / delete', () => {
-    const onToggleCategoryActive = jest.fn();
-    const onDeleteCategory = jest.fn();
-    const { UNSAFE_getAllByType } = render(
-      <FilterModal
-        {...baseProps}
-        onToggleCategoryActive={onToggleCategoryActive}
-        onDeleteCategory={onDeleteCategory}
-        allCategories={[{ id: '1', name: 'Pesca', keywords: ['pesca'], active: true }]}
-      />
-    );
-    const { TouchableOpacity } = require('react-native');
-    const touchables = UNSAFE_getAllByType(TouchableOpacity);
-
-    const eyeBtn = touchables.find(t => {
-      try {
-        const feather = t.findByType(Feather);
-        return feather.props.name === 'eye';
-      } catch (_) { return false; }
-    });
-    fireEvent.press(eyeBtn);
-    expect(onToggleCategoryActive).toHaveBeenCalledWith('1', false);
-
-    const trashBtn = touchables.find(t => {
-      try {
-        const feather = t.findByType(Feather);
-        return feather.props.name === 'trash-2';
-      } catch (_) { return false; }
-    });
-    fireEvent.press(trashBtn);
-    expect(onDeleteCategory).toHaveBeenCalledWith('1');
-  });
-
-  it('should call onCreateCategory when + pressed with valid inputs', () => {
-    const onCreateCategory = jest.fn();
-    const { getByPlaceholderText, UNSAFE_getAllByType } = render(
-      <FilterModal
-        {...baseProps}
-        onCreateCategory={onCreateCategory}
-        allCategories={[{ id: '1', name: 'Pesca', keywords: ['pesca'], active: true }]}
-      />
-    );
-    const { TouchableOpacity } = require('react-native');
-    const touchables = UNSAFE_getAllByType(TouchableOpacity);
-
-    fireEvent.changeText(getByPlaceholderText('Nome'), 'Ração');
-    fireEvent.changeText(getByPlaceholderText('Keywords (vírgula)'), 'ração, pet');
-
-    const addBtn = touchables.find(t => {
-      try {
-        const feather = t.findByType(Feather);
-        return feather.props.name === 'plus';
-      } catch (_) { return false; }
-    });
-    fireEvent.press(addBtn);
-    expect(onCreateCategory).toHaveBeenCalledWith('Ração', ['ração', 'pet']);
-  });
-
-  it('should not call onCreateCategory when name is empty', () => {
-    const onCreateCategory = jest.fn();
-    const { getByPlaceholderText, UNSAFE_getAllByType } = render(
-      <FilterModal
-        {...baseProps}
-        onCreateCategory={onCreateCategory}
-        allCategories={[{ id: '1', name: 'Pesca', keywords: ['pesca'], active: true }]}
-      />
-    );
-    const { TouchableOpacity } = require('react-native');
-    const touchables = UNSAFE_getAllByType(TouchableOpacity);
-
-    fireEvent.changeText(getByPlaceholderText('Nome'), '');
-    fireEvent.changeText(getByPlaceholderText('Keywords (vírgula)'), 'kw');
-
-    const addBtn = touchables.find(t => {
-      try {
-        const feather = t.findByType(Feather);
-        return feather.props.name === 'plus';
-      } catch (_) { return false; }
-    });
-    fireEvent.press(addBtn);
-    expect(onCreateCategory).not.toHaveBeenCalled();
-  });
-
-  it('should render category items in dark mode', () => {
+  it('should call onApply when Aplicar Filtros is pressed', () => {
+    const onApply = jest.fn();
     const { getByText } = render(
-      <FilterModal
-        {...baseProps}
-        isDarkMode={true}
-        allCategories={[{ id: '1', name: 'Pesca', keywords: ['pesca'], active: true }]}
-      />
+      <FilterModal {...baseProps} onApply={onApply} />
     );
-    expect(getByText('Pesca')).toBeTruthy();
+    fireEvent.press(getByText('Aplicar Filtros'));
+    expect(onApply).toHaveBeenCalled();
   });
 
-  it('should render inactive category with eye-off icon', () => {
-    const { UNSAFE_getAllByType } = render(
-      <FilterModal
-        {...baseProps}
-        allCategories={[{ id: '1', name: 'Pesca', keywords: ['pesca'], active: false }]}
-      />
+  it('should call onClose when Cancelar is pressed', () => {
+    const onClose = jest.fn();
+    const { getByText } = render(
+      <FilterModal {...baseProps} onClose={onClose} />
     );
-    const { TouchableOpacity } = require('react-native');
-    const touchables = UNSAFE_getAllByType(TouchableOpacity);
+    fireEvent.press(getByText('Cancelar'));
+    expect(onClose).toHaveBeenCalled();
+  });
 
-    const eyeOffBtn = touchables.find(t => {
-      try {
-        const feather = t.findByType(Feather);
-        return feather.props.name === 'eye-off';
-      } catch (_) { return false; }
-    });
-    expect(eyeOffBtn).toBeTruthy();
+  it('should call onManageCategories when Gerenciar categorias is pressed', () => {
+    const onManageCategories = jest.fn();
+    const onClose = jest.fn();
+    const { getByText } = render(
+      <FilterModal {...baseProps} onManageCategories={onManageCategories} onClose={onClose} />
+    );
+    fireEvent.press(getByText('Gerenciar categorias'));
+    expect(onManageCategories).toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('should render sort options', () => {
+    const { getByText } = render(<FilterModal {...baseProps} />);
+    expect(getByText('Ordem alfabética')).toBeTruthy();
+    expect(getByText('Produtos mais novos')).toBeTruthy();
+    expect(getByText('Produtos mais velhos')).toBeTruthy();
+    expect(getByText('Mais estoque')).toBeTruthy();
+    expect(getByText('Maior preço')).toBeTruthy();
+    expect(getByText('Menor preço')).toBeTruthy();
+  });
+
+  it('should call onSelectStatus when radio pressed', () => {
+    const onSelectStatus = jest.fn();
+    const { getByText } = render(
+      <FilterModal {...baseProps} onSelectStatus={onSelectStatus} />
+    );
+    fireEvent.press(getByText('Somente ativos'));
+    expect(onSelectStatus).toHaveBeenCalledWith('Ativos');
+  });
+
+  it('should call onToggleYellow when yellow alert toggle pressed', () => {
+    const onToggleYellow = jest.fn();
+    const { getByText } = render(
+      <FilterModal {...baseProps} onToggleYellow={onToggleYellow} />
+    );
+    fireEvent.press(getByText('Estoque Moderado (Alerta Amarelo)'));
+    expect(onToggleYellow).toHaveBeenCalled();
+  });
+
+  it('should call onToggleRed when red alert toggle pressed', () => {
+    const onToggleRed = jest.fn();
+    const { getByText } = render(
+      <FilterModal {...baseProps} onToggleRed={onToggleRed} />
+    );
+    fireEvent.press(getByText('Estoque Crítico (Alerta Vermelho)'));
+    expect(onToggleRed).toHaveBeenCalled();
   });
 });

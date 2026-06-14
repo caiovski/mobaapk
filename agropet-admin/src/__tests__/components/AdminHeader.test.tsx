@@ -302,5 +302,38 @@ describe('AdminHeader Component', () => {
     expect(getByPlaceholderText('Pesquisar...')).toBeTruthy();
     expect(getByTestId('header-search-icon-btn')).toBeTruthy();
   });
+
+  it('should show clear button when localSearch has text and clear on press', () => {
+    const mockOnSearchChange = jest.fn();
+    const { getByPlaceholderText, getByText } = renderHeader({
+      title: 'gerenciar',
+      searchValue: 'text-to-clear',
+      onSearchChange: mockOnSearchChange,
+    });
+
+    const searchInput = getByPlaceholderText('Pesquisar...');
+    expect(searchInput.props.value).toBe('text-to-clear');
+
+    const clearBtn = getByText('x');
+    expect(clearBtn).toBeTruthy();
+    fireEvent.press(clearBtn);
+    expect(mockOnSearchChange).toHaveBeenCalledWith('');
+  });
+
+  it('should render search bar without clear button when searchValue is empty', () => {
+    const { getByPlaceholderText, queryByText } = renderHeader({ title: 'gerenciar' });
+    expect(getByPlaceholderText('Pesquisar...')).toBeTruthy();
+    expect(queryByText('x')).toBeNull();
+  });
+
+  it('should press clear button without onSearchChange (no-op branch)', () => {
+    const { getByPlaceholderText, getByText } = renderHeader({
+      title: 'gerenciar',
+      searchValue: 'has-text',
+    });
+    expect(getByPlaceholderText('Pesquisar...')).toBeTruthy();
+    const clearBtn = getByText('x');
+    fireEvent.press(clearBtn);
+  });
 });
 

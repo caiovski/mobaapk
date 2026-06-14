@@ -135,6 +135,7 @@ describe('FilterContext & Helper Functions', () => {
       defaultContextVal.toggleCategory('cat');
       defaultContextVal.setSearchText('search');
       defaultContextVal.clearFilters();
+      defaultContextVal.reloadCategories();
     });
 
     it('should cover provider search and clear via direct act', async () => {
@@ -199,6 +200,27 @@ describe('FilterContext & Helper Functions', () => {
       await waitFor(() => {
         expect(getByTestId('cat-count').props.children).toBe(0);
       });
+    });
+
+    it('should call reloadCategories and cover its try block', async () => {
+      let reloadFn: () => Promise<void>;
+      function ReloadConsumer() {
+        const { categories, reloadCategories } = useFilter();
+        reloadFn = reloadCategories;
+        return <Text testID="cat-count">{categories.length}</Text>;
+      }
+
+      const { getByTestId } = render(
+        <FilterProvider>
+          <ReloadConsumer />
+        </FilterProvider>
+      );
+
+      await act(async () => {
+        await reloadFn!();
+      });
+
+      expect(getByTestId('cat-count')).toBeTruthy();
     });
   });
 });

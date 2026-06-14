@@ -38,9 +38,10 @@ const mockHook = useCashRegisterHistoryScreen as jest.MockedFunction<typeof useC
 const baseHookReturn = {
   isDarkMode: false,
   navigation: { navigate: jest.fn() },
-  entries: [],
+  dates: [],
   loading: false,
   handleView: jest.fn(),
+  highlightDate: undefined,
 };
 
 describe('CashRegisterHistoryScreen', () => {
@@ -55,43 +56,43 @@ describe('CashRegisterHistoryScreen', () => {
     const { ActivityIndicator } = require('react-native');
 
     expect(UNSAFE_getAllByType(ActivityIndicator).length).toBeGreaterThan(0);
-    expect(queryByText('Nenhum registro de abertura encontrado.')).toBeNull();
+    expect(queryByText('Nenhum registro de caixa encontrado.')).toBeNull();
   });
 
-  it('should render empty state when no entries', () => {
-    mockHook.mockReturnValue({ ...baseHookReturn, loading: false, entries: [] } as any);
+  it('should render empty state when no dates', () => {
+    mockHook.mockReturnValue({ ...baseHookReturn, loading: false } as any);
 
-    const { getByText, queryByText } = render(React.createElement(CashRegisterHistoryScreen));
+    const { getByText } = render(React.createElement(CashRegisterHistoryScreen));
 
-    expect(getByText('Nenhum registro de abertura encontrado.')).toBeTruthy();
+    expect(getByText('Nenhum registro de caixa encontrado.')).toBeTruthy();
   });
 
-  it('should render list of history entries', () => {
-    const mockEntries = [
-      { id: '1', code: 'CAIXA-20250610-001', date: '2025-06-10' },
-      { id: '2', code: 'CAIXA-20250611-002', date: '2025-06-11' },
+  it('should render list of history entries with codes', () => {
+    const mockDates = [
+      { date: '2025-06-10', hasOpening: true, hasClosing: true, openingCode: 'CAIXA-10062025-001', closingCode: 'CAIXA-10062025-002' },
+      { date: '2025-06-11', hasOpening: true, hasClosing: false, openingCode: 'CAIXA-11062025-001' },
     ];
     mockHook.mockReturnValue({
       ...baseHookReturn,
       loading: false,
-      entries: mockEntries,
+      dates: mockDates,
     } as any);
 
     const { getByText } = render(React.createElement(CashRegisterHistoryScreen));
 
-    expect(getByText('CAIXA-20250610-001')).toBeTruthy();
-    expect(getByText('CAIXA-20250611-002')).toBeTruthy();
+    expect(getByText('CAIXA-10062025-002')).toBeTruthy();
+    expect(getByText('CAIXA-11062025-001')).toBeTruthy();
   });
 
   it('should call handleView when Ver button is pressed on an entry', () => {
     const handleView = jest.fn();
-    const mockEntries = [
-      { id: '1', code: 'CAIXA-20250610-001', date: '2025-06-10' },
+    const mockDates = [
+      { date: '2025-06-10', hasOpening: true, hasClosing: true, closingCode: 'CAIXA-10062025-002' },
     ];
     mockHook.mockReturnValue({
       ...baseHookReturn,
       loading: false,
-      entries: mockEntries,
+      dates: mockDates,
       handleView,
     } as any);
 
@@ -111,18 +112,18 @@ describe('CashRegisterHistoryScreen', () => {
   });
 
   it('should render entries list in dark mode', () => {
-    const mockEntries = [
-      { id: '1', code: 'CAIXA-20250610-001', date: '2025-06-10' },
+    const mockDates = [
+      { date: '2025-06-10', hasOpening: true, hasClosing: true, closingCode: 'CAIXA-10062025-001' },
     ];
     mockHook.mockReturnValue({
       ...baseHookReturn,
       loading: false,
-      entries: mockEntries,
+      dates: mockDates,
       isDarkMode: true,
     } as any);
 
     const { getByText } = render(React.createElement(CashRegisterHistoryScreen));
 
-    expect(getByText('CAIXA-20250610-001')).toBeTruthy();
+    expect(getByText('CAIXA-10062025-001')).toBeTruthy();
   });
 });

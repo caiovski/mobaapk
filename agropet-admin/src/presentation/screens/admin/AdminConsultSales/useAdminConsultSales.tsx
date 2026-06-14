@@ -7,13 +7,13 @@ import {
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as SecureStore from 'expo-secure-store';
 import { supabase } from '../../../../data/datasources/supabase/client';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { isHoliday } from '../../../../utils/shopHours';
 import { useCaixaCalculations } from './hooks/useCaixaCalculations';
 import { useOrderFilters } from './hooks/useOrderFilters';
 import { useOrderMutations } from './hooks/useOrderMutations';
+import { fetchCashFlow } from '../../../../services/cashFlowService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -138,6 +138,15 @@ export function useAdminConsultSales() {
     fetchCaixaData();
   }, [startDate, endDate, isRange, hasFiltered, isLoaded]);
 
+  useEffect(() => {
+    const channel = supabase.channel('cash_flow_consult')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_flow' }, /* istanbul ignore next */ () => {
+        /* istanbul ignore next */ fetchCaixaData();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
   const fetchSales = async () => {
     try {
       setLoading(true);
@@ -192,14 +201,16 @@ export function useAdminConsultSales() {
       if (!allErr && allData) {
         setAllOrders(allData);
       }
-      const stored = await SecureStore.getItemAsync('agropet_sangrias');
-      if (stored) {
-        const parsed: CaixaTransaction[] = JSON.parse(stored);
-        const normalized = parsed.filter(t => (t.type as string) !== 'venda' && t.description !== 'Venda PDV' && t.description !== 'Venda PDV (Cancelada)');
-        setTransactions(normalized);
-      } else {
-        setTransactions([]);
-      }
+      const rows = await fetchCashFlow();
+      const mapped: CaixaTransaction[] = rows.map(r => ({
+        id: r.id,
+        amount: Number(r.amount),
+        description: r.description,
+        date: r.created_at,
+        type: r.type,
+        paymentMethod: r.payment_method,
+      }));
+      setTransactions(mapped);
     } catch (e) {
       console.error('Erro ao buscar dados do caixa global:', e);
     }

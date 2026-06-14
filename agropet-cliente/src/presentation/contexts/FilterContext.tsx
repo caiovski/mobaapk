@@ -9,6 +9,7 @@ interface FilterContextType {
   setSearchText: (text: string) => void;
   clearFilters: () => void;
   categories: DBCustomCategory[];
+  reloadCategories: () => Promise<void>;
 }
 
 export const FilterContext = createContext<FilterContextType>({
@@ -18,12 +19,20 @@ export const FilterContext = createContext<FilterContextType>({
   setSearchText: () => {},
   clearFilters: () => {},
   categories: [],
+  reloadCategories: async () => {},
 });
 
 export const FilterProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [searchText, setSearchTextState] = useState<string>('');
   const [categories, setCategories] = useState<DBCustomCategory[]>([]);
+
+  const reloadCategories = React.useCallback(async () => {
+    try {
+      const data = await fetchActiveCategories();
+      setCategories(data);
+    } catch (_) {}
+  }, []);
 
   useEffect(() => {
     fetchActiveCategories().then(setCategories).catch(() => {});
@@ -54,6 +63,7 @@ export const FilterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setSearchText,
       clearFilters,
       categories,
+      reloadCategories,
     }}>
       {children}
     </FilterContext.Provider>

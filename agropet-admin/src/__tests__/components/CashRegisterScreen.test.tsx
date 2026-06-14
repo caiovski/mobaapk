@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, fireEvent, act, waitFor } from '@testing-library/react-native';
+import { render, fireEvent } from '@testing-library/react-native';
 import { useCashRegisterScreen } from '../../presentation/screens/admin/CashRegister/CashRegisterScreen/useCashRegisterScreen';
 
 jest.mock('../../presentation/screens/admin/CashRegister/CashRegisterScreen/useCashRegisterScreen', () => ({
@@ -32,6 +32,19 @@ jest.mock('../../presentation/components/AdminUserMenu', () => {
   return { AdminUserMenu: () => React.createElement(View, { testID: 'admin-user-menu' }) };
 });
 
+jest.mock('../../presentation/screens/admin/CashRegister/CashRegisterScreen/components/GlowButton', () => {
+  const React = require('react');
+  const { TouchableOpacity, Text, View } = require('react-native');
+  return {
+    GlowButton: ({ label, backgroundColor, enabled, onPress }: any) =>
+      React.createElement(View, null,
+        React.createElement(TouchableOpacity, { testID: `glow-${label}`, disabled: !enabled, onPress },
+          React.createElement(Text, null, label),
+        ),
+      ),
+  };
+});
+
 jest.mock('../../presentation/screens/admin/CashRegister/CashRegisterScreen/CashRegisterScreen.styles', () => ({
   styles: {
     mainContainer: {},
@@ -46,6 +59,7 @@ jest.mock('../../presentation/screens/admin/CashRegister/CashRegisterScreen/Cash
     dateBtn: {},
     dateBtnText: {},
     scrollContent: {},
+    cancelBtn: {},
   },
 }));
 
@@ -66,30 +80,43 @@ const defaultDenominations = {
 
 const baseHookReturn = {
   isDarkMode: false,
+  colors: { textDark: '#000' },
+  navigation: { goBack: jest.fn(), navigate: jest.fn() },
   selectedDate: new Date().toISOString().split('T')[0],
   showDatePicker: false,
   setShowDatePicker: jest.fn(),
+  quantityInputMode: false,
+  setQuantityInputMode: jest.fn(),
   isPast: false,
-  canEdit: true,
-  getSectionTitle: () => 'Abertura do Caixa',
-  navigation: { goBack: jest.fn(), navigate: jest.fn() },
   handleHistoryPress: jest.fn(),
   handleDateChange: jest.fn(),
+  handleViewOpening: jest.fn(),
+  handleViewClosing: jest.fn(),
+  handleCompare: jest.fn(),
+  handleCancel: jest.fn(),
+  handleEncerrar: jest.fn(),
   opening: undefined,
   closing: undefined,
   denominations: { ...defaultDenominations },
   loading: false,
   history: [],
-  isEditing: false,
-  setIsEditing: jest.fn(),
   totals: { bills: 0, coins: 0, global: 0 },
   increment: jest.fn(),
   decrement: jest.fn(),
-  handleSave: jest.fn(),
-  handleUpdate: jest.fn(),
-  canOpen: jest.fn().mockReturnValue(true),
-  canClose: jest.fn().mockReturnValue(false),
+  setDenominationQty: jest.fn(),
   isToday: true,
+  isViewMode: false,
+  isClosed: false,
+  hasOpening: false,
+  hasClosing: false,
+  showSteppers: false,
+  showEncerrar: false,
+  skipMessage: null,
+  leftButton: null as { label: string; color: string; enabled: boolean; action: string } | null,
+  rightButton: null as { label: string; color: string; enabled: boolean; action: string } | null,
+  handleAction: jest.fn(),
+  handleConfirmEditOpening: jest.fn(),
+  handleConfirmEditClosing: jest.fn(),
   reload: jest.fn(),
 };
 
@@ -101,40 +128,37 @@ describe('CashRegisterScreen', () => {
   it('should render loading indicator when loading=true', () => {
     mockHook.mockReturnValue({ ...baseHookReturn, loading: true } as any);
 
-    const { queryByText, UNSAFE_getAllByType } = render(React.createElement(CashRegisterScreen));
+    const { UNSAFE_getAllByType } = render(React.createElement(CashRegisterScreen));
     const { ActivityIndicator } = require('react-native');
 
     expect(UNSAFE_getAllByType(ActivityIndicator).length).toBeGreaterThan(0);
-    expect(queryByText('Confirmar abertura')).toBeNull();
   });
 
-  it('should render empty state with no opening and show confirm opening button', () => {
+  it('should render empty state with Abrir caixa and Cancelar when no opening', () => {
     mockHook.mockReturnValue({
       ...baseHookReturn,
       loading: false,
       opening: undefined,
-      isPast: false,
-      canEdit: true,
-      canClose: jest.fn().mockReturnValue(false),
+      isViewMode: false,
+      leftButton: { label: 'Abrir caixa', color: '#339914', enabled: true, action: 'startOpening' },
     } as any);
 
     const { getByText } = render(React.createElement(CashRegisterScreen));
 
-    expect(getByText('Confirmar abertura')).toBeTruthy();
+    expect(getByText('Abrir caixa')).toBeTruthy();
     expect(getByText('Cancelar')).toBeTruthy();
   });
 
-  it('should render opening entry showing denominations', () => {
+  it('should render denominations and totals', () => {
     const mockTotals = { bills: 500, coins: 10, global: 510 };
     mockHook.mockReturnValue({
       ...baseHookReturn,
       loading: false,
       opening: { id: '1', code: 'CAIXA-001', date: '2025-06-10' },
-      isPast: false,
-      canEdit: false,
       denominations: { ...defaultDenominations, bill_100: 5, coin_100: 10 },
       totals: mockTotals,
-      canClose: jest.fn().mockReturnValue(false),
+      hasOpening: true,
+      isViewMode: true,
     } as any);
 
     const { getByText } = render(React.createElement(CashRegisterScreen));
@@ -152,8 +176,8 @@ describe('CashRegisterScreen', () => {
       ...baseHookReturn,
       loading: false,
       opening: undefined,
-      isPast: false,
-      canEdit: true,
+      showSteppers: true,
+      leftButton: { label: 'Abrir caixa', color: '#339914', enabled: true, action: 'startOpening' },
       increment,
       decrement,
     } as any);
@@ -167,234 +191,126 @@ describe('CashRegisterScreen', () => {
     expect(decrement).toHaveBeenCalledWith('bill_200');
   });
 
-  it('should call handleSave when Confirmar abertura is pressed', () => {
-    const handleSave = jest.fn();
+  it('should call handleAction when leftButton glow is pressed', () => {
+    const handleAction = jest.fn();
     mockHook.mockReturnValue({
       ...baseHookReturn,
       loading: false,
       opening: undefined,
-      isPast: false,
-      canEdit: true,
-      handleSave,
+      leftButton: { label: 'Abrir caixa', color: '#339914', enabled: true, action: 'startOpening' },
+      handleAction,
     } as any);
 
     const { getByText } = render(React.createElement(CashRegisterScreen));
 
-    fireEvent.press(getByText('Confirmar abertura'));
-    expect(handleSave).toHaveBeenCalledWith('opening');
+    fireEvent.press(getByText('Abrir caixa'));
+    expect(handleAction).toHaveBeenCalledWith('startOpening');
   });
 
-  it('should call handleUpdate when Confirmar is pressed in editing mode', () => {
-    const handleUpdate = jest.fn();
-    const setIsEditing = jest.fn();
+  it('should call handleAction when rightButton glow is pressed', () => {
+    const handleAction = jest.fn();
     mockHook.mockReturnValue({
       ...baseHookReturn,
       loading: false,
       opening: { id: '1', edited: false },
-      isPast: false,
-      canEdit: true,
-      isEditing: true,
-      handleUpdate,
-      setIsEditing,
-      canClose: jest.fn().mockReturnValue(false),
+      hasOpening: true,
+      rightButton: { label: 'Confirmar fechamento', color: '#F97D01', enabled: true, action: 'confirmClosing' },
+      handleAction,
     } as any);
 
     const { getByText } = render(React.createElement(CashRegisterScreen));
 
-    fireEvent.press(getByText('Confirmar'));
-    expect(handleUpdate).toHaveBeenCalled();
+    fireEvent.press(getByText('Confirmar fechamento'));
+    expect(handleAction).toHaveBeenCalledWith('confirmClosing');
   });
 
-  it('should call setIsEditing(false) when Cancelar is pressed in editing mode', () => {
-    const setIsEditing = jest.fn();
-    mockHook.mockReturnValue({
-      ...baseHookReturn,
-      loading: false,
-      opening: { id: '1', edited: false },
-      isPast: false,
-      canEdit: true,
-      isEditing: true,
-      setIsEditing,
-      handleUpdate: jest.fn(),
-      canClose: jest.fn().mockReturnValue(false),
-    } as any);
-
-    const { getByText } = render(React.createElement(CashRegisterScreen));
-
-    fireEvent.press(getByText('Cancelar'));
-    expect(setIsEditing).toHaveBeenCalledWith(false);
-  });
-
-  it('should show Fechar caixa disabled when canClose returns false (outside close window)', () => {
-    mockHook.mockReturnValue({
-      ...baseHookReturn,
-      loading: false,
-      opening: { id: '1', edited: false },
-      closing: undefined,
-      isPast: false,
-      canEdit: false,
-      isToday: true,
-      canClose: jest.fn().mockReturnValue(false),
-    } as any);
-
-    const { getByText } = render(React.createElement(CashRegisterScreen));
-
-    expect(getByText('Fechar caixa')).toBeTruthy();
-  });
-
-  it('should show Fechar caixa when canClose returns true within window and show closing entry edit', () => {
-    const handleSave = jest.fn();
+  it('should show Comparar when both opening and closing exist in view mode', () => {
     mockHook.mockReturnValue({
       ...baseHookReturn,
       loading: false,
       opening: { id: '1', edited: false },
       closing: { id: '2', edited: false },
-      isPast: false,
-      canEdit: false,
-      isToday: true,
-      canClose: jest.fn().mockReturnValue(true),
-      handleSave,
-    } as any);
-
-    const { getByText } = render(React.createElement(CashRegisterScreen));
-
-    expect(getByText('Editar abertura')).toBeTruthy();
-    expect(getByText('Editar fechamento')).toBeTruthy();
-  });
-
-  it('should call handleSave with closing when Fechar caixa is pressed', () => {
-    const handleSave = jest.fn();
-    mockHook.mockReturnValue({
-      ...baseHookReturn,
-      loading: false,
-      opening: { id: '1', edited: false },
-      closing: undefined,
-      isPast: false,
-      canEdit: false,
-      isToday: true,
-      canClose: jest.fn().mockReturnValue(true),
-      handleSave,
-    } as any);
-
-    const { getByText } = render(React.createElement(CashRegisterScreen));
-
-    fireEvent.press(getByText('Fechar caixa'));
-    expect(handleSave).toHaveBeenCalledWith('closing');
-  });
-
-  it('should call handleHistoryPress when Ver registro is pressed', () => {
-    const handleHistoryPress = jest.fn();
-    mockHook.mockReturnValue({
-      ...baseHookReturn,
-      loading: false,
-      handleHistoryPress,
-    } as any);
-
-    const { getByText } = render(React.createElement(CashRegisterScreen));
-
-    fireEvent.press(getByText('Ver registro'));
-    expect(handleHistoryPress).toHaveBeenCalled();
-  });
-
-  it('should call setIsEditing(true) when Editar abertura is pressed', () => {
-    const setIsEditing = jest.fn();
-    mockHook.mockReturnValue({
-      ...baseHookReturn,
-      loading: false,
-      opening: { id: '1', edited: false },
-      isPast: false,
-      canEdit: false,
-      isEditing: false,
-      setIsEditing,
-      canClose: jest.fn().mockReturnValue(false),
-    } as any);
-
-    const { getByText } = render(React.createElement(CashRegisterScreen));
-
-    fireEvent.press(getByText('Editar abertura'));
-    expect(setIsEditing).toHaveBeenCalledWith(true);
-  });
-
-  it('should render "Ver abertura" and "Ver fechamento" when isPast is true', () => {
-    mockHook.mockReturnValue({
-      ...baseHookReturn,
-      loading: false,
-      isPast: true,
-      opening: { id: '1' },
-      closing: { id: '2' },
+      hasOpening: true,
+      hasClosing: true,
+      isViewMode: true,
     } as any);
 
     const { getByText } = render(React.createElement(CashRegisterScreen));
 
     expect(getByText('Ver abertura')).toBeTruthy();
     expect(getByText('Ver fechamento')).toBeTruthy();
+    expect(getByText('Comparar')).toBeTruthy();
+    expect(getByText('Voltar')).toBeTruthy();
   });
 
-  it('should show "Ver fechamento" grayed out when isPast and no closing', () => {
+  it('should show only Ver abertura when isPast and no closing', () => {
     mockHook.mockReturnValue({
       ...baseHookReturn,
       loading: false,
       isPast: true,
       opening: { id: '1' },
       closing: undefined,
+      hasOpening: true,
+      hasClosing: false,
+      isViewMode: true,
     } as any);
 
-    const { getByText } = render(React.createElement(CashRegisterScreen));
+    const { getByText, queryByText } = render(React.createElement(CashRegisterScreen));
 
     expect(getByText('Ver abertura')).toBeTruthy();
-    expect(getByText('Ver fechamento')).toBeTruthy();
+    expect(queryByText('Ver fechamento')).toBeNull();
+    expect(queryByText('Comparar')).toBeNull();
   });
 
-  it('should show "Confirmar abertura" disabled when canOpen is false', () => {
+  it('should render Encerrar caixa button when showEncerrar is true', () => {
+    const mockHandleEncerrar = jest.fn();
     mockHook.mockReturnValue({
       ...baseHookReturn,
       loading: false,
-      opening: undefined,
-      isPast: false,
-      canEdit: true,
-      canOpen: jest.fn().mockReturnValue(false),
+      showEncerrar: true,
+      hasOpening: true,
+      opening: { id: '1' },
+      leftButton: { label: 'Confirmar abertura', color: '#339914', enabled: true, action: 'confirmOpening' },
+      handleEncerrar: mockHandleEncerrar,
     } as any);
 
     const { getByText } = render(React.createElement(CashRegisterScreen));
 
-    expect(getByText('Confirmar abertura')).toBeTruthy();
+    fireEvent.press(getByText('Encerrar caixa'));
+    expect(mockHandleEncerrar).toHaveBeenCalled();
   });
 
-  it('should call navigation.goBack when Cancelar is pressed with no opening', () => {
-    const goBack = jest.fn();
+  it('should call handleCancel when Cancelar is pressed', () => {
+    const handleCancel = jest.fn();
     mockHook.mockReturnValue({
       ...baseHookReturn,
       loading: false,
       opening: undefined,
-      isPast: false,
-      canEdit: true,
-      navigation: { ...baseHookReturn.navigation, goBack },
+      leftButton: { label: 'Abrir caixa', color: '#339914', enabled: true, action: 'startOpening' },
+      handleCancel,
     } as any);
 
     const { getByText } = render(React.createElement(CashRegisterScreen));
 
     fireEvent.press(getByText('Cancelar'));
-    expect(goBack).toHaveBeenCalled();
+    expect(handleCancel).toHaveBeenCalled();
   });
 
-  it('should call setIsEditing(true) when Editar fechamento is pressed', () => {
-    const setIsEditing = jest.fn();
+  it('should call handleCancel when Voltar is pressed in view mode', () => {
+    const handleCancel = jest.fn();
     mockHook.mockReturnValue({
       ...baseHookReturn,
       loading: false,
-      opening: { id: '1', edited: false },
-      closing: { id: '2', edited: false },
-      isPast: false,
-      canEdit: false,
-      isEditing: false,
-      setIsEditing,
-      canClose: jest.fn().mockReturnValue(false),
+      opening: { id: '1' },
+      hasOpening: true,
+      isViewMode: true,
+      handleCancel,
     } as any);
 
     const { getByText } = render(React.createElement(CashRegisterScreen));
 
-    fireEvent.press(getByText('Editar fechamento'));
-    expect(setIsEditing).toHaveBeenCalledWith(true);
+    fireEvent.press(getByText('Voltar'));
+    expect(handleCancel).toHaveBeenCalled();
   });
 
   it('should render with dark mode colors when isDarkMode is true', () => {
@@ -403,13 +319,12 @@ describe('CashRegisterScreen', () => {
       isDarkMode: true,
       loading: false,
       opening: undefined,
-      isPast: false,
-      canEdit: true,
+      leftButton: { label: 'Abrir caixa', color: '#339914', enabled: true, action: 'startOpening' },
     } as any);
 
     const { getByText } = render(React.createElement(CashRegisterScreen));
 
-    expect(getByText('Confirmar abertura')).toBeTruthy();
+    expect(getByText('Abrir caixa')).toBeTruthy();
     expect(getByText('Cancelar')).toBeTruthy();
   });
 
@@ -418,9 +333,6 @@ describe('CashRegisterScreen', () => {
       ...baseHookReturn,
       showDatePicker: true,
       loading: false,
-      opening: undefined,
-      isPast: false,
-      canEdit: true,
     } as any);
 
     const { getByTestId } = render(React.createElement(CashRegisterScreen));
@@ -434,9 +346,6 @@ describe('CashRegisterScreen', () => {
       showDatePicker: true,
       isDarkMode: true,
       loading: false,
-      opening: undefined,
-      isPast: false,
-      canEdit: true,
     } as any);
 
     const { getByTestId } = render(React.createElement(CashRegisterScreen));
@@ -458,22 +367,84 @@ describe('CashRegisterScreen', () => {
     expect(setShowDatePicker).toHaveBeenCalledWith(true);
   });
 
-  it('should show Saturday/holiday close window message when canShowClose but not confirmable on a Saturday (line 165)', () => {
-    const getDaySpy = jest.spyOn(Date.prototype, 'getDay').mockReturnValue(6);
+  it('should call handleHistoryPress when Ver registro is pressed', () => {
+    const handleHistoryPress = jest.fn();
     mockHook.mockReturnValue({
       ...baseHookReturn,
       loading: false,
-      opening: { id: '1', edited: false },
-      closing: undefined,
-      isPast: false,
-      canEdit: false,
-      isToday: true,
-      canClose: jest.fn().mockReturnValue(false),
+      handleHistoryPress,
     } as any);
 
     const { getByText } = render(React.createElement(CashRegisterScreen));
 
-    expect(getByText(/12:00 às 14:00/)).toBeTruthy();
-    getDaySpy.mockRestore();
+    fireEvent.press(getByText('Ver registro'));
+    expect(handleHistoryPress).toHaveBeenCalled();
+  });
+
+  it('should show skipMessage when present', () => {
+    mockHook.mockReturnValue({
+      ...baseHookReturn,
+      loading: false,
+      opening: { id: '1' },
+      closing: { id: '2' },
+      hasOpening: true,
+      hasClosing: true,
+      isViewMode: true,
+      skipMessage: 'Você esqueceu de fechar o caixa!',
+    } as any);
+
+    const { getByText } = render(React.createElement(CashRegisterScreen));
+
+    expect(getByText('Você esqueceu de fechar o caixa!')).toBeTruthy();
+  });
+
+  it('should show Ativar digitação switch when showSteppers is true', () => {
+    mockHook.mockReturnValue({
+      ...baseHookReturn,
+      loading: false,
+      opening: undefined,
+      showSteppers: true,
+      leftButton: { label: 'Abrir caixa', color: '#339914', enabled: true, action: 'startOpening' },
+    } as any);
+
+    const { getByText } = render(React.createElement(CashRegisterScreen));
+
+    expect(getByText('Ativar digitação')).toBeTruthy();
+  });
+
+  it('should call handleViewOpening when Ver abertura is pressed', () => {
+    const handleViewOpening = jest.fn();
+    mockHook.mockReturnValue({
+      ...baseHookReturn,
+      loading: false,
+      opening: { id: '1' },
+      hasOpening: true,
+      isViewMode: true,
+      handleViewOpening,
+    } as any);
+
+    const { getByText } = render(React.createElement(CashRegisterScreen));
+
+    fireEvent.press(getByText('Ver abertura'));
+    expect(handleViewOpening).toHaveBeenCalled();
+  });
+
+  it('should call handleCompare when Comparar is pressed', () => {
+    const handleCompare = jest.fn();
+    mockHook.mockReturnValue({
+      ...baseHookReturn,
+      loading: false,
+      opening: { id: '1' },
+      closing: { id: '2' },
+      hasOpening: true,
+      hasClosing: true,
+      isViewMode: true,
+      handleCompare,
+    } as any);
+
+    const { getByText } = render(React.createElement(CashRegisterScreen));
+
+    fireEvent.press(getByText('Comparar'));
+    expect(handleCompare).toHaveBeenCalled();
   });
 });

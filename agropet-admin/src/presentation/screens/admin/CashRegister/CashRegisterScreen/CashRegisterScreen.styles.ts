@@ -38,4 +38,10 @@ export const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 6,
   },
   dateBtnText: { fontSize: 13, fontWeight: 'bold' },
+  cancelBtn: {
+    paddingVertical: 14, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, marginBottom: 40,
+    alignSelf: 'stretch',
+  },
 });

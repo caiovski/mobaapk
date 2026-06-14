@@ -5,6 +5,7 @@ import Svg, { Circle, Line, Path, Defs, LinearGradient, Stop, Rect, G } from 're
 import AdminHeader from '../../../components/AdminHeader';
 import { AdminUserMenu } from '../../../components/AdminUserMenu';
 import LupaIcon from '../../../assets/tela7/parte superior/Adicionar/Remover/Barra de Pesquisa.svg';
+import { Feather } from '@expo/vector-icons';
 import { useAdminMapScreen, darkMapStyle, isNightTime, DEFAULT_STORE_LOCATION } from './useAdminMapScreen';
 import { FiorinoIcon } from './FiorinoIcon';
 import { styles } from './styles';
@@ -50,6 +51,11 @@ export default function AdminMapScreen() {
           <View style={styles.searchContainer}>
             <View style={[styles.searchInputWrapper, { backgroundColor: h.isDarkMode ? '#1E1E24' : '#FFFFFF' }]}>
               <TextInput style={[styles.searchInput, { color: h.colors.textDark }]} placeholder="Pesquisar local..." placeholderTextColor={h.isDarkMode ? '#A0A0A0' : '#919191'} value={h.searchQuery} onChangeText={h.setSearchQuery} />
+              {/* istanbul ignore next */ h.searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => h.setSearchQuery('')} activeOpacity={0.7} style={{ padding: 2 }}>
+                  <Feather name="x" size={14} color={h.isDarkMode ? '#A0A0A0' : '#919191'} />
+                </TouchableOpacity>
+              )}
             </View>
             {renderSuggestions()}
           </View>

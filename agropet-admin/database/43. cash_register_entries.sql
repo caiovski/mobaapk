@@ -59,7 +59,7 @@ BEGIN
   FROM cash_register_entries
   WHERE date = p_date;
 
-  code := 'CAIXA-' || TO_CHAR(p_date, 'YYYYMMDD') || '-' || LPAD(seq::TEXT, 3, '0');
+  code := 'CAIXA-' || TO_CHAR(p_date, 'DDMMYYYY') || '-' || LPAD(seq::TEXT, 3, '0');
   RETURN code;
 END;
 $$;

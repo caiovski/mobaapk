@@ -17,7 +17,7 @@ export default function useHomeScreen() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const { searchText, setSearchText, selectedCategories, categories } = useFilter();
+  const { searchText, setSearchText, selectedCategories, categories, reloadCategories } = useFilter();
   const { addToCart } = useContext(CartContext);
   const { user } = useContext(AuthContext);
 
@@ -269,6 +269,7 @@ export default function useHomeScreen() {
     const unsubscribeFocus = navigation.addListener('focus', () => {
       fetchProfileName();
       checkGreetingPreference();
+      reloadCategories();
     });
 
     const channel = supabase

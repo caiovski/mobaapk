@@ -7,6 +7,14 @@ import * as SecureStore from 'expo-secure-store';
 import { supabase } from '../../data/datasources/supabase/client';
 import { Alert, Linking, TouchableOpacity } from 'react-native';
 
+jest.mock('../../presentation/contexts/useCategories', () => {
+  const R = require('react');
+  return {
+    useCategories: () => ({ categories: [], allCategories: [], loading: false, reload: jest.fn(), createCategory: jest.fn(), toggleActive: jest.fn(), deleteCategory: jest.fn() }),
+    CategoriesProvider: ({ children }: any) => R.createElement(R.Fragment, null, children),
+  };
+});
+
 const mockUseTheme = jest.fn().mockReturnValue({
   colors: {
     cardBackground: '#2E2E38',
@@ -434,6 +442,7 @@ describe('Deep Coverage - AdminHomeScreen', () => {
 describe('Deep Coverage - AdminLoginScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
     (SecureStore.getItemAsync as jest.Mock).mockResolvedValue(null);
     // Reset signInWithPassword to default success
     (supabase.auth.signInWithPassword as jest.Mock).mockResolvedValue({
@@ -584,11 +593,11 @@ describe('Deep Coverage - AdminLoginScreen', () => {
       fireEvent.press(sendCodeLink);
     });
 
-    expect(supabase.functions.invoke).toHaveBeenCalledWith('smooth-worker');
+    expect(Alert.alert).toHaveBeenCalledWith('Aviso', 'Update de segurança futuro, você pode logar com seu e-mail normalmente e senha!');
   });
 
-  it('should show error when handleSendCode fails', async () => {
-    (supabase.functions.invoke as jest.Mock).mockRejectedValue(new Error('Network error'));
+  it('should show security update alert when handleSendCode is called (error path still shows same alert)', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert');
 
     const { getByText } = renderLogin();
     const sendCodeLink = getByText('Enviar código');
@@ -597,20 +606,8 @@ describe('Deep Coverage - AdminLoginScreen', () => {
       fireEvent.press(sendCodeLink);
     });
 
-    expect(Alert.alert).toHaveBeenCalledWith('Erro', 'Não foi possível enviar o código.');
-  });
-
-  it('should show error when handleSendCode resolves with error (line 43 branch)', async () => {
-    (supabase.functions.invoke as jest.Mock).mockResolvedValue({ data: {}, error: new Error('Server error') });
-
-    const { getByText } = renderLogin();
-    const sendCodeLink = getByText('Enviar código');
-
-    await act(async () => {
-      fireEvent.press(sendCodeLink);
-    });
-
-    expect(Alert.alert).toHaveBeenCalledWith('Erro', 'Não foi possível enviar o código.');
+    expect(Alert.alert).toHaveBeenCalledWith('Aviso', 'Update de segurança futuro, você pode logar com seu e-mail normalmente e senha!');
+    alertSpy.mockRestore();
   });
 
   it('should show error when admin code is not 8 digits', async () => {
@@ -743,6 +740,7 @@ describe('Deep Coverage - OrdersScreen', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
     (SecureStore.getItemAsync as jest.Mock).mockResolvedValue(null);
     focusCallback = null;
   });

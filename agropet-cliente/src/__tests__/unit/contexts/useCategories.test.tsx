@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, act, waitFor } from '@testing-library/react-native';
 import { Text, View } from 'react-native';
-import { useCategories } from '../../../presentation/contexts/useCategories';
+import { useCategories, CategoriesProvider } from '../../../presentation/contexts/useCategories';
 import { fetchActiveCategories } from '../../../services/categoryService';
 import type { DBCustomCategory } from '../../../db/schema';
 
@@ -30,10 +30,14 @@ describe('useCategories', () => {
     jest.clearAllMocks();
   });
 
+  function renderWithProvider(ui: React.ReactElement) {
+    return render(<CategoriesProvider>{ui}</CategoriesProvider>);
+  }
+
   it('should load categories and show loading state', async () => {
     (fetchActiveCategories as jest.Mock).mockResolvedValue(mockCategories);
 
-    const { getByTestId } = render(<TestComponent />);
+    const { getByTestId } = renderWithProvider(<TestComponent />);
 
     expect(getByTestId('loading').props.children).toBe('loading');
 
@@ -49,7 +53,7 @@ describe('useCategories', () => {
   it('should handle empty categories', async () => {
     (fetchActiveCategories as jest.Mock).mockResolvedValue([]);
 
-    const { getByTestId } = render(<TestComponent />);
+    const { getByTestId } = renderWithProvider(<TestComponent />);
 
     await waitFor(() => {
       expect(getByTestId('loading').props.children).toBe('loaded');
@@ -62,7 +66,7 @@ describe('useCategories', () => {
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     (fetchActiveCategories as jest.Mock).mockRejectedValue(new Error('Network error'));
 
-    const { getByTestId } = render(<TestComponent />);
+    const { getByTestId } = renderWithProvider(<TestComponent />);
 
     await waitFor(() => {
       expect(getByTestId('loading').props.children).toBe('loaded');
@@ -88,7 +92,7 @@ describe('useCategories', () => {
       );
     }
 
-    const { getByTestId } = render(<CaptureReloadComponent />);
+    const { getByTestId } = renderWithProvider(<CaptureReloadComponent />);
 
     await waitFor(() => {
       expect(getByTestId('loading').props.children).toBe('loaded');
@@ -101,5 +105,19 @@ describe('useCategories', () => {
     });
 
     expect(getByTestId('count').props.children).toBe(1);
+  });
+
+  it('should throw when useCategories is used outside CategoriesProvider', () => {
+    function BadComponent() {
+      useCategories();
+      return null;
+    }
+    expect(() => render(<BadComponent />)).toThrow('useCategoriesContext must be used within CategoriesProvider');
+  });
+
+  it('should export useCategories from barrel file', () => {
+    const barrel = require('../../../presentation/contexts/useCategories');
+    expect(barrel.useCategories).toBeDefined();
+    expect(barrel.CategoriesProvider).toBeDefined();
   });
 });

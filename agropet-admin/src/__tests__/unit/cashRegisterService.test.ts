@@ -1,4 +1,4 @@
-import { calculateTotal, calculateBillsTotal, calculateCoinsTotal, fetchByDate, fetchHistory, saveEntry, updateEntry } from '../../services/cashRegisterService';
+import { calculateTotal, calculateBillsTotal, calculateCoinsTotal, fetchByDate, fetchHistory, saveEntry, updateEntry, closeEntry, markDayAsClosed, generateCode } from '../../services/cashRegisterService';
 import { supabase } from '../../data/datasources/supabase/client';
 import type { DenominationInput } from '../../db/schema';
 
@@ -232,6 +232,18 @@ describe('cashRegisterService', () => {
 
       await expect(saveEntry('opening', '2025-01-01', mockDenominations)).rejects.toEqual({ message: 'Insert error' });
     });
+
+    it('should save entry with skipMessage', async () => {
+      const mockInserted = { id: 'new-id', code: 'CAIXA-20250101-001', entry_type: 'closing', date: '2025-01-01', skip_message: 'Skip reason' };
+      const chain = (supabase.from as jest.Mock)();
+      const singleMock = jest.fn().mockResolvedValue({ data: mockInserted, error: null });
+      (chain.select as jest.Mock).mockReturnValue({ single: singleMock });
+      (chain.insert as jest.Mock).mockReturnValue({ select: jest.fn().mockReturnValue({ single: singleMock }) });
+      (supabase.from as jest.Mock).mockReturnValue(chain);
+
+      const result = await saveEntry('closing', '2025-01-01', mockDenominations, 'Skip reason');
+      expect(result.skip_message).toBe('Skip reason');
+    });
   });
 
   describe('updateEntry', () => {
@@ -255,6 +267,94 @@ describe('cashRegisterService', () => {
       (supabase.from as jest.Mock).mockReturnValue(chain);
 
       await expect(updateEntry('existing-id', mockDenominations)).rejects.toEqual({ message: 'Update error' });
+    });
+  });
+
+  describe('closeEntry', () => {
+    it('should close an entry', async () => {
+      const mockClosed = { id: 'entry-1', closed: true, auto_closed: false };
+      const chain = (supabase.from as jest.Mock)();
+      const singleMock = jest.fn().mockResolvedValue({ data: mockClosed, error: null });
+      (chain.select as jest.Mock).mockReturnValue({ single: singleMock });
+      (chain.eq as jest.Mock).mockReturnValue({ select: jest.fn().mockReturnValue({ single: singleMock }) });
+      (chain.update as jest.Mock).mockReturnValue(chain);
+      (supabase.from as jest.Mock).mockReturnValue(chain);
+
+      const result = await closeEntry('entry-1', false);
+      expect(result.closed).toBe(true);
+      expect(result.auto_closed).toBe(false);
+    });
+
+    it('should close entry with autoClosed true and skipMessage', async () => {
+      const mockClosed = { id: 'entry-1', closed: true, auto_closed: true, skip_message: 'Auto closed' };
+      const chain = (supabase.from as jest.Mock)();
+      const singleMock = jest.fn().mockResolvedValue({ data: mockClosed, error: null });
+      (chain.select as jest.Mock).mockReturnValue({ single: singleMock });
+      (chain.eq as jest.Mock).mockReturnValue({ select: jest.fn().mockReturnValue({ single: singleMock }) });
+      (chain.update as jest.Mock).mockReturnValue(chain);
+      (supabase.from as jest.Mock).mockReturnValue(chain);
+
+      const result = await closeEntry('entry-1', true, 'Auto closed');
+      expect(result.auto_closed).toBe(true);
+      expect(result.skip_message).toBe('Auto closed');
+    });
+
+    it('should throw on close error', async () => {
+      const chain = (supabase.from as jest.Mock)();
+      const singleMock = jest.fn().mockResolvedValue({ data: null, error: { message: 'Close error' } });
+      (chain.select as jest.Mock).mockReturnValue({ single: singleMock });
+      (chain.eq as jest.Mock).mockReturnValue({ select: jest.fn().mockReturnValue({ single: singleMock }) });
+      (chain.update as jest.Mock).mockReturnValue(chain);
+      (supabase.from as jest.Mock).mockReturnValue(chain);
+
+      await expect(closeEntry('entry-1', false)).rejects.toEqual({ message: 'Close error' });
+    });
+  });
+
+  describe('markDayAsClosed', () => {
+    it('should close both opening and closing entries', async () => {
+      const mockClosed = { id: '', closed: true, auto_closed: false };
+      const chain = (supabase.from as jest.Mock)();
+      const singleMock = jest.fn().mockResolvedValue({ data: { ...mockClosed }, error: null });
+      (chain.select as jest.Mock).mockReturnValue({ single: singleMock });
+      (chain.eq as jest.Mock).mockReturnValue({ select: jest.fn().mockReturnValue({ single: singleMock }) });
+      (chain.update as jest.Mock).mockReturnValue(chain);
+      (supabase.from as jest.Mock).mockReturnValue(chain);
+
+      await markDayAsClosed('opening-id', 'closing-id', false);
+      expect(chain.update).toHaveBeenCalledTimes(2);
+    });
+
+    it('should mark day as closed with autoClosed and skipMessage', async () => {
+      const mockClosed = { id: '', closed: true, auto_closed: true };
+      const chain = (supabase.from as jest.Mock)();
+      const singleMock = jest.fn().mockResolvedValue({ data: { ...mockClosed, skip_message: 'Test skip' }, error: null });
+      (chain.select as jest.Mock).mockReturnValue({ single: singleMock });
+      (chain.eq as jest.Mock).mockReturnValue({ select: jest.fn().mockReturnValue({ single: singleMock }) });
+      (chain.update as jest.Mock).mockReturnValue(chain);
+      (supabase.from as jest.Mock).mockReturnValue(chain);
+
+      await markDayAsClosed('opening-id', 'closing-id', true, 'Test skip');
+      expect(chain.update).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('generateCode', () => {
+    it('should generate a code via rpc', async () => {
+      (supabase.rpc as jest.Mock).mockReturnValue({
+        single: jest.fn().mockResolvedValue({ data: 'CAIXA-20250101-001', error: null }),
+      });
+
+      const code = await generateCode('2025-01-01');
+      expect(code).toBe('CAIXA-20250101-001');
+    });
+
+    it('should throw on rpc error', async () => {
+      (supabase.rpc as jest.Mock).mockReturnValue({
+        single: jest.fn().mockResolvedValue({ data: null, error: { message: 'RPC error' } }),
+      });
+
+      await expect(generateCode('2025-01-01')).rejects.toEqual({ message: 'RPC error' });
     });
   });
 });

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Alert } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -52,6 +52,13 @@ export function useManageProductsScreen() {
     setLoading(false);
   };
 
+  const [refreshing, setRefreshing] = useState(false);
+  /* istanbul ignore next */ const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchProducts();
+    setRefreshing(false);
+  }, []);
+
   useEffect(() => {
     AsyncStorage.getItem(SORT_OPTION_KEY).then(saved => {
       if (saved) {
@@ -89,6 +96,16 @@ export function useManageProductsScreen() {
     });
     return unsub;
   }, [navigation, route.params]);
+
+  useEffect(() => {
+    const channel = supabase.channel('products-changes')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'products' },
+        /* istanbul ignore next */ () => { fetchProducts(); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   const dismissAlert = (id: string) => setDismissedProductIds(prev => { const n = new Set(prev); n.add(id); return n; });
 
@@ -255,6 +272,7 @@ export function useManageProductsScreen() {
     selectedProductIds, setSelectedProductIds,
     dismissedProductIds,
     showConfirmDeleteModal, setShowConfirmDeleteModal,
+    refreshing, onRefresh,
     fetchProducts,
     dismissAlert, toggleProductStatus, deleteProduct,
     filteredProducts, allProductsInactive,

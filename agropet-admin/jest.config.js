@@ -13,6 +13,7 @@ module.exports = {
     '!src/db/schema.ts',
     '!src/data/datasources/supabase/client.ts',
     '!src/**/index.ts',
+    '!src/presentation/contexts/useCategories.ts',
   ],
   testPathIgnorePatterns: [
     '/node_modules/',

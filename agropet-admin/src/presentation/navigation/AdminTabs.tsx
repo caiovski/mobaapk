@@ -11,6 +11,7 @@ import AdminSettingsScreen from '../screens/admin/AdminSettings';
 import ProductCreateScreen from '../screens/admin/ProductCreate';
 import ProductEditScreen from '../screens/admin/ProductEdit';
 import AdminProfileScreen from '../screens/admin/AdminProfile';
+import CategoryManagerScreen from '../screens/admin/ManageProducts/CategoryManagerScreen';
 
 // SVGs Admin Barra (Tela 2)
 import HomeIcon from '../assets/tela2/barra/Home.svg';
@@ -96,6 +97,11 @@ export default function AdminTabs() {
         component={AdminProfileScreen} 
         options={{ tabBarButton: () => null }} 
       />
+      <Tab.Screen 
+        name="CategoryManagerScreen" 
+        component={CategoryManagerScreen} 
+        options={{ tabBarButton: () => null }} 
+      />
       <Tab.Screen name="Opções" component={AdminSettingsScreen} />
     </Tab.Navigator>
   );
@@ -144,6 +150,12 @@ const tabConfigs: any = {
     Gerenciar: { Icon: ManageIcon4, IconDark: ManageIconDark4, Label: ManageLabel4, labelW: 55, labelH: 10 },
     Opções: { Icon: GearIcon, IconDark: GearIconDark, Label: OpcoesLabel, labelW: 42, labelH: 12 },
   },
+  CategoryManagerScreen: {
+    Home: { Icon: HomeIcon7, IconDark: HomeIconDark7, Label: HomeLabel7, labelW: 33, labelH: 9 },
+    Mapa: { Icon: MapIcon7, IconDark: MapIconDark7, Label: MapLabel7, labelW: 32, labelH: 12 },
+    Gerenciar: { Icon: ManageIcon7, IconDark: ManageIconDark7, Label: ManageLabel7, labelW: 57, labelH: 10 },
+    Opções: { Icon: GearIcon7, IconDark: GearIconDark7, Label: OpcoesLabel7, labelW: 42, labelH: 12 },
+  },
 };
 
 export function CustomTabBar({ state, descriptors, navigation }: any) {
@@ -164,7 +176,7 @@ export function CustomTabBar({ state, descriptors, navigation }: any) {
 
   const getHighlightedRouteIndex = () => {
     if (activeTab === 'AdminProfile') return -1;
-    if (activeTab === 'ProductCreateScreen' || activeTab === 'ProductEditScreen') {
+    if (activeTab === 'ProductCreateScreen' || activeTab === 'ProductEditScreen' || activeTab === 'CategoryManagerScreen') {
       return state.routes.findIndex((r: any) => r.name === 'Gerenciar');
     }
     return state.index;
@@ -225,7 +237,7 @@ export function CustomTabBar({ state, descriptors, navigation }: any) {
           const isFocused = state.index === index;
           
           let isTabActive = isFocused;
-          if (route.name === 'Gerenciar' && (activeTab === 'ProductCreateScreen' || activeTab === 'ProductEditScreen')) {
+          if (route.name === 'Gerenciar' && (activeTab === 'ProductCreateScreen' || activeTab === 'ProductEditScreen' || activeTab === 'CategoryManagerScreen')) {
             isTabActive = true;
           }
           if (activeTab === 'AdminProfile') {

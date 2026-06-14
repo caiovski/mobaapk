@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Text } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../../../../data/datasources/supabase/client';
@@ -41,6 +41,7 @@ export function useAdminSalesHistoryScreen() {
   const [showPicker, setShowPicker] = useState(false);
   const [localStartDate, setLocalStartDate] = useState<Date>(new Date());
   const [localEndDate, setLocalEndDate] = useState<Date>(new Date());
+  const [refreshing, setRefreshing] = useState(false);
 
   const totalGeral = orders.reduce((acc, o) => acc + (o.total ?? 0), 0);
   const totalCredito = orders.reduce((acc, o) => acc + (o.payment_method === 'cartao_credito' ? (o.total ?? 0) : 0), 0);
@@ -102,6 +103,12 @@ export function useAdminSalesHistoryScreen() {
       setLoading(false);
     }
   };
+
+  /* istanbul ignore next */ const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchSales();
+    setRefreshing(false);
+  }, []);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => { if (isLoaded) fetchSales(); });
@@ -212,7 +219,7 @@ export function useAdminSalesHistoryScreen() {
 
   return {
     colors, isDarkMode, navigation,
-    loading, orders, showFilterOptionModal, showSundayHolidayModal,
+    loading, refreshing, onRefresh, orders, showFilterOptionModal, showSundayHolidayModal,
     showPicker, pickerMode, localStartDate, localEndDate,
     startDate, endDate, isRange, hasFiltered,
     totalGeral, totalCredito, totalDebito, totalDinheiro, totalPix,

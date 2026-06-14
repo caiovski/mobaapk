@@ -2,6 +2,7 @@ import {
   fetchActiveCategories,
   fetchAllCategories,
   createCategory,
+  updateCategory,
   toggleCategoryActive,
   deleteCategory,
   isProductInCategories,
@@ -160,6 +161,28 @@ describe('categoryService', () => {
       (supabase.from as jest.Mock).mockReturnValue(chain);
 
       await expect(createCategory('Rações', ['ração'])).rejects.toEqual({ message: 'Insert error' });
+    });
+  });
+
+  describe('updateCategory', () => {
+    it('should update a category', async () => {
+      const chain = (supabase.from as jest.Mock)();
+      const eqMock = jest.fn().mockResolvedValue({ error: null });
+      (chain.update as jest.Mock).mockReturnValue({ eq: eqMock });
+      (supabase.from as jest.Mock).mockReturnValue(chain);
+
+      await updateCategory('cat-1', 'New Name', ['new', 'keywords']);
+      expect(chain.update).toHaveBeenCalledWith({ name: 'New Name', keywords: ['new', 'keywords'] });
+      expect(eqMock).toHaveBeenCalledWith('id', 'cat-1');
+    });
+
+    it('should throw on update error', async () => {
+      const chain = (supabase.from as jest.Mock)();
+      const eqMock = jest.fn().mockResolvedValue({ error: { message: 'Update error' } });
+      (chain.update as jest.Mock).mockReturnValue({ eq: eqMock });
+      (supabase.from as jest.Mock).mockReturnValue(chain);
+
+      await expect(updateCategory('cat-1', 'Name', ['kw'])).rejects.toEqual({ message: 'Update error' });
     });
   });
 

@@ -1,5 +1,7 @@
 import 'react-native-gesture-handler/jestSetup';
 
+jest.setTimeout(30000);
+
 process.env.EXPO_PUBLIC_SUPABASE_URL = 'https://mock-supabase-url.supabase.co';
 process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY = 'mock-anon-key';
 

@@ -51,7 +51,7 @@ DECLARE
   v_seq INTEGER;
   v_prefix TEXT;
 BEGIN
-  v_prefix := 'CAIXA-' || TO_CHAR(p_date, 'YYYYMMDD') || '-';
+  v_prefix := 'CAIXA-' || TO_CHAR(p_date, 'DDMMYYYY') || '-';
   SELECT COALESCE(MAX(SUBSTRING(code FROM '\d{3}$')::INTEGER), 0) + 1
     INTO v_seq
     FROM public.cash_register_entries

@@ -61,6 +61,14 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
   removeItem: jest.fn().mockResolvedValue(undefined),
 }));
 
+jest.mock('../../presentation/contexts/useCategories', () => {
+  const R = require('react');
+  return {
+    useCategories: () => ({ categories: [], allCategories: [], loading: false, reload: jest.fn(), createCategory: jest.fn(), toggleActive: jest.fn(), deleteCategory: jest.fn() }),
+    CategoriesProvider: ({ children }: any) => R.createElement(R.Fragment, null, children),
+  };
+});
+
 jest.mock('expo-secure-store', () => ({
   getItemAsync: jest.fn(),
   setItemAsync: jest.fn(),

@@ -170,6 +170,7 @@ export function useProductEditScreen() {
       name, description,
       price: parseFloat(price.replace(',', '.')),
       stock: parsedStock,
+      active: parsedStock > 0,
       is_bulk: isBulk,
       is_per_meter: isPerMeter,
       category_id: activeCategory,

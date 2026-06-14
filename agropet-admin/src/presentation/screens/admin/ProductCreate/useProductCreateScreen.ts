@@ -125,7 +125,7 @@ export function useProductCreateScreen() {
       description,
       price: parseFloat(price.replace(',', '.')),
       stock: parsedStock,
-      active: true,
+      active: parsedStock > 0,
       is_bulk: isBulk,
       is_per_meter: isPerMeter,
       image_url: mappedImages.length > 0 ? JSON.stringify(mappedImages) : null,

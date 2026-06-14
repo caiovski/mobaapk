@@ -93,6 +93,8 @@ export interface DBCashRegisterEntry {
   edited_at?: string;
   created_by?: string;
   created_at?: string;
+  closed?: boolean;
+  skip_message?: string;
 }
 
 export interface DenominationInput {

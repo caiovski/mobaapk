@@ -156,6 +156,11 @@ export function CatalogHeader({ searchText: propSearchText, onSearchChange: prop
             returnKeyType="search"
             onSubmitEditing={triggerSearch}
           />
+          {localSearchText.length > 0 && (
+            <TouchableOpacity onPress={() => { setLocalSearchText(''); setSearchText(''); if (propOnSearchChange) propOnSearchChange(''); }} activeOpacity={0.7} style={{ padding: 2 }}>
+              <Feather name="x" size={14} color={isDarkMode ? '#FFFFFF' : '#1C2434'} />
+            </TouchableOpacity>
+          )}
         </View>
 
         <TouchableOpacity

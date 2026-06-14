@@ -1,7 +1,5 @@
 import { Alert } from 'react-native';
-import * as SecureStore from 'expo-secure-store';
 import { supabase } from '../../../../../data/datasources/supabase/client';
-import { CaixaTransaction } from '../useAdminConsultSales';
 
 export function useOrderMutations(
   setLoading: (val: boolean) => void,
@@ -29,41 +27,11 @@ export function useOrderMutations(
             try {
               setLoading(true);
 
-              // NOTA: A reversão de estoque é tratada automaticamente pelo trigger
-              // 'restore_stock_on_cancel' no banco de dados ao mudar o status para 'cancelled'.
-              // Isso evita a duplicação de devolução de estoque.
-
               const { error: orderError } = await supabase
                 .from('orders')
                 .update({ status: 'cancelled' })
                 .eq('id', order.id);
               if (orderError) throw orderError;
-
-              if (order.delivery_address === 'Venda Física PDV') {
-                const stored = await SecureStore.getItemAsync('agropet_sangrias');
-                if (stored) {
-                  const txList: CaixaTransaction[] = JSON.parse(stored);
-                  const orderTime = new Date(order.created_at).getTime();
-                  let bestIdx = -1;
-                  let minDiff = Infinity;
-                  for (let i = 0; i < txList.length; i++) {
-                    const tx = txList[i];
-                    if (tx.description === 'Venda PDV' && Math.abs(tx.amount - order.total) < 0.01) {
-                      const txTime = new Date(tx.date).getTime();
-                      const diff = Math.abs(txTime - orderTime);
-                      if (diff < minDiff && diff < 5 * 60 * 1000) {
-                        minDiff = diff;
-                        bestIdx = i;
-                      }
-                    }
-                  }
-                  if (bestIdx !== -1) {
-                    txList[bestIdx].description = 'Venda PDV (Cancelada)';
-                    txList[bestIdx].amount = 0;
-                    await SecureStore.setItemAsync('agropet_sangrias', JSON.stringify(txList));
-                  }
-                }
-              }
 
               Alert.alert('Sucesso', 'Venda cancelada e estoque estornado!');
               await Promise.all([fetchSales(), fetchCaixaData()]);
@@ -89,31 +57,6 @@ export function useOrderMutations(
         .update({ payment_method: newMethod })
         .eq('id', selectedOrder.id);
       if (dbError) throw dbError;
-
-      if (selectedOrder.delivery_address === 'Venda Física PDV') {
-        const stored = await SecureStore.getItemAsync('agropet_sangrias');
-        if (stored) {
-          const txList: CaixaTransaction[] = JSON.parse(stored);
-          const orderTime = new Date(selectedOrder.created_at).getTime();
-          let bestIdx = -1;
-          let minDiff = Infinity;
-          for (let i = 0; i < txList.length; i++) {
-            const tx = txList[i];
-            if (tx.description === 'Venda PDV' && Math.abs(tx.amount - selectedOrder.total) < 0.01) {
-              const txTime = new Date(tx.date).getTime();
-              const diff = Math.abs(txTime - orderTime);
-              if (diff < minDiff && diff < 5 * 60 * 1000) {
-                minDiff = diff;
-                bestIdx = i;
-              }
-            }
-          }
-          if (bestIdx !== -1) {
-            txList[bestIdx].paymentMethod = newMethod;
-            await SecureStore.setItemAsync('agropet_sangrias', JSON.stringify(txList));
-          }
-        }
-      }
 
       Alert.alert('Sucesso', 'Forma de pagamento atualizada!');
       await Promise.all([fetchSales(), fetchCaixaData()]);

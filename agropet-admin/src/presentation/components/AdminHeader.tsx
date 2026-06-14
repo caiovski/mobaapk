@@ -170,6 +170,11 @@ export default function AdminHeader({ title = 'home', searchValue = '', onSearch
               returnKeyType="search"
               onSubmitEditing={triggerSearch}
             />
+            {localSearch.length > 0 && (
+              <TouchableOpacity onPress={() => { setLocalSearch(''); if (onSearchChange) onSearchChange(''); }} activeOpacity={0.7} style={{ padding: 2 }}>
+                <Feather name="x" size={14} color={isDarkMode ? '#FFFFFF' : '#1C2434'} />
+              </TouchableOpacity>
+            )}
           </View>
         ) : (
           <AdmIcon width={45} height={25} style={{ marginRight: 8 }} />

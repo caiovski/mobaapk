@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Platform, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Platform, Alert, RefreshControl } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import AdminHeader from '../../../components/AdminHeader';
 import { AdminUserMenu } from '../../../components/AdminUserMenu';
@@ -55,6 +55,9 @@ export default function AdminDashboardScreen() {
           d.isPDVMode && { paddingBottom: Platform.OS === 'ios' ? 160 : 140 }
         ]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={d.refreshing} onRefresh={d.onRefresh} />
+        }
       >
         {!d.isPDVMode ? (
           <DashboardOverview
@@ -134,6 +137,11 @@ export default function AdminDashboardScreen() {
             onCancelPress={() => { d.setPdvSelectMode(false); d.setPdvCart({}); }}
             onToggleCart={d.togglePdvCart}
             onUpdateQty={d.updatePdvCartQty}
+            quantityInputMode={d.quantityInputMode}
+            onToggleQuantityInputMode={() => d.setQuantityInputMode(!d.quantityInputMode)}
+            setPdvCartQty={d.setPdvCartQty}
+            bulkInputUnit={d.bulkInputUnit}
+            setBulkInputUnit={d.setBulkInputUnit}
             onDismissAlert={d.dismissAlert}
             dismissedProductIds={d.dismissedProductIds}
             cancelOpacity={d.cancelOpacity}

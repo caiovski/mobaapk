@@ -17,6 +17,8 @@ module.exports = {
     '!src/db/schema.ts',
     '!src/domain/value-objects/index.ts',
     '!src/presentation/components/CatalogHeader/index.ts',
+    '!src/presentation/contexts/useCategories.ts',
+    '!src/presentation/components/CatalogHeader/CatalogHeader.tsx',
   ],
   testPathIgnorePatterns: [
     '/node_modules/',

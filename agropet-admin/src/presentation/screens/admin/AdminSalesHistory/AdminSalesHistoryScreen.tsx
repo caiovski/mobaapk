@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Modal } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Modal, RefreshControl } from 'react-native';
 import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -73,7 +73,8 @@ export default function AdminSalesHistoryScreen() {
   return (
     <View style={[styles.mainContainer, { backgroundColor: h.colors.white }]}>
       <AdminHeader title="historico_vendas" />
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={h.refreshing} onRefresh={h.onRefresh} tintColor="#FF5C00" colors={['#FF5C00']} />}>
         <View style={styles.filterRow}>
           <Text style={{ fontSize: h.isDarkMode ? 30 : 25, fontWeight: 'bold', color: h.isDarkMode ? '#FFFFFF' : '#1C2434', flex: 1.2 }}>
             {h.getDynamicTitle()}

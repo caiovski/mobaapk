@@ -133,6 +133,11 @@ const createMockChain = (overrides: any = {}) => {
 jest.mock('../../data/datasources/supabase/client', () => ({
   supabase: {
     from: jest.fn().mockImplementation(() => createMockChain()),
+    channel: jest.fn().mockReturnValue({
+      on: jest.fn().mockReturnThis(),
+      subscribe: jest.fn(),
+    }),
+    removeChannel: jest.fn(),
   },
 }));
 
@@ -300,7 +305,6 @@ describe('AdminConsultSalesScreen - Deep Coverage Expansion', () => {
       await confirmBtn.onPress();
     });
 
-    expect(SecureStore.setItemAsync).toHaveBeenCalled();
     expect(alertSpy).toHaveBeenLastCalledWith('Sucesso', 'Venda cancelada e estoque estornado!');
 
     // 2. Cancel Ecommerce Order (Positive Flow)
@@ -371,7 +375,6 @@ describe('AdminConsultSalesScreen - Deep Coverage Expansion', () => {
       const options = getAllByText('Dinheiro');
       fireEvent.press(options[options.length - 1]);
     });
-    expect(SecureStore.setItemAsync).toHaveBeenCalled();
     expect(alertSpy).toHaveBeenCalledWith('Sucesso', 'Forma de pagamento atualizada!');
 
     // 3. Error Case in update
@@ -1221,7 +1224,7 @@ describe('AdminConsultSalesScreen - Deep Coverage Expansion', () => {
       await confirmBtn.onPress();
     });
 
-    expect(SecureStore.setItemAsync).toHaveBeenCalled();
+    expect(alertSpy).toHaveBeenCalledWith('Sucesso', 'Venda cancelada e estoque estornado!');
     fromSpy.mockImplementation(() => createMockChain());
   });
 

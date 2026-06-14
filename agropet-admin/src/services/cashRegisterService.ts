@@ -53,26 +53,35 @@ export async function fetchHistory(): Promise<DBCashRegisterEntry[]> {
   return data || [];
 }
 
-export async function saveEntry(
-  entryType: 'opening' | 'closing',
-  date: string,
-  denominations: DenominationInput,
-): Promise<DBCashRegisterEntry> {
-  const totalValue = calculateTotal(denominations);
+export async function generateCode(date: string): Promise<string> {
   const { data, error } = await supabase
     .rpc('generate_cash_register_code', { p_date: date })
     .single();
   if (error) throw error;
-  const code = data as string;
+  return data as string;
+}
+
+export async function saveEntry(
+  entryType: 'opening' | 'closing',
+  date: string,
+  denominations: DenominationInput,
+  skipMessage?: string,
+): Promise<DBCashRegisterEntry> {
+  const totalValue = calculateTotal(denominations);
+  const code = await generateCode(date);
+  const payload: Record<string, any> = {
+    code,
+    date,
+    entry_type: entryType,
+    ...denominations,
+    total_value: totalValue,
+  };
+  if (skipMessage) {
+    payload.skip_message = skipMessage;
+  }
   const { data: entry, error: insertError } = await supabase
     .from('cash_register_entries')
-    .insert({
-      code,
-      date,
-      entry_type: entryType,
-      ...denominations,
-      total_value: totalValue,
-    })
+    .insert(payload)
     .select()
     .single();
   if (insertError) throw insertError;
@@ -97,4 +106,39 @@ export async function updateEntry(
     .single();
   if (error) throw error;
   return data;
+}
+
+export async function closeEntry(
+  id: string,
+  autoClosed: boolean,
+  skipMessage?: string,
+): Promise<DBCashRegisterEntry> {
+  const payload: Record<string, any> = {
+    closed: true,
+    auto_closed: autoClosed,
+  };
+  if (skipMessage) {
+    payload.skip_message = skipMessage;
+  }
+  const { data, error } = await supabase
+    .from('cash_register_entries')
+    .update(payload)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function markDayAsClosed(
+  openingId: string,
+  closingId: string,
+  autoClosed: boolean,
+  skipMessage?: string,
+): Promise<void> {
+  const updates: Promise<any>[] = [
+    closeEntry(openingId, autoClosed, skipMessage),
+    closeEntry(closingId, autoClosed, skipMessage),
+  ];
+  await Promise.all(updates);
 }

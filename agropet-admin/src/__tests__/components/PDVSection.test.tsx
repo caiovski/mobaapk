@@ -187,7 +187,7 @@ describe('PDVSection', () => {
 
   it('should open sort modal when sort button pressed', () => {
     const { getByText } = render(<PDVSection {...createProps()} />);
-    fireEvent.press(getByText('Ordenar por:'));
+    fireEvent.press(getByText('Filtro'));
     expect(getByText('Ordenar por')).toBeTruthy();
   });
 
@@ -195,23 +195,23 @@ describe('PDVSection', () => {
     const onSortChange = jest.fn();
     const { getByText } = render(<PDVSection {...createProps({ onSortChange })} />);
 
-    fireEvent.press(getByText('Ordenar por:'));
+    fireEvent.press(getByText('Filtro'));
     fireEvent.press(getByText('Produtos mais novos'));
     expect(onSortChange).toHaveBeenCalledWith('newest');
 
-    fireEvent.press(getByText('Ordenar por:'));
+    fireEvent.press(getByText('Filtro'));
     fireEvent.press(getByText('Produtos mais velhos'));
     expect(onSortChange).toHaveBeenCalledWith('oldest');
 
-    fireEvent.press(getByText('Ordenar por:'));
+    fireEvent.press(getByText('Filtro'));
     fireEvent.press(getByText('Mais estoque'));
     expect(onSortChange).toHaveBeenCalledWith('most_stock');
 
-    fireEvent.press(getByText('Ordenar por:'));
+    fireEvent.press(getByText('Filtro'));
     fireEvent.press(getByText('Maior preço'));
     expect(onSortChange).toHaveBeenCalledWith('highest_price');
 
-    fireEvent.press(getByText('Ordenar por:'));
+    fireEvent.press(getByText('Filtro'));
     fireEvent.press(getByText('Menor preço'));
     expect(onSortChange).toHaveBeenCalledWith('lowest_price');
   });
@@ -276,17 +276,18 @@ describe('PDVSection', () => {
     expect(getByText('Expensive')).toBeTruthy();
   });
 
-  it('should show current sort option label on button', () => {
-    const { getByText, queryByText } = render(
+  it('should show current sort option label in modal', () => {
+    const { getByText } = render(
       <PDVSection {...createProps({ pdvSortOption: 'most_stock' })} />
     );
+    fireEvent.press(getByText('Filtro'));
     expect(getByText('Mais estoque')).toBeTruthy();
   });
 
   it('should close sort modal when backdrop pressed', () => {
     const { getByText, queryByText, UNSAFE_getAllByType } = render(<PDVSection {...createProps()} />);
 
-    fireEvent.press(getByText('Ordenar por:'));
+    fireEvent.press(getByText('Filtro'));
     expect(getByText('Ordenar por')).toBeTruthy();
 
     const { TouchableOpacity } = require('react-native');
@@ -467,5 +468,160 @@ describe('PDVSection', () => {
         })}
       />
     )).not.toThrow();
+  });
+
+  it('should render category chips and call onCategoryToggle when pressed', () => {
+    const onCategoryToggle = jest.fn();
+    const categories = [
+      { id: 'c1', name: 'Rações', active: true, keywords: ['ração'] },
+      { id: 'c2', name: 'Acessórios', active: true, keywords: ['acessório'] },
+    ];
+    const { getByText } = render(
+      <PDVSection
+        {...createProps({ categories, onCategoryToggle, pdvActiveCategories: ['Rações'] })}
+      />
+    );
+    fireEvent.press(getByText('Rações'));
+    expect(onCategoryToggle).toHaveBeenCalledWith('Rações');
+    fireEvent.press(getByText('Acessórios'));
+    expect(onCategoryToggle).toHaveBeenCalledWith('Acessórios');
+  });
+
+  it('should render bulk product stock with unit toggle in select mode', () => {
+    const setBulkInputUnit = jest.fn();
+    const bulkProduct = {
+      ...baseProduct, id: 'p-bulk', name: 'Arroz',
+      is_bulk: true, stock: 2500, price: 8,
+    };
+    const { getByText } = render(
+      <PDVSection
+        {...createProps({
+          pdvSelectMode: true,
+          pdvProducts: [bulkProduct],
+          pdvCart: { 'p-bulk': { qty: 1, checked: false } },
+          bulkInputUnit: { 'p-bulk': 'g' },
+          setBulkInputUnit,
+        })}
+      />
+    );
+    expect(getByText('2500 g')).toBeTruthy();
+    fireEvent.press(getByText('Kg'));
+    expect(setBulkInputUnit).toHaveBeenCalled();
+  });
+
+  it('should update qty via text input in grams mode for bulk product', () => {
+    const setPdvCartQty = jest.fn();
+    const setBulkInputUnit = jest.fn();
+    const bulkProduct = {
+      ...baseProduct, id: 'p-bulk', name: 'Arroz',
+      is_bulk: true, stock: 5000, price: 8,
+    };
+    const { getByDisplayValue } = render(
+      <PDVSection
+        {...createProps({
+          pdvSelectMode: true,
+          quantityInputMode: true,
+          pdvProducts: [bulkProduct],
+          pdvCart: { 'p-bulk': { qty: 1, checked: false } },
+          bulkInputUnit: { 'p-bulk': 'g' },
+          setPdvCartQty,
+          setBulkInputUnit,
+        })}
+      />
+    );
+    const input = getByDisplayValue('1');
+    fireEvent.changeText(input, '500');
+    expect(setPdvCartQty).toHaveBeenCalledWith('p-bulk', 500);
+  });
+
+  it('should update qty via text input in kg mode for bulk product', () => {
+    const setPdvCartQty = jest.fn();
+    const bulkProduct = {
+      ...baseProduct, id: 'p-bulk', name: 'Arroz',
+      is_bulk: true, stock: 5000, price: 8,
+    };
+    const { getByDisplayValue } = render(
+      <PDVSection
+        {...createProps({
+          pdvSelectMode: true,
+          quantityInputMode: true,
+          pdvProducts: [bulkProduct],
+          pdvCart: { 'p-bulk': { qty: 1000, checked: false } },
+          bulkInputUnit: { 'p-bulk': 'kg' },
+          setPdvCartQty,
+        })}
+      />
+    );
+    const input = getByDisplayValue('1000');
+    fireEvent.changeText(input, '2,5');
+    expect(setPdvCartQty).toHaveBeenCalledWith('p-bulk', 2.5);
+  });
+
+  it('should fallback to 1 when kg input is invalid or <= 0', () => {
+    const setPdvCartQty = jest.fn();
+    const bulkProduct = {
+      ...baseProduct, id: 'p-bulk', name: 'Arroz',
+      is_bulk: true, stock: 5000, price: 8,
+    };
+    const { getByDisplayValue } = render(
+      <PDVSection
+        {...createProps({
+          pdvSelectMode: true,
+          quantityInputMode: true,
+          pdvProducts: [bulkProduct],
+          pdvCart: { 'p-bulk': { qty: 1000, checked: false } },
+          bulkInputUnit: { 'p-bulk': 'kg' },
+          setPdvCartQty,
+        })}
+      />
+    );
+    const input = getByDisplayValue('1000');
+    fireEvent.changeText(input, 'abc');
+    expect(setPdvCartQty).toHaveBeenCalledWith('p-bulk', 1);
+    fireEvent.changeText(input, '-1');
+    expect(setPdvCartQty).toHaveBeenCalledWith('p-bulk', 1);
+  });
+
+  it('should toggle bulk unit in quantity input mode', () => {
+    const setBulkInputUnit = jest.fn();
+    const bulkProduct = {
+      ...baseProduct, id: 'p-bulk', name: 'Arroz',
+      is_bulk: true, stock: 5000, price: 8,
+    };
+    const { getByText } = render(
+      <PDVSection
+        {...createProps({
+          pdvSelectMode: true,
+          quantityInputMode: true,
+          pdvProducts: [bulkProduct],
+          pdvCart: { 'p-bulk': { qty: 1, checked: false } },
+          bulkInputUnit: { 'p-bulk': 'g' },
+          setBulkInputUnit,
+        })}
+      />
+    );
+    fireEvent.press(getByText('Kg'));
+    expect(setBulkInputUnit).toHaveBeenCalled();
+  });
+
+  it('should call onUpdateQty when minus pressed in select mode', () => {
+    const onUpdateQty = jest.fn();
+    const { UNSAFE_getAllByProps } = render(
+      <PDVSection
+        {...createProps({
+          pdvSelectMode: true,
+          onUpdateQty,
+          pdvCart: { p1: { qty: 3, checked: false } },
+        })}
+      />
+    );
+    const touchables = UNSAFE_getAllByProps({ activeOpacity: 0.7 });
+    const minusBtn = touchables.find((t: any) =>
+      t.props.style?.padding === 4 && t.props.onPress
+    );
+    if (minusBtn) {
+      fireEvent.press(minusBtn);
+      expect(onUpdateQty).toHaveBeenCalledWith('p1', -1);
+    }
   });
 });

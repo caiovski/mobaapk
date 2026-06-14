@@ -6,9 +6,10 @@ jest.mock('../../presentation/contexts/ThemeContext', () => ({
 }));
 
 const mockNavigate = jest.fn();
+const mockGoBack = jest.fn();
 let mockRouteParams: Record<string, any> = {};
 jest.mock('@react-navigation/native', () => ({
-  useNavigation: () => ({ navigate: mockNavigate }),
+  useNavigation: () => ({ navigate: mockNavigate, goBack: mockGoBack }),
   useRoute: () => ({ params: mockRouteParams }),
 }));
 
@@ -23,15 +24,24 @@ const defaultCashRegisterReturn = {
   denominations: {},
   loading: false,
   history: [],
-  isEditing: false,
-  setIsEditing: jest.fn(),
   totals: { bills: 0, coins: 0, global: 0 },
   increment: jest.fn(),
   decrement: jest.fn(),
-  handleSave: jest.fn(),
-  handleUpdate: jest.fn(),
-  canClose: jest.fn().mockReturnValue(false),
+  setDenominationQty: jest.fn(),
   isToday: true,
+  isPast: false,
+  isViewMode: false,
+  isClosed: false,
+  hasOpening: false,
+  hasClosing: false,
+  leftButton: { label: 'Abrir caixa', color: '#339914', enabled: true, action: 'startOpening' as const },
+  rightButton: undefined,
+  showEncerrar: false,
+  showSteppers: false,
+  skipMessage: null,
+  handleAction: jest.fn(),
+  handleConfirmEditOpening: jest.fn(),
+  handleConfirmEditClosing: jest.fn(),
   reload: jest.fn(),
 };
 
@@ -54,18 +64,8 @@ describe('useCashRegisterScreen', () => {
     expect(result.current.selectedDate).toBe('2025-06-09');
   });
 
-  it('getSectionTitle returns "Abertura do Caixa" for today', () => {
-    const { result } = renderHook(() => useCashRegisterScreen());
-    expect(result.current.getSectionTitle()).toBe('Abertura do Caixa');
-  });
-
-  it('getSectionTitle returns "Caixa - DD-MM-YYYY" for other dates', () => {
-    mockRouteParams = { date: '2025-06-09' };
-    const { result } = renderHook(() => useCashRegisterScreen());
-    expect(result.current.getSectionTitle()).toBe('Caixa - 09-06-2025');
-  });
-
   it('isPast is true for past dates', () => {
+    mockUseCashRegister.mockReturnValue({ ...defaultCashRegisterReturn, isPast: true });
     mockRouteParams = { date: '2025-06-09' };
     const { result } = renderHook(() => useCashRegisterScreen());
     expect(result.current.isPast).toBe(true);
@@ -74,85 +74,6 @@ describe('useCashRegisterScreen', () => {
   it('isPast is false for today', () => {
     const { result } = renderHook(() => useCashRegisterScreen());
     expect(result.current.isPast).toBe(false);
-  });
-
-  it('canEdit returns false when isPast', () => {
-    mockRouteParams = { date: '2025-06-09' };
-    const { result } = renderHook(() => useCashRegisterScreen());
-    expect(result.current.canEdit).toBe(false);
-  });
-
-  it('canEdit returns true when no opening exists', () => {
-    const { result } = renderHook(() => useCashRegisterScreen());
-    expect(result.current.canEdit).toBe(true);
-  });
-
-  it('canEdit returns false when opening exists and not editing (line 31)', () => {
-    mockUseCashRegister.mockReturnValue({
-      ...defaultCashRegisterReturn,
-      opening: { id: '1' },
-      isEditing: false,
-    });
-
-    const { result } = renderHook(() => useCashRegisterScreen());
-    expect(result.current.canEdit).toBe(false);
-  });
-
-  it('canEdit returns false when closing exists and edited (line 32)', () => {
-    mockUseCashRegister.mockReturnValue({
-      ...defaultCashRegisterReturn,
-      opening: undefined,
-      closing: { id: '1', edited: true },
-    });
-
-    const { result } = renderHook(() => useCashRegisterScreen());
-    expect(result.current.canEdit).toBe(false);
-  });
-
-  it('canEdit returns true when opening exists, not edited, and isEditing (line 33)', () => {
-    mockUseCashRegister.mockReturnValue({
-      ...defaultCashRegisterReturn,
-      opening: { id: '1', edited: false },
-      closing: undefined,
-      isEditing: true,
-    });
-
-    const { result } = renderHook(() => useCashRegisterScreen());
-    expect(result.current.canEdit).toBe(true);
-  });
-
-  it('canEdit returns true when closing exists, not edited, and isEditing (line 34)', () => {
-    mockUseCashRegister.mockReturnValue({
-      ...defaultCashRegisterReturn,
-      opening: undefined,
-      closing: { id: '1', edited: false },
-      isEditing: true,
-    });
-
-    const { result } = renderHook(() => useCashRegisterScreen());
-    expect(result.current.canEdit).toBe(true);
-  });
-
-  it('canEdit returns true when no opening and not isPast (line 35 fallthrough)', () => {
-    mockUseCashRegister.mockReturnValue({
-      ...defaultCashRegisterReturn,
-      opening: undefined,
-    });
-
-    const { result } = renderHook(() => useCashRegisterScreen());
-    expect(result.current.canEdit).toBe(true);
-  });
-
-  it('canEdit returns true via isEditing branch on line 35 when opening exists and edited', () => {
-    mockUseCashRegister.mockReturnValue({
-      ...defaultCashRegisterReturn,
-      opening: { id: '1', edited: true },
-      closing: undefined,
-      isEditing: true,
-    });
-
-    const { result } = renderHook(() => useCashRegisterScreen());
-    expect(result.current.canEdit).toBe(true);
   });
 
   it('handleHistoryPress navigates to CashRegisterHistoryScreen', () => {
@@ -196,5 +117,65 @@ describe('useCashRegisterScreen', () => {
 
     expect(result.current.showDatePicker).toBe(false);
     expect(result.current.selectedDate).toBe(prevDate);
+  });
+
+  it('handleEncerrar calls crHandleEncerrar and navigates', async () => {
+    const mockCrHandleEncerrar = jest.fn();
+    mockUseCashRegister.mockReturnValue({
+      ...defaultCashRegisterReturn,
+      handleEncerrar: mockCrHandleEncerrar,
+    });
+    const { result } = renderHook(() => useCashRegisterScreen());
+
+    await act(async () => {
+      await result.current.handleEncerrar();
+    });
+
+    expect(mockCrHandleEncerrar).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith('CashRegisterHistoryScreen', { highlightDate: '2025-06-10' });
+  });
+
+  it('handleViewOpening navigates to CashRegisterCompareScreen with mode opening', () => {
+    const { result } = renderHook(() => useCashRegisterScreen());
+
+    act(() => {
+      result.current.handleViewOpening();
+    });
+
+    expect(mockNavigate).toHaveBeenCalledWith('CashRegisterCompareScreen', { date: '2025-06-10', mode: 'opening' });
+  });
+
+  it('handleViewClosing navigates to CashRegisterCompareScreen with mode closing', () => {
+    const { result } = renderHook(() => useCashRegisterScreen());
+
+    act(() => {
+      result.current.handleViewClosing();
+    });
+
+    expect(mockNavigate).toHaveBeenCalledWith('CashRegisterCompareScreen', { date: '2025-06-10', mode: 'closing' });
+  });
+
+  it('handleCompare navigates to CashRegisterCompareScreen with mode compare', () => {
+    const { result } = renderHook(() => useCashRegisterScreen());
+
+    act(() => {
+      result.current.handleCompare();
+    });
+
+    expect(mockNavigate).toHaveBeenCalledWith('CashRegisterCompareScreen', { date: '2025-06-10', mode: 'compare' });
+  });
+
+  it('handleCancel calls navigation.goBack', () => {
+    const { result } = renderHook(() => useCashRegisterScreen());
+    act(() => {
+      result.current.handleCancel();
+    });
+    expect(mockGoBack).toHaveBeenCalled();
+  });
+
+  it('uses route params date when provided', () => {
+    mockRouteParams = { date: '2025-06-09' };
+    const { result } = renderHook(() => useCashRegisterScreen());
+    expect(result.current.selectedDate).toBe('2025-06-09');
   });
 });

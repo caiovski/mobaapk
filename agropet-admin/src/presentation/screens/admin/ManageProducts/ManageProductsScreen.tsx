@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { View, Text, StatusBar, TouchableOpacity, FlatList, ActivityIndicator, Animated, TextInput, Modal } from 'react-native';
+import { View, Text, StatusBar, TouchableOpacity, FlatList, ActivityIndicator, Animated, TextInput, Modal, RefreshControl } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import Colors from '../../../theme/colors';
 import AdminHeader from '../../../components/AdminHeader';
@@ -136,6 +136,7 @@ export default function ManageProductsScreen() {
         </View>
       ) : (
         <FlatList data={h.filteredProducts} keyExtractor={(item) => item.id} renderItem={renderProduct} contentContainerStyle={styles.productsList} showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={h.refreshing} onRefresh={h.onRefresh} tintColor="#FF5C00" colors={['#FF5C00']} />}
           ListEmptyComponent={<View style={styles.emptyContainer}><Text style={[styles.emptyText, { color: h.isDarkMode ? '#8E8E93' : '#919191', textAlign: 'center' }]}>{h.hasError ? "Não foi possível carregar os produtos." : "Este produto não foi encontrado/registrado ainda."}</Text></View>} />
       )}
       <View style={{ height: 100 }} />
@@ -149,6 +150,7 @@ export default function ManageProductsScreen() {
         onSelectSort={(opt) => h.setTempSortOption(opt)}
         onApply={() => { h.setStatusFilter(h.tempStatusFilter); h.setAlertYellowFilter(h.tempAlertYellowFilter); h.setAlertRedFilter(h.tempAlertRedFilter); h.setSortOption(h.tempSortOption); h.setShowFilterModal(false); }}
         onClose={() => h.setShowFilterModal(false)}
+        onManageCategories={/* istanbul ignore next */ () => h.navigation.navigate('CategoryManagerScreen')}
         allCategories={h.allCategories} categories={h.categories}
         onCreateCategory={h.createCategory} onToggleCategoryActive={h.toggleCategoryActive} onDeleteCategory={h.deleteCategory} />
       <AdminUserMenu />

@@ -11,7 +11,7 @@ export const styles = StyleSheet.create({
   },
   searchInputWrapper: {
     backgroundColor: '#FFFFFF', borderRadius: 25, height: 50, paddingHorizontal: 20,
-    justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    flexDirection: 'row', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2, shadowRadius: 4, elevation: 5,
   },
   searchInput: { flex: 1, fontSize: 16, color: '#333' },

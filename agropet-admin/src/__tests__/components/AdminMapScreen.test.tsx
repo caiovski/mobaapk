@@ -1646,4 +1646,18 @@ describe('AdminMapScreen - Deep Coverage', () => {
     fetchSpy.mockRestore();
     unmount();
   });
+
+  it('should show clear search button when searchQuery has text', async () => {
+    const { getByPlaceholderText, getByText } = renderScreen(AdminMapScreen);
+    jest.useFakeTimers();
+    const searchInput = getByPlaceholderText('Pesquisar local...');
+    await act(async () => {
+      fireEvent.changeText(searchInput, 'Search text');
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(500);
+    });
+    expect(getByText('x')).toBeTruthy();
+    jest.useRealTimers();
+  });
 });

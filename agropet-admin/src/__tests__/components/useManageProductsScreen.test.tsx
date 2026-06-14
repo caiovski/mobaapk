@@ -7,6 +7,8 @@ let mockChain: any = {};
 jest.mock('../../data/datasources/supabase/client', () => ({
   supabase: {
     from: jest.fn(() => mockChain),
+    channel: jest.fn(() => ({ on: jest.fn().mockReturnThis(), subscribe: jest.fn() })),
+    removeChannel: jest.fn(),
   },
 }));
 
