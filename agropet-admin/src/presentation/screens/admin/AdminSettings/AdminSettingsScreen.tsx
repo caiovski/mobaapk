@@ -10,6 +10,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 import AdminHeader from '../../../components/AdminHeader';
 import { AdminUserMenu } from '../../../components/AdminUserMenu';
 import { useAdminSettings } from './useAdminSettings';
@@ -47,6 +48,9 @@ export default function AdminSettingsScreen() {
             )}
           </View>
           <SettingsOptionList h={h} />
+          <Text style={{ textAlign: 'center', color: '#919191', fontSize: 14, marginTop: 20, marginBottom: 4, fontWeight: 'bold' }}>
+            v{Constants.expoConfig?.version || '1.1.0'}
+          </Text>
         </View>
       </ScrollView>
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StatusBar, Text, TouchableOpacity, ScrollView, Animated } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 import { CatalogHeader } from '../../../components/CatalogHeader';
 import { styles } from './SettingsScreen.styles';
 import { useSettingsScreen } from './useSettingsScreen';
@@ -216,6 +217,9 @@ export default function SettingsScreen() {
               )}
             </View>
           </View>
+          <Text style={{ textAlign: 'center', color: '#919191', fontSize: 14, marginTop: 20, marginBottom: 4, fontWeight: 'bold' }}>
+            v{Constants.expoConfig?.version || '1.1.0'}
+          </Text>
         </View>
       </ScrollView>
 

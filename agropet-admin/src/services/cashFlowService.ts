@@ -22,7 +22,7 @@ export async function fetchCashFlow(): Promise<CashFlowRow[]> {
 }
 
 export async function insertCashFlow(entry: CashFlowInsert): Promise<CashFlowRow> {
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { session } } = await supabase.auth.getSession();
   /* istanbul ignore next */
   const { data, error } = await supabase
     .from('cash_flow')
@@ -31,7 +31,7 @@ export async function insertCashFlow(entry: CashFlowInsert): Promise<CashFlowRow
       description: entry.description,
       type: entry.type,
       payment_method: entry.payment_method,
-      created_by: user?.id || null,
+      created_by: session?.user?.id || null,
     })
     .select()
     .single();

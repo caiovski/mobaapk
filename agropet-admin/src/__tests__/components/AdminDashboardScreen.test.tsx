@@ -146,6 +146,7 @@ jest.mock('../../data/datasources/supabase/client', () => ({
   supabase: {
     auth: {
       getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'adm-123' } } }),
+      getSession: jest.fn().mockResolvedValue({ data: { session: { user: { id: 'adm-123' } } } }),
     },
     from: jest.fn().mockImplementation(() => createMockChain()),
     channel: jest.fn().mockReturnValue({
@@ -1433,13 +1434,23 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
     ];
     jest.spyOn(supabase, 'from').mockImplementation(() => createMockChain({ data: mockProducts }));
 
-    const { getByText } = renderScreen(AdminDashboardScreen);
+    const { getByText, UNSAFE_getAllByProps } = renderScreen(AdminDashboardScreen);
     openVerOpcoes(getByText);
     await waitFor(() => expect(getByText('Registrar Venda')).toBeTruthy());
     fireEvent.press(getByText('Registrar Venda'));
 
     await waitFor(() => expect(getByText('New Cart Product')).toBeTruthy());
     fireEvent.press(getByText('Registrar venda')); // enable select mode
+
+    // Toggle quantityInputMode OFF to show +/- buttons
+    await act(async () => {
+      const switchToggle = UNSAFE_getAllByProps({ value: true }).find(
+        (t: any) => t.props.onValueChange
+      );
+      if (switchToggle) {
+        switchToggle.props.onValueChange(false);
+      }
+    });
 
     // Press plus without any item in cart (adds with qty=max(1,1)=1)
     const plusBtn = getByText('plus');

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Dimensions, ActivityIndicator, Animated } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import Svg, { Path, Circle, Defs, LinearGradient, Stop, Line, G, Text as SvgText } from 'react-native-svg';
@@ -60,6 +60,14 @@ export default function DashboardOverview({
   cashFlowFilter, onCashFlowFilterPress
 }: DashboardOverviewProps) {
   const [showOptions, setShowOptions] = useState(false);
+  const optionsAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(optionsAnim, {
+      toValue: showOptions ? 1 : 0,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+  }, [showOptions, optionsAnim]);
   return (
     <>
       <View style={[styles.caixaCard, { backgroundColor: isDarkMode ? '#2E2E38' : '#1C2434' }]}>
@@ -120,8 +128,17 @@ export default function DashboardOverview({
         <Text style={[styles.sangriaTriggerText, { color: '#FFFFFF' }]}>{showOptions ? 'Mostrar menos' : 'Ver Opções'}</Text>
       </TouchableOpacity>
 
-      {showOptions && (
-        <>
+      <Animated.View style={{
+          maxHeight: optionsAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0, 500],
+          }),
+          opacity: optionsAnim.interpolate({
+            inputRange: [0, 0.5, 1],
+            outputRange: [0, 1, 1],
+          }),
+          overflow: 'hidden',
+        }}>
           <TouchableOpacity
             activeOpacity={0.8}
             style={[styles.sangriaTriggerBtn, { backgroundColor: '#339914', borderColor: '#339914', marginBottom: 12 }]}
@@ -166,8 +183,7 @@ export default function DashboardOverview({
             <Feather name="minus-circle" size={20} color="#FF3B30" style={{ marginRight: 8 }} />
             <Text style={[styles.sangriaTriggerText, { color: isDarkMode ? '#FFFFFF' : '#1C2434' }]}>Realizar Sangria (Retirada de Caixa)</Text>
           </TouchableOpacity>
-        </>
-      )}
+        </Animated.View>
 
       <View style={styles.filterRow}>
         <Text style={{

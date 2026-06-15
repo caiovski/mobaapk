@@ -8,7 +8,6 @@ import {
   ScrollView,
   Animated,
 } from 'react-native';
-import Constants from 'expo-constants';
 import { useAdminProfile } from './useAdminProfile';
 import { styles } from './AdminProfileScreen.styles';
 import AdminHeader from '../../../components/AdminHeader';
@@ -103,9 +102,6 @@ export default function AdminProfileScreen() {
           numeroRef={h.numeroRef}
           setNumero={h.setNumero}
         />
-        <Text style={{ textAlign: 'center', color: '#919191', fontSize: 12, marginTop: 20, marginBottom: 20, fontWeight: 'bold' }}>
-          v{Constants.expoConfig?.version || '1.1.0'}
-        </Text>
       </ScrollView>
 
       <ProfileModal

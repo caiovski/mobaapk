@@ -1,11 +1,10 @@
 import React from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
-  ActivityIndicator, Animated
+  ActivityIndicator
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
-import CheckIcon from '../../../../assets/tela7/registrar/Adicionar/Remover/Check.svg';
 import { getFirstImageUrl } from '../../../../../utils/imageUtils';
 import { isProductInCategories } from '../../../../../services/categoryService';
 import type { DBCustomCategory } from '../../../../../db/schema';
@@ -23,13 +22,11 @@ interface PDVSectionProps {
   pdvCart: Record<string, { qty: number; checked: boolean }>;
   pdvProducts: any[];
   pdvLoading: boolean;
-  onRegisterPress: () => void;
-  onCancelPress: () => void;
+
   onToggleCart: (item: any) => void;
   onUpdateQty: (id: string, delta: number) => void;
   onDismissAlert: (id: string) => void;
   dismissedProductIds: Set<string>;
-  cancelOpacity: Animated.Value;
   isDarkMode: boolean;
   formatCurrency: (val: number) => string;
   categories: DBCustomCategory[];
@@ -46,8 +43,8 @@ export default function PDVSection({
   pdvSearchText, onSearchChange, pdvActiveCategories, onCategoryToggle,
   pdvSortOption, onSortChange,
   pdvSelectMode, pdvCart, pdvProducts, pdvLoading,
-  onRegisterPress, onCancelPress, onToggleCart, onUpdateQty,
-  onDismissAlert, dismissedProductIds, cancelOpacity, isDarkMode, formatCurrency,
+  onToggleCart, onUpdateQty,
+  onDismissAlert, dismissedProductIds, isDarkMode, formatCurrency,
   categories, quantityInputMode, setPdvCartQty,
   bulkInputUnit, setBulkInputUnit,
   bulkValueMode, pdvBulkValues, onBulkValueChange
@@ -56,30 +53,7 @@ export default function PDVSection({
   return (
     <View style={{ flex: 1, paddingTop: 0, paddingBottom: 20 }}>
 
-      <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16, width: '100%' }}>
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={{ flex: 1, flexDirection: 'row', backgroundColor: '#339914', borderRadius: 15, alignItems: 'center', justifyContent: 'center', gap: 6, height: 46 }}
-          onPress={onRegisterPress}
-        >
-          <CheckIcon width={34} height={34} fill={isDarkMode ? '#FFFFFF' : undefined} stroke={isDarkMode ? '#FFFFFF' : undefined} />
-          <Text style={{ fontSize: 15, fontWeight: 'bold', color: '#FFFFFF', marginLeft: 4 }}>Registrar venda</Text>
-        </TouchableOpacity>
 
-        {pdvSelectMode ? (
-          <Animated.View style={{ flex: 1, opacity: cancelOpacity }}>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={{ width: '100%', backgroundColor: '#E3E4EB', borderRadius: 15, alignItems: 'center', justifyContent: 'center', height: 46 }}
-              onPress={onCancelPress}
-            >
-              <Text style={{ fontSize: 15, fontWeight: 'bold', color: '#A72424' }}>Cancelar</Text>
-            </TouchableOpacity>
-          </Animated.View>
-        ) : (
-          <View style={{ flex: 1 }} />
-        )}
-      </View>
 
       {pdvLoading ? (
         <ActivityIndicator size="large" color="#FF5C00" style={{ marginTop: 40 }} />

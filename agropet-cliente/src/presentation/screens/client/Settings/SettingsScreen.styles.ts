@@ -12,6 +12,7 @@ export const styles = StyleSheet.create({
     padding: 20,
     marginHorizontal: 16,
     marginTop: 20,
+    paddingBottom: 17,
     marginBottom: 40,
   },
 

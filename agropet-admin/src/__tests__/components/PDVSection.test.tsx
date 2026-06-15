@@ -41,13 +41,10 @@ const createProps = (overrides = {}) => ({
   pdvCart: baseCart,
   pdvProducts: [baseProduct],
   pdvLoading: false,
-  onRegisterPress: jest.fn(),
-  onCancelPress: jest.fn(),
   onToggleCart: jest.fn(),
   onUpdateQty: jest.fn(),
   onDismissAlert: jest.fn(),
   dismissedProductIds: new Set<string>(),
-  cancelOpacity: new Animated.Value(1),
   isDarkMode: false,
   formatCurrency: (val: number) => `R$ ${val.toFixed(2).replace('.', ',')}`,
   quantityInputMode: false,
@@ -124,7 +121,6 @@ describe('PDVSection', () => {
 
   it('should render in select mode', () => {
     const { getByText } = render(<PDVSection {...createProps({ pdvSelectMode: true })} />);
-    expect(getByText('Cancelar')).toBeTruthy();
     expect(getByText('R$ 100,00')).toBeTruthy();
   });
 
@@ -146,18 +142,9 @@ describe('PDVSection', () => {
     expect(queryByText('Filtro de água')).toBeNull();
   });
 
-  it('should call onRegisterPress when register button pressed', () => {
-    const onRegisterPress = jest.fn();
-    const { getByText } = render(<PDVSection {...createProps({ onRegisterPress })} />);
-    fireEvent.press(getByText('Registrar venda'));
-    expect(onRegisterPress).toHaveBeenCalled();
-  });
-
-  it('should call onCancelPress in select mode', () => {
-    const onCancelPress = jest.fn();
-    const { getByText } = render(<PDVSection {...createProps({ pdvSelectMode: true, onCancelPress })} />);
-    fireEvent.press(getByText('Cancelar'));
-    expect(onCancelPress).toHaveBeenCalled();
+  it('should render products correctly in non-select mode', () => {
+    const { getByText } = render(<PDVSection {...createProps()} />);
+    expect(getByText('Test Product')).toBeTruthy();
   });
 
   it('should call onUpdateQty when +/- pressed in select mode', () => {
