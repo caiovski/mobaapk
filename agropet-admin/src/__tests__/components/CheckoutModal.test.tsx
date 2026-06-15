@@ -98,4 +98,23 @@ describe('CheckoutModal', () => {
     fireEvent.press(getByText('Confirmar'));
     expect(onConfirm).toHaveBeenCalled();
   });
+
+  it('should display bulk value mode weight for bulk products', () => {
+    const bulkProduct = {
+      id: 'p2', name: 'Arroz', price: 8,
+      image_url: 'https://example.com/img.jpg', is_bulk: true,
+    };
+    const bulkCart = { p2: { qty: 0, checked: true } };
+    const { getByText } = render(
+      <CheckoutModal
+        {...baseProps}
+        pdvProducts={[bulkProduct]}
+        pdvCart={bulkCart}
+        bulkValueMode={false}
+        pdvBulkValues={{ p2: 20 }}
+      />
+    );
+    expect(getByText('Arroz')).toBeTruthy();
+    expect(getByText(/Kg/)).toBeTruthy();
+  });
 });

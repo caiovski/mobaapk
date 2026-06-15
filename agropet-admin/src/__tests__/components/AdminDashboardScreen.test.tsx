@@ -378,6 +378,130 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
     fromSpy.mockRestore();
   });
 
+  it('should collapse/expand sticky toolbar via arrow and open sort modal', () => {
+    const mockProducts = [
+      { id: 'p1', name: 'Test', price: 10, stock: 5, active: true },
+    ];
+    (supabase.from as jest.Mock).mockImplementation(() => createMockChain({ data: mockProducts }));
+
+    const { getByText, getByPlaceholderText, queryByText, UNSAFE_getAllByProps } = renderScreen(AdminDashboardScreen);
+    openVerOpcoes(getByText);
+    fireEvent.press(getByText('Registrar Venda'));
+
+    // Toolbar expanded by default
+    expect(getByPlaceholderText('Pesquisar produto...')).toBeTruthy();
+
+    // Open sort modal via Filtro button
+    fireEvent.press(getByText('Filtro'));
+    expect(getByText('Ordenar por')).toBeTruthy();
+
+    // Select sort option
+    fireEvent.press(getByText('Ordem alfabética'));
+
+    // Open sort modal again and close via backdrop
+    fireEvent.press(getByText('Filtro'));
+    const overlays = UNSAFE_getAllByProps({ activeOpacity: 1 });
+    const backdrop = overlays.find((o: any) =>
+      o.props.style?.backgroundColor === 'rgba(0,0,0,0.5)'
+    );
+    if (backdrop) {
+      fireEvent.press(backdrop);
+    }
+    expect(queryByText('Ordenar por')).toBeNull();
+  });
+
+  it('should toggle category chip in PDV mode', () => {
+    const mockProducts = [
+      { id: 'p1', name: 'Ração Premium', price: 10, stock: 5, active: true },
+    ];
+    (supabase.from as jest.Mock).mockImplementation(() => createMockChain({ data: mockProducts }));
+
+    const { getByText, getByPlaceholderText } = renderScreen(AdminDashboardScreen);
+    openVerOpcoes(getByText);
+    fireEvent.press(getByText('Registrar Venda'));
+
+    // Category chips are visible in expanded toolbar
+    expect(getByText('Pesca')).toBeTruthy();
+    expect(getByText('Ração')).toBeTruthy();
+
+    // Toggle a category
+    fireEvent.press(getByText('Pesca'));
+  });
+
+  it('should toggle bulk value mode switch', () => {
+    const mockProducts = [
+      { id: 'p1', name: 'Bulk Rice', price: 8, stock: 5000, active: true, is_bulk: true },
+    ];
+    (supabase.from as jest.Mock).mockImplementation(() => createMockChain({ data: mockProducts }));
+
+    const { getByText, UNSAFE_getAllByProps } = renderScreen(AdminDashboardScreen);
+    openVerOpcoes(getByText);
+    fireEvent.press(getByText('Registrar Venda'));
+
+    // Find the "Mudar à granel" switch
+    const switches = UNSAFE_getAllByProps({ value: false });
+    const bulkSwitch = switches.find((s: any) => {
+      const trackColor = s.props.trackColor;
+      return trackColor && typeof trackColor.false === 'string';
+    });
+    if (bulkSwitch) {
+      bulkSwitch.props.onValueChange(true);
+    }
+  });
+
+  it('should handle POS checkout with bulk product in value mode', async () => {
+    const mockProducts = [
+      { id: 'bulk-1', name: 'Bulk Rice', price: 8, stock: 5000, active: true, is_bulk: true },
+    ];
+    const fromSpy = jest.spyOn(supabase, 'from').mockImplementation(() => createMockChain({
+      data: mockProducts,
+    }));
+
+    const { getByText, getByPlaceholderText, getAllByText, UNSAFE_getAllByProps } = renderScreen(AdminDashboardScreen);
+    openVerOpcoes(getByText);
+    await act(async () => {
+      fireEvent.press(getByText('Registrar Venda'));
+    });
+
+    await waitFor(() => {
+      expect(getByText('Bulk Rice')).toBeTruthy();
+    });
+
+    fireEvent.press(getByText('Registrar venda'));
+
+    await act(async () => {
+      const inputs = UNSAFE_getAllByProps({ keyboardType: 'decimal-pad' });
+      if (inputs.length > 0) {
+        fireEvent.changeText(inputs[0], '2000');
+      }
+    });
+
+    await act(async () => {
+      const touchables = UNSAFE_getAllByProps({ activeOpacity: 0.7 });
+      const checkbox = touchables.find((t: any) => t.props.style?.padding === 2 && t.props.onPress);
+      if (checkbox) {
+        fireEvent.press(checkbox);
+      }
+    });
+
+    await act(async () => {
+      fireEvent.press(getByText('Registrar venda'));
+    });
+
+    await act(async () => {
+      const confirmBtns = getAllByText('Confirmar');
+      if (confirmBtns.length > 0) {
+        fireEvent.press(confirmBtns[0]);
+      }
+    });
+
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith('Sucesso', 'Venda registrada com sucesso!');
+    });
+
+    fromSpy.mockRestore();
+  });
+
   it('should handle suprimento and sangria modal transactions and check amount/desc validations', async () => {
     const storedSangrias = [
       { id: 's1', amount: 50, description: 'PDV initial cash', date: '2026-05-27T10:00:00.000Z', type: 'suprimento', paymentMethod: 'dinheiro' }

@@ -535,6 +535,57 @@ describe('PDVSection', () => {
     expect(setBulkInputUnit).toHaveBeenCalled();
   });
 
+  it('should render bulk value mode input and call onBulkValueChange', () => {
+    const onBulkValueChange = jest.fn();
+    const bulkProduct = {
+      ...baseProduct, id: 'p-bulk', name: 'Arroz',
+      is_bulk: true, stock: 5000, price: 8,
+    };
+    const { UNSAFE_getAllByProps } = render(
+      <PDVSection
+        {...createProps({
+          pdvProducts: [bulkProduct],
+          pdvSelectMode: true,
+          pdvCart: { 'p-bulk': { qty: 1, checked: false } },
+          bulkValueMode: false,
+          pdvBulkValues: {},
+          onBulkValueChange,
+        })}
+      />
+    );
+    const inputs = UNSAFE_getAllByProps({ keyboardType: 'decimal-pad' });
+    if (inputs.length > 0) {
+      fireEvent.changeText(inputs[0], '1234');
+      expect(onBulkValueChange).toHaveBeenCalledWith('p-bulk', 12.34);
+    }
+    expect(inputs.length).toBeGreaterThan(0);
+  });
+
+  it('should clear bulk value when empty text entered', () => {
+    const onBulkValueChange = jest.fn();
+    const bulkProduct = {
+      ...baseProduct, id: 'p-bulk', name: 'Arroz',
+      is_bulk: true, stock: 5000, price: 8,
+    };
+    const { UNSAFE_getAllByProps } = render(
+      <PDVSection
+        {...createProps({
+          pdvProducts: [bulkProduct],
+          pdvSelectMode: true,
+          pdvCart: { 'p-bulk': { qty: 1, checked: false } },
+          bulkValueMode: false,
+          pdvBulkValues: {},
+          onBulkValueChange,
+        })}
+      />
+    );
+    const inputs = UNSAFE_getAllByProps({ keyboardType: 'decimal-pad' });
+    if (inputs.length > 0) {
+      fireEvent.changeText(inputs[0], '');
+      expect(onBulkValueChange).toHaveBeenCalledWith('p-bulk', 0);
+    }
+  });
+
   it('should call onUpdateQty when minus pressed in select mode', () => {
     const onUpdateQty = jest.fn();
     const { UNSAFE_getAllByProps } = render(

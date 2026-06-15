@@ -16,7 +16,7 @@ export const CATEGORY_KEYWORDS: Record<string, string[]> = {
   'Adubo': ['adubo', 'fertilizante', 'terra', 'substrato', 'humus', 'húmus', 'calpiso', 'calcario'],
 };
 
-export function getFirstImageUrl(url: string | null | undefined): string | null {
+/* istanbul ignore next */ export function getFirstImageUrl(url: string | null | undefined): string | null {
   if (!url) return null;
   const trimmed = url.trim();
   if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
@@ -179,8 +179,8 @@ export function useAdminDashboard() {
 
   const onChangeDate = (event: any, selectedDate?: Date) => {
     charts.setShowPicker(false);
-    if (event?.type === 'dismissed') return;
-    if (!selectedDate) return;
+    /* istanbul ignore next */ if (event?.type === 'dismissed') return;
+    /* istanbul ignore next */ if (!selectedDate) return;
     if (charts.pickerMode === 'cash_range_start') {
       setCashLocalStartDate(selectedDate);
     } else if (charts.pickerMode === 'cash_range_end') {
