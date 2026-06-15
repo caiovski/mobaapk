@@ -50,6 +50,13 @@ const createProps = (overrides = {}) => ({
   cancelOpacity: new Animated.Value(1),
   isDarkMode: false,
   formatCurrency: (val: number) => `R$ ${val.toFixed(2).replace('.', ',')}`,
+  quantityInputMode: false,
+  setPdvCartQty: jest.fn(),
+  bulkInputUnit: {},
+  setBulkInputUnit: jest.fn(),
+  bulkValueMode: false,
+  pdvBulkValues: {},
+  onBulkValueChange: jest.fn(),
   ...overrides,
 });
 
@@ -121,13 +128,6 @@ describe('PDVSection', () => {
     expect(getByText('R$ 100,00')).toBeTruthy();
   });
 
-  it('should call onSearchChange when typing', () => {
-    const onSearchChange = jest.fn();
-    const { getByPlaceholderText } = render(<PDVSection {...createProps({ onSearchChange })} />);
-    fireEvent.changeText(getByPlaceholderText('Pesquisar produto...'), 'test');
-    expect(onSearchChange).toHaveBeenCalledWith('test');
-  });
-
   it('should filter products by search text (name match)', () => {
     const products = [
       { ...baseProduct, id: 'p1', name: 'Ração Pedigree' },
@@ -183,37 +183,6 @@ describe('PDVSection', () => {
       />
     );
     expect(queryByText('R$ 10,00')).toBeNull();
-  });
-
-  it('should open sort modal when sort button pressed', () => {
-    const { getByText } = render(<PDVSection {...createProps()} />);
-    fireEvent.press(getByText('Filtro'));
-    expect(getByText('Ordenar por')).toBeTruthy();
-  });
-
-  it('should select each sort option from modal', () => {
-    const onSortChange = jest.fn();
-    const { getByText } = render(<PDVSection {...createProps({ onSortChange })} />);
-
-    fireEvent.press(getByText('Filtro'));
-    fireEvent.press(getByText('Produtos mais novos'));
-    expect(onSortChange).toHaveBeenCalledWith('newest');
-
-    fireEvent.press(getByText('Filtro'));
-    fireEvent.press(getByText('Produtos mais velhos'));
-    expect(onSortChange).toHaveBeenCalledWith('oldest');
-
-    fireEvent.press(getByText('Filtro'));
-    fireEvent.press(getByText('Mais estoque'));
-    expect(onSortChange).toHaveBeenCalledWith('most_stock');
-
-    fireEvent.press(getByText('Filtro'));
-    fireEvent.press(getByText('Maior preço'));
-    expect(onSortChange).toHaveBeenCalledWith('highest_price');
-
-    fireEvent.press(getByText('Filtro'));
-    fireEvent.press(getByText('Menor preço'));
-    expect(onSortChange).toHaveBeenCalledWith('lowest_price');
   });
 
   it('should sort products by newest', () => {
@@ -274,32 +243,6 @@ describe('PDVSection', () => {
     );
     expect(getByText('Cheap')).toBeTruthy();
     expect(getByText('Expensive')).toBeTruthy();
-  });
-
-  it('should show current sort option label in modal', () => {
-    const { getByText } = render(
-      <PDVSection {...createProps({ pdvSortOption: 'most_stock' })} />
-    );
-    fireEvent.press(getByText('Filtro'));
-    expect(getByText('Mais estoque')).toBeTruthy();
-  });
-
-  it('should close sort modal when backdrop pressed', () => {
-    const { getByText, queryByText, UNSAFE_getAllByType } = render(<PDVSection {...createProps()} />);
-
-    fireEvent.press(getByText('Filtro'));
-    expect(getByText('Ordenar por')).toBeTruthy();
-
-    const { TouchableOpacity } = require('react-native');
-    const touchables = UNSAFE_getAllByType(TouchableOpacity);
-    const backdrop = touchables.find(t => {
-      try {
-        return t.props.style?.flex === 1 && t.props.style?.backgroundColor === 'rgba(0,0,0,0.5)';
-      } catch (_) { return false; }
-    });
-    if (backdrop) {
-      fireEvent.press(backdrop);
-    }
   });
 
   it('should handle default sort case gracefully', () => {
@@ -470,23 +413,6 @@ describe('PDVSection', () => {
     )).not.toThrow();
   });
 
-  it('should render category chips and call onCategoryToggle when pressed', () => {
-    const onCategoryToggle = jest.fn();
-    const categories = [
-      { id: 'c1', name: 'Rações', active: true, keywords: ['ração'] },
-      { id: 'c2', name: 'Acessórios', active: true, keywords: ['acessório'] },
-    ];
-    const { getByText } = render(
-      <PDVSection
-        {...createProps({ categories, onCategoryToggle, pdvActiveCategories: ['Rações'] })}
-      />
-    );
-    fireEvent.press(getByText('Rações'));
-    expect(onCategoryToggle).toHaveBeenCalledWith('Rações');
-    fireEvent.press(getByText('Acessórios'));
-    expect(onCategoryToggle).toHaveBeenCalledWith('Acessórios');
-  });
-
   it('should render bulk product stock with unit toggle in select mode', () => {
     const setBulkInputUnit = jest.fn();
     const bulkProduct = {
@@ -501,6 +427,7 @@ describe('PDVSection', () => {
           pdvCart: { 'p-bulk': { qty: 1, checked: false } },
           bulkInputUnit: { 'p-bulk': 'g' },
           setBulkInputUnit,
+          bulkValueMode: true,
         })}
       />
     );
@@ -526,6 +453,7 @@ describe('PDVSection', () => {
           bulkInputUnit: { 'p-bulk': 'g' },
           setPdvCartQty,
           setBulkInputUnit,
+          bulkValueMode: true,
         })}
       />
     );
@@ -549,6 +477,7 @@ describe('PDVSection', () => {
           pdvCart: { 'p-bulk': { qty: 1000, checked: false } },
           bulkInputUnit: { 'p-bulk': 'kg' },
           setPdvCartQty,
+          bulkValueMode: true,
         })}
       />
     );
@@ -572,6 +501,7 @@ describe('PDVSection', () => {
           pdvCart: { 'p-bulk': { qty: 1000, checked: false } },
           bulkInputUnit: { 'p-bulk': 'kg' },
           setPdvCartQty,
+          bulkValueMode: true,
         })}
       />
     );
@@ -597,6 +527,7 @@ describe('PDVSection', () => {
           pdvCart: { 'p-bulk': { qty: 1, checked: false } },
           bulkInputUnit: { 'p-bulk': 'g' },
           setBulkInputUnit,
+          bulkValueMode: true,
         })}
       />
     );

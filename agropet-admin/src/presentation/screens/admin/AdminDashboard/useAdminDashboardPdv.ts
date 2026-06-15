@@ -23,6 +23,9 @@ export function useAdminDashboardPdv(onSaleComplete?: () => void) {
   const [quantityInputMode, setQuantityInputMode] = useState(false);
   const [switchAnim] = useState(new Animated.Value(0));
   const [bulkInputUnit, setBulkInputUnit] = useState<Record<string, 'kg' | 'g'>>({});
+  const [bulkValueMode, setBulkValueMode] = useState(false); // false = digitar valor (R$), true = digitar Kg/g
+  const [pdvBulkValues, setPdvBulkValues] = useState<Record<string, number>>({});
+  const [showSortModal, setShowSortModal] = useState(false);
 
   const dismissAlert = (id: string) => {
     setDismissedProductIds(prev => {
@@ -155,14 +158,29 @@ export function useAdminDashboardPdv(onSaleComplete?: () => void) {
     const selectedItems = pdvProducts.filter(p => pdvCart[p.id]?.checked);
     if (selectedItems.length === 0) return;
     for (const item of selectedItems) {
-      /* istanbul ignore next */ const unit = item.is_bulk ? (bulkInputUnit[item.id] || 'kg') : undefined;
-      /* istanbul ignore next */ const needed = unit === 'g' ? pdvCart[item.id].qty : (item.is_bulk ? pdvCart[item.id].qty * 1000 : pdvCart[item.id].qty);
-      if (item.stock < needed) {
-        /* istanbul ignore next */ const displayStock = item.is_bulk
-          ? `${(item.stock / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} Kg`
-          : `${item.stock}`;
-        Alert.alert('Erro', `Estoque insuficiente para ${item.name}. (Disponível: ${displayStock})`);
-        return;
+      if (item.is_bulk && !bulkValueMode) {
+        const value = pdvBulkValues[item.id] || 0;
+        if (value <= 0) {
+          Alert.alert('Erro', `Informe o valor para ${item.name}.`);
+          return;
+        }
+        const qtyInKg = value / item.price;
+        const needed = qtyInKg * 1000;
+        if (item.stock < needed) {
+          const displayStock = `${(item.stock / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} Kg`;
+          Alert.alert('Erro', `Estoque insuficiente para ${item.name}. (Disponível: ${displayStock})`);
+          return;
+        }
+      } else {
+        const unit = item.is_bulk ? (bulkInputUnit[item.id] || 'kg') : undefined;
+        const needed = unit === 'g' ? pdvCart[item.id].qty : (item.is_bulk ? pdvCart[item.id].qty * 1000 : pdvCart[item.id].qty);
+        if (item.stock < needed) {
+          const displayStock = item.is_bulk
+            ? `${(item.stock / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} Kg`
+            : `${item.stock}`;
+          Alert.alert('Erro', `Estoque insuficiente para ${item.name}. (Disponível: ${displayStock})`);
+          return;
+        }
       }
     }
     setPdvLoading(true);
@@ -171,9 +189,13 @@ export function useAdminDashboardPdv(onSaleComplete?: () => void) {
       const userId = user?.id || null;
       let totalVenda = 0;
       for (const item of selectedItems) {
-        const qty = pdvCart[item.id].qty;
-        /* istanbul ignore next */ const unit = item.is_bulk ? (bulkInputUnit[item.id] || 'kg') : undefined;
-        /* istanbul ignore next */ totalVenda += (unit === 'g' ? qty / 1000 : qty) * item.price;
+        if (item.is_bulk && !bulkValueMode) {
+          totalVenda += pdvBulkValues[item.id] || 0;
+        } else {
+          const qty = pdvCart[item.id].qty;
+          const unit = item.is_bulk ? (bulkInputUnit[item.id] || 'kg') : undefined;
+          totalVenda += (unit === 'g' ? qty / 1000 : qty) * item.price;
+        }
       }
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
@@ -190,25 +212,43 @@ export function useAdminDashboardPdv(onSaleComplete?: () => void) {
       if (orderError) throw orderError;
       const orderId = orderData.id;
       for (const item of selectedItems) {
-        const qty = pdvCart[item.id].qty;
-        /* istanbul ignore next */ const unit = item.is_bulk ? (bulkInputUnit[item.id] || 'kg') : undefined;
-        /* istanbul ignore next */ const qtyInGrams = unit === 'g' ? qty : (item.is_bulk ? qty * 1000 : qty);
-        await supabase.from('order_items').insert({
-          order_id: orderId,
-          product_id: item.id,
-          quantity: qty,
-          unit_price: item.price
-        });
-        const newStock = item.stock - qtyInGrams;
-        await supabase.from('products')
-          .update({ stock: Math.max(0, newStock), active: newStock > 0 })
-          .eq('id', item.id);
+        if (item.is_bulk && !bulkValueMode) {
+          const value = pdvBulkValues[item.id] || 0;
+          const qtyInKg = value / item.price;
+          const qtyInGrams = qtyInKg * 1000;
+          await supabase.from('order_items').insert({
+            order_id: orderId,
+            product_id: item.id,
+            quantity: qtyInKg,
+            unit_price: item.price
+          });
+          const newStock = item.stock - qtyInGrams;
+          await supabase.from('products')
+            .update({ stock: Math.max(0, newStock), active: newStock > 0 })
+            .eq('id', item.id);
+        } else {
+          const qty = pdvCart[item.id].qty;
+          const unit = item.is_bulk ? (bulkInputUnit[item.id] || 'kg') : undefined;
+          const qtyInGrams = unit === 'g' ? qty : (item.is_bulk ? qty * 1000 : qty);
+          await supabase.from('order_items').insert({
+            order_id: orderId,
+            product_id: item.id,
+            quantity: qty,
+            unit_price: item.price
+          });
+          const newStock = item.stock - qtyInGrams;
+          await supabase.from('products')
+            .update({ stock: Math.max(0, newStock), active: newStock > 0 })
+            .eq('id', item.id);
+        }
       }
       Alert.alert('Sucesso', 'Venda registrada com sucesso!');
-      setIsPDVMode(false);
       setPdvSelectMode(false);
       setPdvCart({});
+      setPdvBulkValues({});
+      setBulkValueMode(false);
       setShowCheckoutModal(false);
+      fetchPdvProducts();
       if (onSaleComplete) onSaleComplete();
     } catch (err: any) {
       Alert.alert('Erro', 'Ocorreu um erro ao registrar a venda.');
@@ -217,12 +257,19 @@ export function useAdminDashboardPdv(onSaleComplete?: () => void) {
     setPdvLoading(false);
   };
 
+  const setPdvBulkValue = (id: string, value: number) => {
+    setPdvBulkValues(prev => ({ ...prev, [id]: value }));
+  };
+
   return {
     isPDVMode, pdvSelectMode, pdvProducts, pdvSearchText, pdvActiveCategories, pdvSortOption,
     pdvCart, showCheckoutModal, dropdownExpanded, checkoutPaymentMethod,
     pdvLoading, dismissedProductIds, cancelOpacity, pulseAnim,
     quantityInputMode, setQuantityInputMode, switchAnim,
     bulkInputUnit, setBulkInputUnit,
+    bulkValueMode, setBulkValueMode,
+    pdvBulkValues, setPdvBulkValues, setPdvBulkValue,
+    showSortModal, setShowSortModal,
     setIsPDVMode, setPdvSelectMode, setPdvProducts,
     setPdvSearchText, setPdvActiveCategories, setPdvCart, setPdvSortOption,
     setShowCheckoutModal, setDropdownExpanded, setCheckoutPaymentMethod,

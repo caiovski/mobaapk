@@ -370,12 +370,10 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
     });
     expect(alertSpy).toHaveBeenLastCalledWith('Sucesso', 'Venda registrada com sucesso!');
 
-    // Close Modal option flow
-    openVerOpcoes(getByText);
-    fireEvent.press(getByText('Registrar Venda'));
-    fireEvent.press(getByText('Registrar venda')); // Open checkout modal again
-    const checkoutCancelBtn = getAllByText('Cancelar');
-    fireEvent.press(checkoutCancelBtn[0]);
+    // App stays in PDV mode after sale - open checkout modal again
+    fireEvent.press(getByText('Registrar venda'));
+    const checkoutCancelBtn2 = getAllByText('Cancelar');
+    fireEvent.press(checkoutCancelBtn2[0]);
 
     fromSpy.mockRestore();
   });
