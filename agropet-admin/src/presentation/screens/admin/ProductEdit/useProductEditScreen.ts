@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Alert, TextInput, Animated } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { decode } from 'base64-arraybuffer';
 import { supabase } from '../../../../data/datasources/supabase/client';
 import { useTheme } from '../../../contexts/ThemeContext';
 
@@ -160,7 +161,28 @@ export function useProductEditScreen() {
       Alert.alert('Erro', 'Nenhum produto selecionado para edição.');
       return;
     }
-    const mappedImages = photos.map(p => p.base64 ? `data:image/jpeg;base64,${p.base64}` : p.uri);
+    
+    const mappedImages: string[] = [];
+    for (const p of photos) {
+      if (p.base64) {
+        const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.jpg`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('products')
+          .upload(fileName, decode(p.base64), { contentType: 'image/jpeg' });
+        
+        if (uploadError) {
+          console.error('Erro ao fazer upload da imagem:', uploadError);
+          continue;
+        }
+        
+        if (uploadData) {
+          const { data } = supabase.storage.from('products').getPublicUrl(uploadData.path);
+          mappedImages.push(data.publicUrl);
+        }
+      } else {
+        mappedImages.push(p.uri);
+      }
+    }
     const parsedStock = isBulk
       ? (selectedUnit === 'kg' ? parseFloat(quantity.replace(',', '.')) * 1000 : parseInt(quantity, 10))
       : isPerMeter

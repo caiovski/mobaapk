@@ -629,7 +629,7 @@ describe('ProductCreateScreen - Deep Coverage', () => {
     expect(insertSpy).toHaveBeenCalledWith([
       expect.objectContaining({
         name: 'Produto Base64',
-        image_url: JSON.stringify(['data:image/jpeg;base64,valid-base64-string']),
+        image_url: JSON.stringify(['https://example.com/image.png']),
       })
     ]);
 

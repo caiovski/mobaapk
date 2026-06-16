@@ -65,6 +65,10 @@ const createMockChain = () => {
   return chain;
 };
 
+jest.mock('base64-arraybuffer', () => ({
+  decode: jest.fn().mockReturnValue(new Uint8Array([1, 2, 3])),
+}));
+
 jest.mock('../../data/datasources/supabase/client', () => ({
   supabase: {
     auth: {
@@ -73,6 +77,12 @@ jest.mock('../../data/datasources/supabase/client', () => ({
       onAuthStateChange: jest.fn().mockReturnValue({ data: { subscription: { unsubscribe: jest.fn() } } }),
     },
     from: jest.fn().mockImplementation(() => createMockChain()),
+    storage: {
+      from: jest.fn().mockReturnValue({
+        upload: jest.fn().mockResolvedValue({ data: { path: 'fake-path.jpg' }, error: null }),
+        getPublicUrl: jest.fn().mockReturnValue({ data: { publicUrl: 'https://fake-url.com/fake-path.jpg' } }),
+      }),
+    },
   },
 }));
 

@@ -27,11 +27,21 @@ jest.mock('../../presentation/contexts/ThemeContext', () => {
   };
 });
 
+jest.mock('base64-arraybuffer', () => ({
+  decode: jest.fn().mockReturnValue(new Uint8Array([1, 2, 3])),
+}));
+
 jest.mock('../../data/datasources/supabase/client', () => ({
   supabase: {
     from: jest.fn().mockReturnValue({
       insert: jest.fn().mockResolvedValue({ error: null }),
     }),
+    storage: {
+      from: jest.fn().mockReturnValue({
+        upload: jest.fn().mockResolvedValue({ data: { path: 'fake-path.jpg' }, error: null }),
+        getPublicUrl: jest.fn().mockReturnValue({ data: { publicUrl: 'https://fake-url.com/fake-path.jpg' } }),
+      }),
+    },
   },
 }));
 
