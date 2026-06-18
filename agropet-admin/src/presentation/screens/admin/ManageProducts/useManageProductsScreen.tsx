@@ -30,10 +30,12 @@ export function useManageProductsScreen() {
   const [activeCategories, setActiveCategories] = useState<string[]>([]);
   const [hasError, setHasError] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'Todos' | 'Ativos' | 'Inativos'>('Todos');
+  const [typeFilter, setTypeFilter] = useState<'Todos' | 'Granel' | 'PerMeter'>('Todos');
   const [alertYellowFilter, setAlertYellowFilter] = useState(false);
   const [alertRedFilter, setAlertRedFilter] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [tempStatusFilter, setTempStatusFilter] = useState<'Todos' | 'Ativos' | 'Inativos'>('Todos');
+  const [tempTypeFilter, setTempTypeFilter] = useState<'Todos' | 'Granel' | 'PerMeter'>('Todos');
   const [tempAlertYellowFilter, setTempAlertYellowFilter] = useState(false);
   const [tempAlertRedFilter, setTempAlertRedFilter] = useState(false);
   const [sortOption, setSortOption] = useState<SortOption>('alpha');
@@ -111,6 +113,10 @@ export function useManageProductsScreen() {
 
   const toggleProductStatus = async (product: any) => {
     const newStatus = !product.active;
+    if (newStatus && (product.stock || 0) === 0) {
+      Alert.alert('Aviso', 'Você não pode ativar este produto pois o mesmo encontra-se sem estoque. Mas não se preocupe! Assim que você editar esse produto e colocar mais estoque, ele reativará automaticamente. Fantástico, não?');
+      return;
+    }
     const { error } = await supabase.from('products').update({ active: newStatus }).eq('id', product.id);
     if (!error) setProducts(prev => prev.map(p => p.id === product.id ? { ...p, active: newStatus } : p));
     else Alert.alert('Erro', 'Não foi possível alterar o status do produto.');
@@ -139,6 +145,8 @@ export function useManageProductsScreen() {
     const modThreshold = p.moderate_stock ?? 29;
     if (statusFilter === 'Ativos' && !isActive) return false;
     if (statusFilter === 'Inativos' && isActive) return false;
+    if (typeFilter === 'Granel' && !p.is_bulk) return false;
+    if (typeFilter === 'PerMeter' && !p.is_per_meter) return false;
     if (alertYellowFilter || alertRedFilter) {
       const isRed = stock < critThreshold;
       const isYellow = stock >= critThreshold && stock <= modThreshold;
@@ -151,7 +159,7 @@ export function useManageProductsScreen() {
       }
     }
     return matchesSearch && matchesCategory;
-  }), [products, searchText, activeCategories, categories, statusFilter, alertYellowFilter, alertRedFilter]);
+  }), [products, searchText, activeCategories, categories, statusFilter, typeFilter, alertYellowFilter, alertRedFilter]);
 
   const filteredProducts = useMemo(() => {
     const list = [...filteredProductsRaw];
@@ -260,10 +268,12 @@ export function useManageProductsScreen() {
     searchText, setSearchText,
     activeCategories, setActiveCategories,
     hasError, statusFilter, setStatusFilter,
+    typeFilter, setTypeFilter,
     alertYellowFilter, setAlertYellowFilter,
     alertRedFilter, setAlertRedFilter,
     showFilterModal, setShowFilterModal,
     tempStatusFilter, setTempStatusFilter,
+    tempTypeFilter, setTempTypeFilter,
     tempAlertYellowFilter, setTempAlertYellowFilter,
     tempAlertRedFilter, setTempAlertRedFilter,
     sortOption, setSortOption,

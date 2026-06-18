@@ -54,6 +54,8 @@ const createProps = (overrides = {}) => ({
   bulkValueMode: false,
   pdvBulkValues: {},
   onBulkValueChange: jest.fn(),
+  pdvInputText: {},
+  setPdvInputText: jest.fn(),
   ...overrides,
 });
 

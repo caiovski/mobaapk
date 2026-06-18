@@ -30,6 +30,25 @@ import OpcoesLabel8 from '../../../assets/tela8/barra/OpcoesLabel.svg';
 import { usePaymentScreen } from './usePaymentScreen';
 import { styles } from './PaymentScreen.styles';
 
+function formatPaymentQty(quantity: number, isBulk: boolean, isPerMeter: boolean): string {
+  if (isBulk) {
+    if (quantity >= 1000) {
+      return (quantity / 1000).toLocaleString('pt-BR', {
+        minimumFractionDigits: 3, maximumFractionDigits: 3,
+      }) + ' Kg'
+    }
+    return `${quantity}g`
+  }
+  if (isPerMeter) {
+    const isInteger = Number.isInteger(quantity)
+    return quantity.toLocaleString('pt-BR', {
+      minimumFractionDigits: isInteger ? 0 : 2,
+      maximumFractionDigits: isInteger ? 0 : 2,
+    }) + ' m'
+  }
+  return String(quantity)
+}
+
 export default function PaymentScreen({ navigation }: any) {
   const h = usePaymentScreen();
 
@@ -65,11 +84,7 @@ export default function PaymentScreen({ navigation }: any) {
               <View style={[styles.tColDivider, { backgroundColor: h.isDarkMode ? '#121212' : '#F5F5F5' }]} />
               <View style={styles.tColQty}>
                 <Text style={styles.itemTextGrande}>
-                  {item.is_bulk
-                    ? (item.quantity / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) + ' Kg'
-                    : item.is_per_meter
-                      ? `${item.quantity} m`
-                      : item.quantity}
+                  {formatPaymentQty(item.quantity, item.is_bulk, item.is_per_meter)}
                 </Text>
               </View>
               <View style={[styles.tColDivider, { backgroundColor: h.isDarkMode ? '#121212' : '#F5F5F5' }]} />

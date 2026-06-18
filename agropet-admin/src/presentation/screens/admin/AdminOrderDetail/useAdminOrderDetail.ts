@@ -56,6 +56,7 @@ export function useAdminOrderDetail({ route, navigation }: any) {
   const glowAnim = useRef(new Animated.Value(0.3)).current;
   const locationSubscriptionRef = useRef<any>(null);
   const enRouteCalledRef = useRef(false);
+  const isCancellingRef = useRef(false);
 
   useGpsTracking(order, departed);
 
@@ -66,18 +67,19 @@ export function useAdminOrderDetail({ route, navigation }: any) {
         try {
           const { data, error } = await supabase
             .from('products')
-            .select('id, image_url')
+            .select('id, image_url, is_bulk, is_per_meter')
             .in('id', productIds);
 
           /* istanbul ignore next */
           if (data && !error) {
-            const imageMap = new Map();
-            data.forEach((p: any) => imageMap.set(p.id, p.image_url));
+            const productMap = new Map();
+            data.forEach((p: any) => productMap.set(p.id, { image_url: p.image_url, is_bulk: p.is_bulk, is_per_meter: p.is_per_meter }));
 
             /* istanbul ignore next */
             setOrderItems((prevItems: any[]) => prevItems.map(item => {
-              if (item.products && imageMap.has(item.product_id)) {
-                return { ...item, products: { ...item.products, image_url: imageMap.get(item.product_id) } };
+              const pData = productMap.get(item.product_id);
+              if (item.products && pData) {
+                return { ...item, products: { ...item.products, image_url: pData.image_url, is_bulk: pData.is_bulk, is_per_meter: pData.is_per_meter } };
               }
               return item;
             }));
@@ -96,7 +98,7 @@ export function useAdminOrderDetail({ route, navigation }: any) {
       try {
         const { data, error } = await supabase
           .from('orders')
-          .select('*, order_items( product_id, quantity, unit_price, products( name, image_url ) )')
+          .select('*, order_items( product_id, quantity, unit_price, products( id, name, image_url, is_bulk, is_per_meter ) )')
           .eq('id', initialOrder.id)
           .single();
         if (data && !error) {
@@ -389,7 +391,38 @@ export function useAdminOrderDetail({ route, navigation }: any) {
   }, [order.id, order.status, nextStatus, isPixPending, departed, enRouteTriggered, handleDeliveryDeparture, handleManualEnRoute]);
 
   /* istanbul ignore next */
+  const restoreStockOnCancel = useCallback(async () => {
+    for (const item of orderItems) {
+      const { data: product } = await supabase
+        .from('products')
+        .select('is_bulk, is_per_meter, stock')
+        .eq('id', item.product_id)
+        .single();
+
+      if (!product) continue;
+
+      const isBulk = product.is_bulk === true;
+      const isPerMeter = product.is_per_meter === true;
+      let qtyToRestore: number;
+      if (isBulk) {
+        qtyToRestore = Math.round(item.quantity * 1000);
+      } else if (isPerMeter) {
+        qtyToRestore = item.quantity;
+      } else {
+        qtyToRestore = item.quantity;
+      }
+      const newStock = product.stock + qtyToRestore;
+
+      await supabase
+        .from('products')
+        .update({ stock: newStock, active: newStock > 0 })
+        .eq('id', item.product_id);
+    }
+  }, [orderItems]);
+
+  /* istanbul ignore next */
   const handleCancelOrder = useCallback(async () => {
+    if (order.status === 'cancelled' || isCancellingRef.current) return;
     Alert.alert(
       'Cancelar Pedido',
       'Tem certeza que deseja cancelar este pedido?',
@@ -399,19 +432,30 @@ export function useAdminOrderDetail({ route, navigation }: any) {
           text: 'Sim, Cancelar',
           style: 'destructive',
           onPress: async () => {
+            if (isCancellingRef.current) return;
+            isCancellingRef.current = true;
             try {
-              const { data, error } = await supabase.rpc('update_order_status', {
-                p_order_id: order.id,
-                p_new_status: 'cancelled',
-              });
+              const { data: freshOrder } = await supabase
+                .from('orders')
+                .select('status')
+                .eq('id', order.id)
+                .single();
+              if (freshOrder?.status === 'cancelled') return;
 
-              if (error || !data?.success) {
-                Alert.alert('Erro', data?.error || 'Não foi possível cancelar.');
+              await restoreStockOnCancel();
+
+              const { error: orderError } = await supabase
+                .from('orders')
+                .update({ status: 'cancelled' })
+                .eq('id', order.id);
+
+              if (orderError) {
+                Alert.alert('Erro', 'Não foi possível cancelar.');
                 return;
               }
 
-              if (data.user_id) {
-                await NotificationService.sendOrderStatusNotification(data.user_id, order.id, 'cancelled');
+              if (order.user_id) {
+                await NotificationService.sendOrderStatusNotification(order.user_id, order.id, 'cancelled');
               }
 
               stopLocationWatch();
@@ -419,12 +463,14 @@ export function useAdminOrderDetail({ route, navigation }: any) {
               Alert.alert('Pedido Cancelado', 'O pedido foi cancelado com sucesso.');
             } catch {
               Alert.alert('Erro', 'Ocorreu um erro ao cancelar.');
+            } finally {
+              isCancellingRef.current = false;
             }
           },
         },
       ]
     );
-  }, [order.id, stopLocationWatch]);
+  }, [order.id, orderItems, stopLocationWatch, restoreStockOnCancel]);
 
   return {
     colors,

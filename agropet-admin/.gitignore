@@ -41,5 +41,7 @@ yarn-error.*
 /ios
 /android
 
-# coverage output
+# coverages
 coverage_output.txt
+coverage-report
+coverage-cash-register

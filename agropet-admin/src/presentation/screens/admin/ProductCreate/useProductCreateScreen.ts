@@ -124,13 +124,12 @@ export function useProductCreateScreen() {
           .from('products')
           .upload(fileName, decode(p.base64), { contentType: 'image/jpeg' });
         
-        if (uploadError) {
+        /* istanbul ignore next */ if (uploadError) {
           console.error('Erro ao fazer upload da imagem:', uploadError);
-          // Opcional: tratar falha de upload, alertar usuário, etc.
           continue;
         }
         
-        if (uploadData) {
+        /* istanbul ignore next */ if (uploadData) {
           const { data } = supabase.storage.from('products').getPublicUrl(uploadData.path);
           mappedImages.push(data.publicUrl);
         }

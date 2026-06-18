@@ -304,4 +304,139 @@ describe('useCashRegister', () => {
       expect(hookResult?.rightButton?.enabled).toBe(false);
     });
   });
+
+  it('leftButton should be "Caixa aberto" when opening is already edited', async () => {
+    const editedEntry = { ...mockEntry, edited: true };
+    (service.fetchByDate as jest.Mock).mockResolvedValue({ opening: editedEntry, closing: undefined });
+    setup('2025-06-10');
+    await waitFor(() => {
+      expect(hookResult?.leftButton?.label).toBe('Caixa aberto');
+      expect(hookResult?.leftButton?.enabled).toBe(false);
+    });
+  });
+
+  it('rightButton should be "Fechamento salvo" when closing is already edited', async () => {
+    const editedClosing = { ...mockClosingEntry, edited: true };
+    (service.fetchByDate as jest.Mock).mockResolvedValue({ opening: mockEntry, closing: editedClosing });
+    setup('2025-06-10');
+    await waitFor(() => {
+      expect(hookResult?.rightButton?.label).toBe('Fechamento salvo');
+      expect(hookResult?.rightButton?.enabled).toBe(false);
+    });
+  });
+
+  it('should populate empty denominations when both opening and closing exist', async () => {
+    (service.fetchByDate as jest.Mock).mockResolvedValue({ opening: mockEntry, closing: mockClosingEntry });
+    setup('2025-06-10');
+    await waitFor(() => {
+      expect(hookResult?.denominations?.bill_100).toBe(0);
+      expect(hookResult?.denominations?.coin_100).toBe(0);
+    });
+  });
+
+  it('handleStartClosing should pre-fill denominations from opening', async () => {
+    (service.fetchByDate as jest.Mock).mockResolvedValue({ opening: mockEntry, closing: undefined });
+    setup('2025-06-10');
+    await waitFor(() => expect(hookResult?.opening?.id).toBe('entry-1'));
+    act(() => { hookResult.handleAction('startClosing'); });
+    expect(hookResult.denominations.bill_100).toBe(1);
+    expect(hookResult.denominations.coin_100).toBe(3);
+    expect(hookResult.showSteppers).toBe(true);
+  });
+
+  it('should show showSteppers during opening editing', async () => {
+    (service.fetchByDate as jest.Mock).mockResolvedValue({ opening: undefined, closing: undefined });
+    setup('2025-06-10');
+    await waitFor(() => expect(hookResult).toBeTruthy());
+    act(() => { hookResult.handleAction('startOpening'); });
+    await waitFor(() => expect(hookResult.showSteppers).toBe(true));
+  });
+
+  it('handleConfirmOpening should log error on failure', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    (service.saveEntry as jest.Mock).mockRejectedValue(new Error('Save failed'));
+    (service.fetchByDate as jest.Mock).mockResolvedValue({ opening: undefined, closing: undefined });
+    setup('2025-06-10');
+    await waitFor(() => expect(hookResult).toBeTruthy());
+    hookResult.handleAction('startOpening');
+    await act(async () => { await hookResult.handleAction('confirmOpening'); });
+    expect(consoleSpy).toHaveBeenCalledWith('Erro ao salvar abertura:', expect.any(Error));
+    consoleSpy.mockRestore();
+  });
+
+  it('handleConfirmEditOpening should log error on failure', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    (service.updateEntry as jest.Mock).mockRejectedValue(new Error('Update failed'));
+    (service.fetchByDate as jest.Mock).mockResolvedValue({ opening: mockEntry, closing: undefined });
+    setup('2025-06-10');
+    await waitFor(() => expect(hookResult?.opening?.id).toBe('entry-1'));
+    hookResult.handleAction('editOpening');
+    await act(async () => { await hookResult.handleAction('confirmOpening'); });
+    expect(consoleSpy).toHaveBeenCalledWith('Erro ao editar abertura:', expect.any(Error));
+    consoleSpy.mockRestore();
+  });
+
+  it('handleConfirmClosing should log error on failure', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    (service.saveEntry as jest.Mock).mockRejectedValue(new Error('Close failed'));
+    (service.fetchByDate as jest.Mock).mockResolvedValue({ opening: mockEntry, closing: undefined });
+    setup('2025-06-10');
+    await waitFor(() => expect(hookResult?.opening?.id).toBe('entry-1'));
+    hookResult.handleAction('startClosing');
+    await act(async () => { await hookResult.handleAction('confirmClosing'); });
+    expect(consoleSpy).toHaveBeenCalledWith('Erro ao salvar fechamento:', expect.any(Error));
+    consoleSpy.mockRestore();
+  });
+
+  it('handleConfirmEditClosing should log error on failure', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    (service.fetchByDate as jest.Mock).mockResolvedValue({ opening: mockEntry, closing: mockClosingEntry });
+    (service.updateEntry as jest.Mock).mockRejectedValue(new Error('Edit close failed'));
+    setup('2025-06-10');
+    await waitFor(() => expect(hookResult?.closing?.id).toBe('entry-2'));
+    hookResult.handleAction('editClosing');
+    await act(async () => { await hookResult.handleAction('confirmClosing'); });
+    expect(consoleSpy).toHaveBeenCalledWith('Erro ao editar fechamento:', expect.any(Error));
+    consoleSpy.mockRestore();
+  });
+
+  it('handleEncerrar should log error on failure', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    (service.fetchByDate as jest.Mock).mockResolvedValue({ opening: mockEntry, closing: mockClosingEntry });
+    (service.markDayAsClosed as jest.Mock).mockRejectedValue(new Error('Encerrar failed'));
+    setup('2025-06-10');
+    await waitFor(() => expect(hookResult?.opening?.id).toBe('entry-1'));
+    await act(async () => { await hookResult.handleEncerrar(); });
+    expect(consoleSpy).toHaveBeenCalledWith('Erro ao encerrar caixa:', expect.any(Error));
+    consoleSpy.mockRestore();
+  });
+
+  it('handleAction editOpening should do nothing when no opening', async () => {
+    (service.fetchByDate as jest.Mock).mockResolvedValue({ opening: undefined, closing: undefined });
+    setup('2025-06-10');
+    await waitFor(() => expect(hookResult).toBeTruthy());
+    act(() => { hookResult.handleAction('editOpening'); });
+    expect(hookResult.denominations.bill_100).toBe(0);
+  });
+
+  it('handleAction editClosing should do nothing when no closing', async () => {
+    const editedEntry = { ...mockEntry, edited: true };
+    (service.fetchByDate as jest.Mock).mockResolvedValue({ opening: editedEntry, closing: undefined });
+    setup('2025-06-10');
+    await waitFor(() => expect(hookResult?.opening?.id).toBe('entry-1'));
+    const denomBefore = { ...hookResult.denominations };
+    act(() => { hookResult.handleAction('editClosing'); });
+    expect(hookResult.showSteppers).toBe(false);
+    expect(hookResult.denominations).toEqual(denomBefore);
+  });
+
+  it('handleEncerrar should do nothing when no opening or closing', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    (service.fetchByDate as jest.Mock).mockResolvedValue({ opening: undefined, closing: undefined });
+    setup('2025-06-10');
+    await waitFor(() => expect(hookResult).toBeTruthy());
+    await act(async () => { await hookResult.handleEncerrar(); });
+    expect(service.markDayAsClosed).not.toHaveBeenCalled();
+    consoleSpy.mockRestore();
+  });
 });

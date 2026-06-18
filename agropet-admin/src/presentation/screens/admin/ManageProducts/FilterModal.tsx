@@ -11,10 +11,12 @@ interface FilterModalProps {
   isDarkMode: boolean;
   colors: any;
   tempStatusFilter: string;
+  tempTypeFilter: string;
   tempAlertYellowFilter: boolean;
   tempAlertRedFilter: boolean;
   tempSortOption: SortOption;
   onSelectStatus: (s: string) => void;
+  onSelectType: (s: string) => void;
   onToggleYellow: () => void;
   onToggleRed: () => void;
   onSelectSort: (option: SortOption) => void;
@@ -38,19 +40,18 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
 ];
 
 export const FilterModal = ({
-  visible, isDarkMode, colors, tempStatusFilter, tempAlertYellowFilter, tempAlertRedFilter, tempSortOption,
-  onSelectStatus, onToggleYellow, onToggleRed, onSelectSort, onApply, onClose,
+  visible, isDarkMode, colors, tempStatusFilter, tempTypeFilter, tempAlertYellowFilter, tempAlertRedFilter, tempSortOption,
+  onSelectStatus, onSelectType, onToggleYellow, onToggleRed, onSelectSort, onApply, onClose,
   onManageCategories,
   allCategories, categories, onCreateCategory, onToggleCategoryActive, onDeleteCategory
 }: FilterModalProps) => {
 
-  const renderRadio = (status: string, label: string) => {
-    const isSelected = tempStatusFilter === status;
-    const isDisabled = status === 'Inativos' && (tempAlertYellowFilter || tempAlertRedFilter);
+  const renderRadio = (value: string, label: string, selectedValue: string, onPress: (v: string) => void, isDisabled?: boolean, keyPrefix?: string) => {
+    const isSelected = selectedValue === value;
     return (
-      <TouchableOpacity key={status} activeOpacity={isDisabled ? 1 : 0.7}
+      <TouchableOpacity key={`${keyPrefix || ''}${value}`} activeOpacity={isDisabled ? 1 : 0.7}
         style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: isDarkMode ? '#3E3E4A' : '#E3E4EB', opacity: isDisabled ? 0.4 : 1 }}
-        onPress={() => { if (!isDisabled) onSelectStatus(status); }}>
+        onPress={() => { if (!isDisabled) onPress(value); }}>
         <Text style={{ fontSize: 14, color: isDarkMode ? '#FFFFFF' : '#1C2434', fontWeight: isSelected ? 'bold' : 'normal', flex: 1 }}>{label}</Text>
         <View style={{ width: 18, height: 18, borderRadius: 9, borderWidth: 1.5, borderColor: isSelected ? '#25BE36' : (isDarkMode ? '#888888' : '#A8A8B3'), alignItems: 'center', justifyContent: 'center' }}>
           {isSelected && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#25BE36' }} />}
@@ -95,9 +96,13 @@ export const FilterModal = ({
             <Text style={[styles.whiteModalTitle, { color: isDarkMode ? '#FFFFFF' : '#1C2434' }]}>Filtrar Produtos</Text>
             <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 380 }}>
               <Text style={[styles.modalSubsectionHeader, { color: isDarkMode ? '#FFE082' : '#F97D01' }]}>Situação</Text>
-              {renderRadio('Todos', 'Todos os produtos')}
-              {renderRadio('Ativos', 'Somente ativos')}
-              {renderRadio('Inativos', 'Somente inativos')}
+              {renderRadio('Todos', 'Todos os produtos', tempStatusFilter, onSelectStatus, false, 'status-')}
+              {renderRadio('Ativos', 'Somente ativos', tempStatusFilter, onSelectStatus, false, 'status-')}
+              {renderRadio('Inativos', 'Somente inativos', tempStatusFilter, onSelectStatus, tempAlertYellowFilter || tempAlertRedFilter, 'status-')}
+              <Text style={[styles.modalSubsectionHeader, { color: isDarkMode ? '#FFE082' : '#F97D01', marginTop: 20, marginBottom: 10 }]}>Tipo de produto</Text>
+              {renderRadio('Todos', 'Todos os tipos', tempTypeFilter, onSelectType, false, 'type-')}
+              {renderRadio('Granel', 'À granel', tempTypeFilter, onSelectType, false, 'type-')}
+              {renderRadio('PerMeter', 'Por metro', tempTypeFilter, onSelectType, false, 'type-')}
               <Text style={[styles.modalSubsectionHeader, { color: isDarkMode ? '#FFE082' : '#F97D01', marginTop: 20, marginBottom: 10 }]}>Ordenar por</Text>
               {SORT_OPTIONS.map(o => renderSortRadio(o.value, o.label))}
               <Text style={[styles.modalSubsectionHeader, { color: isDarkMode ? '#FFE082' : '#F97D01', marginTop: 20, marginBottom: 10 }]}>Alertas de estoque</Text>

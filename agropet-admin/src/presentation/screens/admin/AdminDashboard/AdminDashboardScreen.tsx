@@ -338,6 +338,7 @@ export default function AdminDashboardScreen() {
             onCategoryToggle={/* istanbul ignore next */ (cat) =>
               d.setPdvActiveCategories(prev => prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat])
             }
+            pdvTypeFilter={d.pdvTypeFilter}
             pdvSortOption={d.pdvSortOption}
             onSortChange={d.setPdvSortOption}
             pdvSelectMode={d.pdvSelectMode}
@@ -353,6 +354,8 @@ export default function AdminDashboardScreen() {
             bulkValueMode={d.bulkValueMode}
             pdvBulkValues={d.pdvBulkValues}
             onBulkValueChange={d.setPdvBulkValue}
+            pdvInputText={d.pdvInputText}
+            setPdvInputText={d.setPdvInputText}
             onDismissAlert={d.dismissAlert}
             dismissedProductIds={d.dismissedProductIds}
             isDarkMode={isDarkMode}
@@ -374,6 +377,7 @@ export default function AdminDashboardScreen() {
         onConfirm={d.handleConfirmPdvSale}
         bulkValueMode={d.bulkValueMode}
         pdvBulkValues={d.pdvBulkValues}
+        bulkInputUnit={d.bulkInputUnit}
       />
 
       {/* istanbul ignore next */ d.isPDVMode && d.showSortModal && (
@@ -381,13 +385,29 @@ export default function AdminDashboardScreen() {
           <TouchableOpacity activeOpacity={1} onPress={() => d.setShowSortModal(false)}
             style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }}>
             <View style={{ width: '85%', backgroundColor: isDarkMode ? '#2E2E38' : '#FFFFFF', borderRadius: 20, padding: 20 }}>
-              <Text style={{ fontSize: 18, fontWeight: 'bold', color: isDarkMode ? '#FFF' : '#1C2434', marginBottom: 16 }}>Ordenar por</Text>
+              <Text style={{ fontSize: 18, fontWeight: 'bold', color: isDarkMode ? '#FFF' : '#1C2434', marginBottom: 16 }}>Filtrar</Text>
+              <Text style={{ fontSize: 14, fontWeight: 'bold', color: isDarkMode ? '#FFE082' : '#F97D01', marginBottom: 10 }}>Tipo de produto</Text>
+              {['Todos', 'Granel', 'PerMeter'].map(t => {
+                const isSelected = d.pdvTypeFilter === t;
+                const label = t === 'Todos' ? 'Todos os tipos' : t === 'Granel' ? 'À granel' : 'Por metro';
+                return (
+                  <TouchableOpacity key={`type-${t}`} activeOpacity={0.7}
+                    style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: isDarkMode ? '#3E3E4A' : '#E3E4EB' }}
+                    onPress={() => { d.setPdvTypeFilter(t as any); d.setShowSortModal(false); }}>
+                    <Text style={{ fontSize: 15, color: isDarkMode ? '#FFF' : '#1C2434', fontWeight: isSelected ? 'bold' : 'normal' }}>{label}</Text>
+                    <View style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, borderColor: isSelected ? '#25BE36' : (isDarkMode ? '#888' : '#A8A8B3'), alignItems: 'center', justifyContent: 'center' }}>
+                      {isSelected && <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: '#25BE36' }} />}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+              <Text style={{ fontSize: 14, fontWeight: 'bold', color: isDarkMode ? '#FFE082' : '#F97D01', marginTop: 16, marginBottom: 10 }}>Ordenar por</Text>
               {SORT_OPTIONS.map(o => {
                 const isSelected = d.pdvSortOption === o.value;
                 return (
                   <TouchableOpacity key={o.value} activeOpacity={0.7}
                     style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: isDarkMode ? '#3E3E4A' : '#E3E4EB' }}
-                    onPress={() => { d.setPdvSortOption(o.value); d.setShowSortModal(false); }}>
+                    onPress={() => { d.handleSortChange(o.value); d.setShowSortModal(false); }}>
                     <Text style={{ fontSize: 15, color: isDarkMode ? '#FFF' : '#1C2434', fontWeight: isSelected ? 'bold' : 'normal' }}>{o.label}</Text>
                     <View style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, borderColor: isSelected ? '#25BE36' : (isDarkMode ? '#888' : '#A8A8B3'), alignItems: 'center', justifyContent: 'center' }}>
                       {isSelected && <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: '#25BE36' }} />}

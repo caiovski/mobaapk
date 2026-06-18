@@ -23,7 +23,6 @@ export function useCashRegisterScreen() {
 
   const cr = useCashRegister(selectedDate);
   const { handleEncerrar: crHandleEncerrar, ...restCr } = cr;
-
   const handleEncerrar = useCallback(async () => {
     await crHandleEncerrar();
     navigation.navigate('CashRegisterHistoryScreen', { highlightDate: selectedDate });

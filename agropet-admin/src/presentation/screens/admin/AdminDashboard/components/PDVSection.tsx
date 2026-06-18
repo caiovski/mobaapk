@@ -16,6 +16,7 @@ interface PDVSectionProps {
   onSearchChange: (text: string) => void;
   pdvActiveCategories: string[];
   onCategoryToggle: (cat: string) => void;
+  pdvTypeFilter: 'Todos' | 'Granel' | 'PerMeter';
   pdvSortOption: SortOption;
   onSortChange: (option: SortOption) => void;
   pdvSelectMode: boolean;
@@ -37,17 +38,20 @@ interface PDVSectionProps {
   bulkValueMode: boolean;
   pdvBulkValues: Record<string, number>;
   onBulkValueChange: (id: string, value: number) => void;
+  pdvInputText: Record<string, string>;
+  setPdvInputText: React.Dispatch<React.SetStateAction<Record<string, string>>>;
 }
 
 export default function PDVSection({
   pdvSearchText, onSearchChange, pdvActiveCategories, onCategoryToggle,
-  pdvSortOption, onSortChange,
+  pdvTypeFilter, pdvSortOption, onSortChange,
   pdvSelectMode, pdvCart, pdvProducts, pdvLoading,
   onToggleCart, onUpdateQty,
   onDismissAlert, dismissedProductIds, isDarkMode, formatCurrency,
   categories, quantityInputMode, setPdvCartQty,
   bulkInputUnit, setBulkInputUnit,
-  bulkValueMode, pdvBulkValues, onBulkValueChange
+  bulkValueMode, pdvBulkValues, onBulkValueChange,
+  pdvInputText, setPdvInputText
 }: PDVSectionProps) {
 
   return (
@@ -61,6 +65,8 @@ export default function PDVSection({
         pdvProducts
           .filter(p => {
             if (!isProductInCategories(p, pdvActiveCategories, categories)) return false;
+            if (pdvTypeFilter === 'Granel' && !p.is_bulk) return false;
+            if (pdvTypeFilter === 'PerMeter' && !p.is_per_meter) return false;
             if (!pdvSearchText) return true;
             const query = pdvSearchText.toLowerCase();
             const nameMatches = (p.name || '').toLowerCase().includes(query);
@@ -181,15 +187,16 @@ export default function PDVSection({
                           }}>
                             <TextInput
                               style={{
-                                width: item.is_bulk ? 60 : 50, color: '#FFFFFF', fontWeight: 'bold', fontSize: 12,
+                                width: item.is_bulk || item.is_per_meter ? 60 : 50, color: '#FFFFFF', fontWeight: 'bold', fontSize: 12,
                                 textAlign: 'center', paddingVertical: 2, paddingHorizontal: 4
                               }}
-                              value={String(inCart.qty)}
+                              value={pdvInputText[item.id] ?? String(inCart.qty).replace('.', ',')}
                               onChangeText={(text) => {
+                                setPdvInputText(prev => ({ ...prev, [item.id]: text }));
                                 if (item.is_bulk && bulkInputUnit[item.id] === 'g') {
                                   const parsed = parseInt(text.replace(/[^0-9]/g, ''), 10);
                                   /* istanbul ignore next */ setPdvCartQty(item.id, isNaN(parsed) ? 1 : parsed);
-                                } else if (item.is_bulk) {
+                                } else if (item.is_bulk || item.is_per_meter) {
                                   const normalized = text.replace(',', '.').replace(/[^0-9.]/g, '');
                                   const parsed = parseFloat(normalized);
                                   setPdvCartQty(item.id, isNaN(parsed) || parsed <= 0 ? 1 : parsed);
@@ -218,6 +225,11 @@ export default function PDVSection({
                                 }}>g</Text>
                               </TouchableOpacity>
                             )}
+                            {item.is_per_meter && (
+                              <View style={{ paddingHorizontal: 6 }}>
+                                <Text style={{ color: '#00E676', fontSize: 11, fontWeight: 'bold' }}>m</Text>
+                              </View>
+                            )}
                           </View>
                         ) : (
                           <View style={{
@@ -229,7 +241,7 @@ export default function PDVSection({
                               <Feather name="minus" size={12} color="#FF3B30" />
                             </TouchableOpacity>
                             <Text style={{ marginHorizontal: 6, color: '#FFFFFF', fontWeight: 'bold', fontSize: 12, minWidth: 14, textAlign: 'center' }}>
-                              {inCart.qty}
+                              {inCart.qty}{item.is_per_meter ? 'm' : ''}
                             </Text>
                             <TouchableOpacity onPress={() => onUpdateQty(item.id, 1)} style={{ padding: 4 }}>
                               <Feather name="plus" size={12} color="#4CAF50" />

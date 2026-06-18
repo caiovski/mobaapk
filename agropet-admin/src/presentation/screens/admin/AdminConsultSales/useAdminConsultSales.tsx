@@ -139,12 +139,22 @@ export function useAdminConsultSales() {
   }, [startDate, endDate, isRange, hasFiltered, isLoaded]);
 
   useEffect(() => {
-    const channel = supabase.channel('cash_flow_consult')
+    const cashFlowChannel = supabase.channel('cash_flow_consult')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_flow' }, /* istanbul ignore next */ () => {
         /* istanbul ignore next */ fetchCaixaData();
       })
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+
+    const ordersChannel = supabase.channel('orders_consult')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, /* istanbul ignore next */ () => {
+        /* istanbul ignore next */ fetchSales();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(cashFlowChannel);
+      supabase.removeChannel(ordersChannel);
+    };
   }, []);
 
   const fetchSales = async () => {
@@ -155,7 +165,7 @@ export function useAdminConsultSales() {
         .select(`
           *,
           users (id, name, phone, rua, numero, bairro, cep),
-          order_items (product_id, quantity, unit_price, products (name))
+          order_items (product_id, quantity, unit_price, products (id, name, image_url, is_bulk, is_per_meter))
         `)
         .in('status', ['completed', 'cancelled'])
         .limit(100)
@@ -175,10 +185,11 @@ export function useAdminConsultSales() {
 
       const { data: ordersData, error: ordersError } = await query;
       if (ordersError) throw ordersError;
-        
+
       setOrders(ordersData || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao buscar vendas:', error);
+      Alert.alert('Erro ao carregar', 'Erro ao buscar vendas: ' + (error?.message || error));
     } finally {
       setLoading(false);
     }

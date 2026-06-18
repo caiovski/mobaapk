@@ -25,7 +25,7 @@ export function useCashRegister(selectedDate: string) {
   const [denominations, setDenominations] = useState<DenominationInput>({ ...EMPTY_DENOMINATIONS });
   const [loading, setLoading] = useState(true);
   const [history, setHistory] = useState<DBCashRegisterEntry[]>([]);
-  /* istanbul ignore next */ const [isEditingOpening, setIsEditingOpening] = useState(false);
+  const [isEditingOpening, setIsEditingOpening] = useState(false);
   const [isEditingClosing, setIsEditingClosing] = useState(false);
 
   const todayStr = new Date().toISOString().split('T')[0];
@@ -114,7 +114,7 @@ export function useCashRegister(selectedDate: string) {
           coin_010: finalResult.opening.coin_010,
           coin_005: finalResult.opening.coin_005,
         });
-      /* istanbul ignore next */ } else {
+      } else {
         setDenominations({ ...EMPTY_DENOMINATIONS });
       }
     } catch (err) {
@@ -158,10 +158,10 @@ export function useCashRegister(selectedDate: string) {
     if (!hasOpening) {
       return { label: 'Abrir caixa', color: canOpenNow ? '#339914' : '#767676', enabled: canOpenNow, action: 'startOpening' as const };
     }
-    /* istanbul ignore else */ if (hasOpening && !openingEdited) {
+    if (hasOpening && !openingEdited) {
       return { label: 'Editar', color: '#2BE060', enabled: true, action: 'editOpening' as const };
     }
-    /* istanbul ignore next */ return { label: 'Caixa aberto', color: '#767676', enabled: false, action: null };
+    return { label: 'Caixa aberto', color: '#767676', enabled: false, action: null };
   }, [isViewMode, isEditingOpening, hasOpening, openingEdited, canOpenNow]);
 
   const rightButton = useMemo(() => {
@@ -175,7 +175,6 @@ export function useCashRegister(selectedDate: string) {
     if (hasOpening && hasClosing && !isClosed && !closingEdited) {
       return { label: 'Editar fechamento', color: '#2BE060', enabled: true, action: 'editClosing' as const };
     }
-    /* istanbul ignore next */
     if (hasOpening && hasClosing && !isClosed && closingEdited) {
       return { label: 'Fechamento salvo', color: '#767676', enabled: false, action: null };
     }
@@ -195,12 +194,12 @@ export function useCashRegister(selectedDate: string) {
       setIsEditingOpening(false);
       await load(true);
     } catch (err) {
-      /* istanbul ignore next */ console.error('Erro ao salvar abertura:', err);
+      console.error('Erro ao salvar abertura:', err);
     }
   }, [selectedDate, denominations, load]);
 
   const handleEditOpening = useCallback(() => {
-    /* istanbul ignore else */ if (opening) {
+    if (opening) {
       setDenominations({
         bill_200: opening.bill_200,
         bill_100: opening.bill_100,
@@ -226,12 +225,12 @@ export function useCashRegister(selectedDate: string) {
         setIsEditingOpening(false);
         await load(true);
       } catch (err) {
-        /* istanbul ignore next */ console.error('Erro ao editar abertura:', err);
+        console.error('Erro ao editar abertura:', err);
       }
     }
   }, [opening, denominations, load]);
 
-  /* istanbul ignore next */ const handleStartClosing = useCallback(() => {
+  const handleStartClosing = useCallback(() => {
     if (opening) {
       setDenominations({
         bill_200: opening.bill_200,
@@ -247,7 +246,7 @@ export function useCashRegister(selectedDate: string) {
         coin_010: opening.coin_010,
         coin_005: opening.coin_005,
       });
-      /* istanbul ignore next */ setIsEditingClosing(true);
+      setIsEditingClosing(true);
     }
   }, [opening]);
 
@@ -256,13 +255,13 @@ export function useCashRegister(selectedDate: string) {
       await saveEntry('closing', selectedDate, denominations);
       setIsEditingClosing(false);
       await load(true);
-      /* istanbul ignore next */ } catch (err) {
-      /* istanbul ignore next */ console.error('Erro ao salvar fechamento:', err);
+    } catch (err) {
+      console.error('Erro ao salvar fechamento:', err);
     }
   }, [selectedDate, denominations, load]);
 
   const handleEditClosing = useCallback(() => {
-    /* istanbul ignore else */ if (closing) {
+    if (closing) {
       setDenominations({
         bill_200: closing.bill_200,
         bill_100: closing.bill_100,
@@ -287,19 +286,19 @@ export function useCashRegister(selectedDate: string) {
         await updateEntry(closing.id, denominations);
         setIsEditingClosing(false);
         await load(true);
-      /* istanbul ignore next */ } catch (err) {
-        /* istanbul ignore next */ console.error('Erro ao editar fechamento:', err);
+      } catch (err) {
+        console.error('Erro ao editar fechamento:', err);
       }
     }
   }, [closing, denominations, load]);
 
   const handleEncerrar = useCallback(async () => {
-    /* istanbul ignore else */ if (opening && closing) {
+    if (opening && closing) {
       try {
         await markDayAsClosed(opening.id, closing.id, false);
         await load(true);
-      /* istanbul ignore next */ } catch (err) {
-        /* istanbul ignore next */ console.error('Erro ao encerrar caixa:', err);
+      } catch (err) {
+        console.error('Erro ao encerrar caixa:', err);
       }
     }
   }, [opening, closing, load]);

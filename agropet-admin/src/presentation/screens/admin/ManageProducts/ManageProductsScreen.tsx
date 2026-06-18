@@ -46,6 +46,8 @@ export default function ManageProductsScreen() {
   const getFilterLabel = () => {
     const parts: string[] = [];
     if (h.statusFilter !== 'Todos') parts.push(h.statusFilter);
+    if (h.typeFilter === 'Granel') parts.push('Granel');
+    else if (h.typeFilter === 'PerMeter') parts.push('Metro');
     if (h.alertYellowFilter) parts.push('Moderado');
     if (h.alertRedFilter) parts.push('Crítico');
     return parts.length === 0 ? 'Filtro' : parts.join(' + ');
@@ -142,13 +144,14 @@ export default function ManageProductsScreen() {
       <View style={{ height: 100 }} />
       <DeleteConfirmModal visible={h.showConfirmDeleteModal} isDarkMode={h.isDarkMode} selectedCount={h.selectedProductIds.size} onConfirm={h.confirmMassDelete} onClose={() => h.setShowConfirmDeleteModal(false)} />
       <FilterModal visible={h.showFilterModal} isDarkMode={h.isDarkMode} colors={h.colors}
-        tempStatusFilter={h.tempStatusFilter} tempAlertYellowFilter={h.tempAlertYellowFilter} tempAlertRedFilter={h.tempAlertRedFilter}
+        tempStatusFilter={h.tempStatusFilter} tempTypeFilter={h.tempTypeFilter} tempAlertYellowFilter={h.tempAlertYellowFilter} tempAlertRedFilter={h.tempAlertRedFilter}
         onSelectStatus={(s: any) => { h.setTempStatusFilter(s); /* istanbul ignore next */ if (s === 'Inativos') { h.setTempAlertYellowFilter(false); h.setTempAlertRedFilter(false); } }}
+        onSelectType={(s: any) => h.setTempTypeFilter(s)}
         onToggleYellow={() => { /* istanbul ignore next */ if (h.tempStatusFilter !== 'Inativos') h.setTempAlertYellowFilter(!h.tempAlertYellowFilter); }}
         onToggleRed={() => { /* istanbul ignore next */ if (h.tempStatusFilter !== 'Inativos') h.setTempAlertRedFilter(!h.tempAlertRedFilter); }}
         tempSortOption={h.tempSortOption}
         onSelectSort={(opt) => h.setTempSortOption(opt)}
-        onApply={() => { h.setStatusFilter(h.tempStatusFilter); h.setAlertYellowFilter(h.tempAlertYellowFilter); h.setAlertRedFilter(h.tempAlertRedFilter); h.setSortOption(h.tempSortOption); h.setShowFilterModal(false); }}
+        onApply={() => { h.setStatusFilter(h.tempStatusFilter); h.setTypeFilter(h.tempTypeFilter); h.setAlertYellowFilter(h.tempAlertYellowFilter); h.setAlertRedFilter(h.tempAlertRedFilter); h.setSortOption(h.tempSortOption); h.setShowFilterModal(false); }}
         onClose={() => h.setShowFilterModal(false)}
         onManageCategories={/* istanbul ignore next */ () => h.navigation.navigate('CategoryManagerScreen')}
         allCategories={h.allCategories} categories={h.categories}

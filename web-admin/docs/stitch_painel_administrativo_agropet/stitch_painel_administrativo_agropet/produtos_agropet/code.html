@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AgroPet - Products</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline-variant": "#dfc1af",
+                        "primary": "#964900",
+                        "inverse-surface": "#3b2e26",
+                        "secondary": "#565e71",
+                        "surface-container-low": "#fff1ea",
+                        "tertiary": "#006399",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-dim": "#ecd6ca",
+                        "outline": "#8b7263",
+                        "inverse-primary": "#ffb787",
+                        "tertiary-container": "#00a7fd",
+                        "on-background": "#241912",
+                        "surface-tint": "#964900",
+                        "background": "#fff8f5",
+                        "on-secondary": "#ffffff",
+                        "primary-fixed": "#ffdcc7",
+                        "on-error": "#ffffff",
+                        "on-surface": "#241912",
+                        "surface-container-high": "#fae4d8",
+                        "on-tertiary-fixed-variant": "#004b74",
+                        "on-primary-fixed": "#311300",
+                        "inverse-on-surface": "#ffede4",
+                        "on-primary-container": "#5a2900",
+                        "primary-fixed-dim": "#ffb787",
+                        "error": "#ba1a1a",
+                        "on-tertiary": "#ffffff",
+                        "on-primary": "#ffffff",
+                        "on-surface-variant": "#574235",
+                        "on-error-container": "#93000a",
+                        "surface-variant": "#f4ded2",
+                        "surface": "#fff8f5",
+                        "secondary-fixed": "#dbe2f8",
+                        "secondary-fixed-dim": "#bec6dc",
+                        "on-secondary-fixed-variant": "#3f4758",
+                        "on-secondary-container": "#5b6375",
+                        "surface-container-highest": "#f4ded2",
+                        "on-tertiary-fixed": "#001d32",
+                        "primary-container": "#f97d01",
+                        "secondary-container": "#d8dff5",
+                        "on-primary-fixed-variant": "#723600",
+                        "on-tertiary-container": "#00395b",
+                        "tertiary-fixed": "#cde5ff",
+                        "error-container": "#ffdad6",
+                        "surface-bright": "#fff8f5",
+                        "on-secondary-fixed": "#131c2b",
+                        "surface-container": "#ffeade",
+                        "tertiary-fixed-dim": "#94ccff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "md": "16px",
+                        "xs": "4px",
+                        "margin": "32px",
+                        "gutter": "24px",
+                        "lg": "24px",
+                        "base": "4px",
+                        "xl": "32px",
+                        "sm": "8px",
+                        "2xl": "48px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Inter"],
+                        "title-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "label-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "title-lg": ["18px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-surface-bright text-on-surface h-screen flex overflow-hidden">
+<!-- SideNavBar -->
+<nav class="fixed left-0 top-0 h-full w-[280px] bg-inverse-surface dark:bg-inverse-surface shadow-xl flex flex-col h-full py-xl z-20">
+<div class="px-lg mb-xl">
+<h1 class="font-display-lg text-display-lg font-bold text-primary-container">AgroPet</h1>
+<p class="font-label-sm text-label-sm text-surface-variant/70 mt-xs">Admin Panel</p>
+</div>
+<div class="flex-1 flex flex-col gap-sm">
+<a class="flex items-center gap-md px-lg py-sm text-surface-variant/70 hover:bg-white/10 hover:text-surface-bright transition-colors font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+                Dashboard
+            </a>
+<a class="flex items-center gap-md px-lg py-sm text-surface-variant/70 hover:bg-white/10 hover:text-surface-bright transition-colors font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined" data-icon="point_of_sale">point_of_sale</span>
+                POS
+            </a>
+<a class="flex items-center gap-md px-lg py-sm border-l-4 border-primary bg-white/5 text-surface-bright opacity-90 transition-all duration-200 font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2" style="font-variation-settings: 'FILL' 1;">inventory_2</span>
+                Products
+            </a>
+<a class="flex items-center gap-md px-lg py-sm text-surface-variant/70 hover:bg-white/10 hover:text-surface-bright transition-colors font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+                Clients
+            </a>
+<a class="flex items-center gap-md px-lg py-sm text-surface-variant/70 hover:bg-white/10 hover:text-surface-bright transition-colors font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined" data-icon="calendar_today">calendar_today</span>
+                Appointments
+            </a>
+</div>
+<div class="mt-auto px-lg">
+<a class="flex items-center gap-md py-sm text-surface-variant/70 hover:bg-white/10 hover:text-surface-bright transition-colors font-label-md text-label-md border-t border-surface-variant/20 pt-md" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+                Logout
+            </a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 ml-[280px] flex flex-col h-screen overflow-hidden">
+<!-- TopNavBar -->
+<header class="docked full-width top-0 sticky bg-surface-container-lowest dark:bg-surface-dim shadow-sm flex justify-between items-center h-16 px-lg w-full z-10">
+<div class="flex-1"></div>
+<div class="flex items-center gap-md">
+<button class="text-on-surface-variant hover:bg-surface-container-low transition-colors p-sm rounded-full active:scale-95 duration-150">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<div class="h-8 w-8 rounded-full bg-surface-variant overflow-hidden">
+<img alt="User Avatar" class="w-full h-full object-cover" data-alt="A close-up portrait of a professional business person looking directly at the camera. The lighting is soft and natural, creating a warm, approachable mood. The aesthetic is clean and modern, fitting for a corporate profile avatar. The background is slightly blurred to keep focus on the subject." src="https://lh3.googleusercontent.com/aida-public/AB6AXuChESunx_PM_KF6vXrbTxgoG3XbNLCVvtQgXDjnjBGGpRbOMxiXjKbHZzXL9dClMS2wUbcInfKa9LaEkXe_Htiia4HUgBVlYTxiMi7bV8K2xusG_3rYk6SG6YTZouCK9VJxRfi2sbwRxMcRtAMODXdmovCwwj3bTKGuDiGi74pSbLIsEnFhHVgHDLunrSUCRMXE2NmKGgoyby5dwXn4JE2TpGnkw1Sb9V9NxJoHG0T-L2Um1l4dxU6SJEf36LbaV_g11H2m_Ja2X1T-"/>
+</div>
+</div>
+</header>
+<!-- Page Content -->
+<main class="flex-1 overflow-y-auto p-lg bg-background">
+<div class="max-w-[1600px] mx-auto">
+<!-- Page Header & Actions -->
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-xl gap-md">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Produtos</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-xs">Gerencie seu catálogo de produtos e estoque.</p>
+</div>
+<div class="flex flex-col sm:flex-row items-center gap-md w-full md:w-auto">
+<div class="relative w-full sm:w-64">
+<span class="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
+<input class="w-full pl-xl pr-sm py-sm rounded-lg border border-outline-variant focus:border-primary-container focus:ring-2 focus:ring-primary-container/20 font-body-sm text-body-sm text-on-surface bg-surface-container-lowest transition-all" placeholder="Buscar produto..." type="text"/>
+</div>
+<select class="w-full sm:w-auto px-md py-sm rounded-lg border border-outline-variant focus:border-primary-container focus:ring-2 focus:ring-primary-container/20 font-body-sm text-body-sm text-on-surface bg-surface-container-lowest appearance-none pr-xl relative cursor-pointer">
+<option value="">Todas Categorias</option>
+<option value="racao">Rações</option>
+<option value="medicamento">Medicamentos</option>
+<option value="acessorio">Acessórios</option>
+</select>
+<button class="w-full sm:w-auto flex items-center justify-center gap-sm bg-[#F97D01] text-white px-md py-sm rounded-lg font-label-md text-label-md hover:bg-primary-container/90 transition-colors shadow-sm whitespace-nowrap">
+<span class="material-symbols-outlined text-[20px]">add</span>
+                            Novo Produto
+                        </button>
+</div>
+</div>
+<!-- Products Table Card -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm border border-outline-variant overflow-hidden">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low border-b border-outline-variant">
+<th class="py-md px-lg font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Produto</th>
+<th class="py-md px-lg font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Categoria</th>
+<th class="py-md px-lg font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Preço</th>
+<th class="py-md px-lg font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Estoque</th>
+<th class="py-md px-lg font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider text-right">Ações</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-low/50 transition-colors group">
+<td class="py-md px-lg">
+<div class="flex items-center gap-md">
+<div class="h-12 w-12 rounded-lg bg-surface-variant overflow-hidden border border-outline-variant/50">
+<img alt="Ração Premium" class="w-full h-full object-cover" data-alt="A high-quality studio shot of a premium bag of dog food. The packaging is sleek and modern with vibrant colors. The lighting is bright and even, highlighting the product's premium nature. The background is a crisp, clean white, emphasizing the subject." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCxS7NbMBHs0Thl9xbb4rxcWmyiWoGN6HOIlZiuv_5KFekqUJs13hZinxjgAp3tFuYeT0JBeixPBxvezrkS25NBWyOEKcpipBl-yWhOBNqfBLahfeKUXZh1rfFTfXSCj_5lgKPGn6fF-C4MXjbxCfBaqvGfUigGr5nwOR3PiH2dTvkz2c0-_c8DES7fWAEe4r1t_FCWWOMPji4QyD6QgnfxLsS85fzbugT78zkZfA4CHcejpFuo-kCzwGvuzUpTO_v49FtRMi8WCZmw"/>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface">Ração Golden Premier 15kg</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Adultos, Frango e Arroz</p>
+</div>
+</div>
+</td>
+<td class="py-md px-lg">
+<span class="inline-flex items-center px-2 py-1 rounded-full bg-secondary-container/50 text-on-secondary-container font-label-sm text-label-sm">
+                                            Rações
+                                        </span>
+</td>
+<td class="py-md px-lg font-body-md text-body-md text-on-surface font-medium">R$ 189,90</td>
+<td class="py-md px-lg">
+<div class="flex items-center gap-xs">
+<span class="w-2 h-2 rounded-full bg-tertiary-container"></span>
+<span class="font-body-md text-body-md text-on-surface">24 un</span>
+</div>
+</td>
+<td class="py-md px-lg text-right">
+<div class="flex justify-end gap-sm opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-sm text-on-surface-variant hover:text-primary transition-colors rounded-full hover:bg-surface-variant">
+<span class="material-symbols-outlined text-[20px]" data-icon="edit">edit</span>
+</button>
+<button class="p-sm text-on-surface-variant hover:text-error transition-colors rounded-full hover:bg-error-container/50">
+<span class="material-symbols-outlined text-[20px]" data-icon="delete">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-low/50 transition-colors group">
+<td class="py-md px-lg">
+<div class="flex items-center gap-md">
+<div class="h-12 w-12 rounded-lg bg-surface-variant overflow-hidden border border-outline-variant/50">
+<img alt="Coleira" class="w-full h-full object-cover" data-alt="A modern, durable dog collar displayed against a clean, minimal background. The collar features sturdy metal hardware and vibrant nylon material. The lighting is bright and studio-quality, casting soft shadows that emphasize the texture and quality of the product. The overall mood is practical yet stylish." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBB9uqObnhqrvoQZFQA0xYy2E8BfpMPHVQsz8cun5SK3Ioyk4w53K4PlS5o-19YMyX52NJa56W1TqFrsrcCoebTvffWQ550XjbkXp6Dba6U8HB9y6KiUmakDQ7A7Tvx6t7KqJ1tIMAoYDFjSNbQ0-oyT_jiOmz_VfbPUr5gkBAjJRPYzZFY6NBOSw9YPm4wUgtgYMScFXTXj6SJlbJnn-FbGIqrIgCP4VrT62jHhkHCcDEIaSEHUK2k4K7gpfJR8dPPxu5MbLVh1ysG"/>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface">Coleira Peitoral Zee.Dog</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Tamanho M, Modelo Skull</p>
+</div>
+</div>
+</td>
+<td class="py-md px-lg">
+<span class="inline-flex items-center px-2 py-1 rounded-full bg-secondary-container/50 text-on-secondary-container font-label-sm text-label-sm">
+                                            Acessórios
+                                        </span>
+</td>
+<td class="py-md px-lg font-body-md text-body-md text-on-surface font-medium">R$ 125,00</td>
+<td class="py-md px-lg">
+<div class="flex items-center gap-xs">
+<span class="w-2 h-2 rounded-full bg-error"></span>
+<span class="font-body-md text-body-md text-error font-medium">3 un</span>
+</div>
+</td>
+<td class="py-md px-lg text-right">
+<div class="flex justify-end gap-sm opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-sm text-on-surface-variant hover:text-primary transition-colors rounded-full hover:bg-surface-variant">
+<span class="material-symbols-outlined text-[20px]" data-icon="edit">edit</span>
+</button>
+<button class="p-sm text-on-surface-variant hover:text-error transition-colors rounded-full hover:bg-error-container/50">
+<span class="material-symbols-outlined text-[20px]" data-icon="delete">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-low/50 transition-colors group">
+<td class="py-md px-lg">
+<div class="flex items-center gap-md">
+<div class="h-12 w-12 rounded-lg bg-surface-variant overflow-hidden flex items-center justify-center border border-outline-variant/50">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="medication">medication</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface">Bravecto 10-20kg</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Antipulgas e Carrapatos</p>
+</div>
+</div>
+</td>
+<td class="py-md px-lg">
+<span class="inline-flex items-center px-2 py-1 rounded-full bg-secondary-container/50 text-on-secondary-container font-label-sm text-label-sm">
+                                            Medicamentos
+                                        </span>
+</td>
+<td class="py-md px-lg font-body-md text-body-md text-on-surface font-medium">R$ 245,50</td>
+<td class="py-md px-lg">
+<div class="flex items-center gap-xs">
+<span class="w-2 h-2 rounded-full bg-tertiary-container"></span>
+<span class="font-body-md text-body-md text-on-surface">12 un</span>
+</div>
+</td>
+<td class="py-md px-lg text-right">
+<div class="flex justify-end gap-sm opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-sm text-on-surface-variant hover:text-primary transition-colors rounded-full hover:bg-surface-variant">
+<span class="material-symbols-outlined text-[20px]" data-icon="edit">edit</span>
+</button>
+<button class="p-sm text-on-surface-variant hover:text-error transition-colors rounded-full hover:bg-error-container/50">
+<span class="material-symbols-outlined text-[20px]" data-icon="delete">delete</span>
+</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination -->
+<div class="px-lg py-sm border-t border-outline-variant bg-surface-container-lowest flex items-center justify-between">
+<p class="font-body-sm text-body-sm text-on-surface-variant">Mostrando 1 a 3 de 45 produtos</p>
+<div class="flex gap-xs">
+<button class="p-sm rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container-low disabled:opacity-50" disabled="">
+<span class="material-symbols-outlined text-[20px]">chevron_left</span>
+</button>
+<button class="p-sm rounded-lg border border-outline-variant text-on-surface hover:bg-surface-container-low">
+<span class="material-symbols-outlined text-[20px]">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

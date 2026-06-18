@@ -134,7 +134,7 @@ export default function ProductDetailScreen() {
                     style={[styles.quantityNum, { height: 35, textAlign: 'center', fontSize: 14, color: colors.textDark }]}
                     value={bulkInput}
                     onChangeText={setBulkInput}
-                    keyboardType="numeric"
+                    keyboardType="decimal-pad"
                   />
                   <View style={{ flexDirection: 'row', gap: 2 }}>
                     <TouchableOpacity onPress={() => setBulkUnit('kg')} style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, backgroundColor: bulkUnit === 'kg' ? '#339914' : 'transparent' }}>
@@ -156,7 +156,7 @@ export default function ProductDetailScreen() {
                     style={[styles.quantityNum, { height: 35, textAlign: 'center', fontSize: 14, color: colors.textDark }]}
                     value={bulkInput}
                     onChangeText={setBulkInput}
-                    keyboardType="numeric"
+                    keyboardType="decimal-pad"
                   />
                   <View style={{ paddingHorizontal: 8, paddingVertical: 4 }}>
                     <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#FFFFFF' }}>m</Text>

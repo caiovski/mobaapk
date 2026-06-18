@@ -1,8 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Animated, Alert, BackHandler } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../../../../data/datasources/supabase/client';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { SortOption } from './components/PDVSection';
+
+const SORT_STORAGE_KEY = 'admin_pdv_sort_option';
 
 export function useAdminDashboardPdv(onSaleComplete?: () => void) {
   const navigation = useNavigation<any>();
@@ -25,6 +28,8 @@ export function useAdminDashboardPdv(onSaleComplete?: () => void) {
   const [bulkInputUnit, setBulkInputUnit] = useState<Record<string, 'kg' | 'g'>>({});
   const [bulkValueMode, setBulkValueMode] = useState(false); // false = digitar valor (R$), true = digitar Kg/g
   const [pdvBulkValues, setPdvBulkValues] = useState<Record<string, number>>({});
+  const [pdvInputText, setPdvInputText] = useState<Record<string, string>>({});
+  const [pdvTypeFilter, setPdvTypeFilter] = useState<'Todos' | 'Granel' | 'PerMeter'>('Todos');
   const [showSortModal, setShowSortModal] = useState(false);
 
   const dismissAlert = (id: string) => {
@@ -46,6 +51,22 @@ export function useAdminDashboardPdv(onSaleComplete?: () => void) {
   }, [pulseAnim]);
 
   useEffect(() => {
+    (async () => {
+      try {
+        const stored = await AsyncStorage.getItem(SORT_STORAGE_KEY);
+        if (stored) {
+          setPdvSortOption(stored as SortOption);
+        }
+      } catch (_) {}
+    })();
+  }, []);
+
+  const handleSortChange = useCallback((option: SortOption) => {
+    setPdvSortOption(option);
+    AsyncStorage.setItem(SORT_STORAGE_KEY, option).catch(() => {});
+  }, []);
+
+  useEffect(() => {
     if (pdvSelectMode) {
       cancelOpacity.setValue(0);
       Animated.timing(cancelOpacity, {
@@ -60,7 +81,7 @@ export function useAdminDashboardPdv(onSaleComplete?: () => void) {
     setPdvLoading(true);
     /* istanbul ignore next */ const { data, error } = await supabase
       .from('products')
-      .select('id, name, price, stock, active, category_id, description, image_url, is_bulk, is_per_meter, categories(name)')
+      .select('id, name, price, stock, active, category_id, description, image_url, is_bulk, is_per_meter, created_at, categories(name)')
       .eq('active', true)
       .order('name', { ascending: true });
     /* istanbul ignore next */ if (!error && data) {
@@ -222,8 +243,8 @@ export function useAdminDashboardPdv(onSaleComplete?: () => void) {
       for (const item of selectedItems) {
         /* istanbul ignore next */ if (item.is_bulk && !bulkValueMode) {
           /* istanbul ignore next */ const value = pdvBulkValues[item.id] || 0;
-          /* istanbul ignore next */ const qtyInKg = value / item.price;
-          /* istanbul ignore next */ const qtyInGrams = qtyInKg * 1000;
+          /* istanbul ignore next */ const qtyInKg = Math.round(value / item.price * 1000) / 1000;
+          /* istanbul ignore next */ const qtyInGrams = Math.round(qtyInKg * 1000);
           await supabase.from('order_items').insert({
             order_id: orderId,
             product_id: item.id,
@@ -237,14 +258,16 @@ export function useAdminDashboardPdv(onSaleComplete?: () => void) {
         } else {
           /* istanbul ignore next */ const qty = pdvCart[item.id].qty;
           /* istanbul ignore next */ const unit = item.is_bulk ? (bulkInputUnit[item.id] || 'kg') : undefined;
-          /* istanbul ignore next */ const qtyInGrams = unit === 'g' ? qty : (item.is_bulk ? qty * 1000 : qty);
+          /* istanbul ignore next */ const qtyInGrams = unit === 'g' ? qty : (item.is_bulk ? Math.round(qty * 1000) : qty);
+          /* istanbul ignore next */ const qtyInKg = Math.round((unit === 'g' ? qty / 1000 : qty) * 1000) / 1000;
           await supabase.from('order_items').insert({
             order_id: orderId,
             product_id: item.id,
-            quantity: qty,
+            quantity: qtyInKg,
             unit_price: item.price
           });
-          /* istanbul ignore next */ const newStock = item.stock - qtyInGrams;
+          /* istanbul ignore next */ const stockDeduction = item.is_per_meter ? qty : qtyInGrams;
+          /* istanbul ignore next */ const newStock = item.stock - stockDeduction;
           await supabase.from('products')
             .update({ stock: Math.max(0, newStock), active: newStock > 0 })
             .eq('id', item.id);
@@ -254,6 +277,7 @@ export function useAdminDashboardPdv(onSaleComplete?: () => void) {
       setPdvSelectMode(false);
       setPdvCart({});
       setPdvBulkValues({});
+      setPdvInputText({});
       setBulkValueMode(false);
       setShowCheckoutModal(false);
       fetchPdvProducts();
@@ -277,9 +301,11 @@ export function useAdminDashboardPdv(onSaleComplete?: () => void) {
     bulkInputUnit, setBulkInputUnit,
     bulkValueMode, setBulkValueMode,
     pdvBulkValues, setPdvBulkValues, setPdvBulkValue,
+    pdvTypeFilter, setPdvTypeFilter,
+    pdvInputText, setPdvInputText,
     showSortModal, setShowSortModal,
     setIsPDVMode, setPdvSelectMode, setPdvProducts,
-    setPdvSearchText, setPdvActiveCategories, setPdvCart, setPdvSortOption,
+    setPdvSearchText, setPdvActiveCategories, setPdvCart, handleSortChange,
     setShowCheckoutModal, setDropdownExpanded, setCheckoutPaymentMethod,
     setPdvLoading, setDismissedProductIds,
     dismissAlert,

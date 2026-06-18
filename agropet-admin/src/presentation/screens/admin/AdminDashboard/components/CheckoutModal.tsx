@@ -22,12 +22,13 @@ interface CheckoutModalProps {
   onConfirm: () => void;
   bulkValueMode?: boolean;
   pdvBulkValues?: Record<string, number>;
+  bulkInputUnit?: Record<string, 'kg' | 'g'>;
 }
 
 export default function CheckoutModal({
   visible, pdvProducts, pdvCart, checkoutPaymentMethod,
   pdvLoading, isDarkMode, onClose, onPaymentMethodChange, onConfirm,
-  bulkValueMode, pdvBulkValues
+  bulkValueMode, pdvBulkValues, bulkInputUnit
 }: CheckoutModalProps) {
   const [dropdownExpanded, setDropdownExpanded] = useState(false);
 
@@ -136,14 +137,18 @@ export default function CheckoutModal({
                     <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#00E676', textAlign: 'center' }}>
                       {isBulkValueMode 
                         ? `${(bulkValue / item.price).toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} Kg`
-                        : qty}
+                        : item.is_per_meter
+                          ? `${qty.toLocaleString('pt-BR', { minimumFractionDigits: qty >= 1 ? 2 : 1, maximumFractionDigits: qty >= 1 ? 2 : 1 })} m`
+                          : item.is_bulk
+                            ? `${(bulkInputUnit?.[item.id] === 'g' ? qty : qty).toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} ${bulkInputUnit?.[item.id] === 'g' ? 'g' : 'Kg'}`
+                            : qty}
                     </Text>
                   </View>
                   <View style={{ width: 1, height: 100, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : '#F5F5F5' }} />
                   <View style={{ flex: 1.2, alignItems: 'center', justifyContent: 'center' }}>
                     <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#FFFFFF', textAlign: 'center', marginBottom: 4, marginTop: -4 }}>Total</Text>
                     <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#FFFFFF', textAlign: 'center' }}>
-                      {isBulkValueMode ? formatCurrency(bulkValue) : formatCurrency(item.price * qty)}
+                      {/* istanbul ignore next */ isBulkValueMode ? formatCurrency(bulkValue) : formatCurrency(item.price * (item.is_bulk && bulkInputUnit?.[item.id] === 'g' ? qty / 1000 : qty))}
                     </Text>
                   </View>
                 </View>
@@ -159,7 +164,9 @@ export default function CheckoutModal({
             <Text style={{ color: '#00BFA5', fontSize: 22, fontWeight: 'bold' }}>
               {formatCurrency(pdvProducts.filter(p => pdvCart[p.id]?.checked).reduce((acc, curr) => {
                 /* istanbul ignore next */ const isBulkValueMode = curr.is_bulk && !bulkValueMode;
-                /* istanbul ignore next */ return acc + (isBulkValueMode ? (pdvBulkValues?.[curr.id] || 0) : (curr.price * pdvCart[curr.id].qty));
+                /* istanbul ignore next */ const qty = pdvCart[curr.id].qty;
+                /* istanbul ignore next */ const effectiveQty = curr.is_bulk && bulkInputUnit?.[curr.id] === 'g' ? qty / 1000 : qty;
+                /* istanbul ignore next */ return acc + (isBulkValueMode ? (pdvBulkValues?.[curr.id] || 0) : (curr.price * effectiveQty));
               }, 0))}
             </Text>
           </View>

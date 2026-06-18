@@ -327,6 +327,15 @@ describe('useManageProductsScreen - hook', () => {
     expect(hookResult.products[0].active).toBe(false);
   });
 
+  it('should not activate product with zero stock', async () => {
+    const product = createTestProduct({ id: 'p1', active: false, stock: 0 });
+    setup([product]);
+    await waitFor(() => expect(hookResult?.products?.length).toBe(1));
+    await act(async () => { await hookResult.toggleProductStatus(product); });
+    expect(hookResult.products[0].active).toBe(false);
+    expect(Alert.alert).toHaveBeenCalledWith('Aviso', expect.stringContaining('sem estoque'));
+  });
+
   it('should delete product', async () => {
     const product = createTestProduct({ id: 'p1' });
     let confirmCallback: (() => Promise<void>) | undefined;

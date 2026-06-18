@@ -13,6 +13,25 @@ import { getFirstImageUrl } from '../../../../utils/imageUtils';
 import { useCartScreen } from './useCartScreen';
 import styles from './CartScreen.styles';
 
+function formatCartItemQty(quantity: number, isBulk: boolean, isPerMeter: boolean): string {
+  if (isBulk) {
+    if (quantity >= 1000) {
+      return (quantity / 1000).toLocaleString('pt-BR', {
+        minimumFractionDigits: 3, maximumFractionDigits: 3,
+      }) + ' Kg'
+    }
+    return `${quantity}g`
+  }
+  if (isPerMeter) {
+    const isInteger = Number.isInteger(quantity)
+    return quantity.toLocaleString('pt-BR', {
+      minimumFractionDigits: isInteger ? 0 : 2,
+      maximumFractionDigits: isInteger ? 0 : 2,
+    }) + ' m'
+  }
+  return String(quantity)
+}
+
 export default function CartScreen() {
   const h = useCartScreen();
 
@@ -175,11 +194,7 @@ export default function CartScreen() {
                   </View>
                 ) : (
                   <Text style={[styles.qtyNumber, { color: h.colors.textDark }, (item.is_bulk || item.is_per_meter) && { fontSize: 16 }]}>
-                    {item.is_bulk
-                      ? (item.quantity / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) + ' Kg'
-                      : item.is_per_meter
-                        ? `${item.quantity} m`
-                        : item.quantity}
+                    {formatCartItemQty(item.quantity, item.is_bulk, item.is_per_meter)}
                   </Text>
                 )}
               </View>

@@ -14,6 +14,7 @@ import AdminHeader from '../../../components/AdminHeader';
 import { getFirstImageUrl } from '../../../../utils/imageUtils';
 import { useAdminOrderDetail } from './useAdminOrderDetail';
 import { styles } from './styles';
+import { formatOrderItemQuantity, formatOrderItemUnitPrice } from '../../../../utils/formatOrderItemQuantity';
 
 export default function AdminOrderDetailScreen({ route, navigation }: any) {
   const h = useAdminOrderDetail({ route, navigation });
@@ -54,6 +55,8 @@ export default function AdminOrderDetailScreen({ route, navigation }: any) {
             const product = item.products || {};
             const quantity = item.quantity || 1;
             const unitPrice = item.unit_price || 0;
+            const isBulk = product.is_bulk === true;
+            const isPerMeter = product.is_per_meter === true;
 
             return (
               <View
@@ -86,11 +89,11 @@ export default function AdminOrderDetailScreen({ route, navigation }: any) {
                   <View style={styles.priceRow}>
                     <View style={[styles.qtyBadge, { backgroundColor: h.isDarkMode ? '#1E1E24' : '#D4D5DC' }]}>
                       <Text style={[styles.qtyText, { color: h.colors.textDark }]}>
-                        Qtd: {quantity}
+                        Qtd: {formatOrderItemQuantity(quantity, isBulk, isPerMeter)}
                       </Text>
                     </View>
                     <Text style={[styles.unitPrice, { color: h.colors.textGray }]}>
-                      R$ {unitPrice.toFixed(2)} un.
+                      {formatOrderItemUnitPrice(unitPrice, isBulk, isPerMeter)}
                     </Text>
                   </View>
                 </View>
