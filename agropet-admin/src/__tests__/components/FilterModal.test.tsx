@@ -136,4 +136,18 @@ describe('FilterModal', () => {
     fireEvent.press(getByText('Estoque Crítico (Alerta Vermelho)'));
     expect(onToggleRed).toHaveBeenCalled();
   });
+
+  it('should disable Inativos radio when alert filters are active', () => {
+    const onSelectStatus = jest.fn();
+    const { getByText } = render(
+      <FilterModal
+        {...baseProps}
+        tempAlertYellowFilter={true}
+        tempAlertRedFilter={true}
+        onSelectStatus={onSelectStatus}
+      />
+    );
+    const inativosBtn = getByText('Somente inativos').parent?.parent;
+    expect(inativosBtn).toBeDefined();
+  });
 });

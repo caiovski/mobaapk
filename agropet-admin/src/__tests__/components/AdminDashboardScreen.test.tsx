@@ -181,6 +181,7 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
   let alertSpy: any;
 
   beforeEach(() => {
+    jest.useFakeTimers();
     jest.clearAllMocks();
     alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     (SecureStore.getItemAsync as jest.Mock).mockResolvedValue(null);
@@ -189,6 +190,8 @@ describe('AdminDashboardScreen - Deep Coverage', () => {
 
   afterEach(() => {
     alertSpy.mockRestore();
+    jest.runOnlyPendingTimers();
+    jest.useRealTimers();
     (supabase.from as jest.Mock).mockImplementation(() => createMockChain());
   });
 

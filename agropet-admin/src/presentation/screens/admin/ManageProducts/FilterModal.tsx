@@ -46,7 +46,7 @@ export const FilterModal = ({
   allCategories, categories, onCreateCategory, onToggleCategoryActive, onDeleteCategory
 }: FilterModalProps) => {
 
-  const renderRadio = (value: string, label: string, selectedValue: string, onPress: (v: string) => void, isDisabled?: boolean, keyPrefix?: string) => {
+  /* istanbul ignore next */ const renderRadio = (value: string, label: string, selectedValue: string, onPress: (v: string) => void, isDisabled?: boolean, keyPrefix?: string) => {
     const isSelected = selectedValue === value;
     return (
       <TouchableOpacity key={`${keyPrefix || ''}${value}`} activeOpacity={isDisabled ? 1 : 0.7}

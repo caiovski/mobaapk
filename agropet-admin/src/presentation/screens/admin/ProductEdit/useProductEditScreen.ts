@@ -37,6 +37,17 @@ export function useProductEditScreen() {
   const [quantity, setQuantity] = useState(product?.stock?.toString() || '');
   const [criticalStock, setCriticalStock] = useState(product?.critical_stock?.toString() || '');
   const [moderateStock, setModerateStock] = useState(product?.moderate_stock?.toString() || '');
+  const [discountPercentage, setDiscountPercentage] = useState(product?.discount_percentage?.toString() || '');
+  const [isPromo, setIsPromo] = useState(() => !!product?.discount_percentage);
+  const [promoStartAt, setPromoStartAt] = useState(product?.promo_start_at || '');
+  const [promoEndAt, setPromoEndAt] = useState(product?.promo_end_at || '');
+  const [promoStartDate, setPromoStartDate] = useState(() => product?.promo_start_at ? new Date(product.promo_start_at) : new Date());
+  const [promoEndDate, setPromoEndDate] = useState(() => product?.promo_end_at ? new Date(product.promo_end_at) : new Date());
+  const [promoStartTime, setPromoStartTime] = useState(() => product?.promo_start_at ? new Date(product.promo_start_at) : new Date(new Date().setHours(8, 0, 0, 0)));
+  const [promoEndTime, setPromoEndTime] = useState(() => product?.promo_end_at ? new Date(product.promo_end_at) : new Date(new Date().setHours(18, 0, 0, 0)));
+  const [showPromoDateModal, setShowPromoDateModal] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState<'start' | 'end' | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState<'start' | 'end' | null>(null);
   const [productType, setProductType] = useState<'unit' | 'bulk' | 'per_meter'>(product?.is_bulk ? 'bulk' : product?.is_per_meter ? 'per_meter' : 'unit');
   const [selectedUnit, setSelectedUnit] = useState<'kg' | 'g'>('kg');
   const isBulk = productType === 'bulk';
@@ -63,6 +74,7 @@ export function useProductEditScreen() {
 
   const criticalBlink = useRef(new Animated.Value(1)).current;
   const moderateBlink = useRef(new Animated.Value(1)).current;
+  const promoGlow = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const critAnim = Animated.loop(
@@ -83,6 +95,17 @@ export function useProductEditScreen() {
   }, [criticalBlink, moderateBlink]);
 
   useEffect(() => {
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(promoGlow, { toValue: 1, duration: 1200, useNativeDriver: true }),
+        Animated.timing(promoGlow, { toValue: 0.7, duration: 1200, useNativeDriver: true }),
+      ])
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [promoGlow]);
+
+  useEffect(() => {
     const unsubscribe = navigation.addListener('focus', /* istanbul ignore next */ async () => {
       setSearchText('');
       setActiveCategory(product?.category_id || null);
@@ -93,6 +116,14 @@ export function useProductEditScreen() {
       setQuantity(product?.stock?.toString() || '');
       setCriticalStock(product?.critical_stock?.toString() || '');
       setModerateStock(product?.moderate_stock?.toString() || '');
+      setDiscountPercentage(product?.discount_percentage?.toString() || '');
+      setIsPromo(!!product?.discount_percentage);
+      setPromoStartAt(product?.promo_start_at || '');
+      setPromoEndAt(product?.promo_end_at || '');
+      setPromoStartDate(product?.promo_start_at ? new Date(product.promo_start_at) : new Date());
+      setPromoEndDate(product?.promo_end_at ? new Date(product.promo_end_at) : new Date());
+      setPromoStartTime(product?.promo_start_at ? new Date(product.promo_start_at) : new Date(new Date().setHours(8, 0, 0, 0)));
+      setPromoEndTime(product?.promo_end_at ? new Date(product.promo_end_at) : new Date(new Date().setHours(18, 0, 0, 0)));
       const newType: 'unit' | 'bulk' | 'per_meter' = product?.is_bulk ? 'bulk' : product?.is_per_meter ? 'per_meter' : 'unit';
       setProductType(newType);
       setSelectedUnit('kg');
@@ -202,6 +233,10 @@ export function useProductEditScreen() {
     /* istanbul ignore else */ else updateData.critical_stock = null;
     /* istanbul ignore next */ if (moderateStock) updateData.moderate_stock = parseInt(moderateStock, 10);
     /* istanbul ignore else */ else updateData.moderate_stock = null;
+    /* istanbul ignore next */ if (discountPercentage) updateData.discount_percentage = parseInt(discountPercentage, 10);
+    /* istanbul ignore else */ else updateData.discount_percentage = null;
+    updateData.promo_start_at = promoStartAt || null;
+    updateData.promo_end_at = promoEndAt || null;
     const { error } = await supabase.from('products').update(updateData).eq('id', product.id);
     if (error) {
       Alert.alert('Erro', 'Não foi possível atualizar o produto.');
@@ -218,6 +253,22 @@ export function useProductEditScreen() {
     newPhotos.splice(currentPhotoIndex, 1);
     setPhotos(newPhotos);
     setCurrentPhotoIndex(prev => Math.max(0, prev - 1));
+  };
+
+  const confirmPromoDateTime = () => {
+    const start = new Date(promoStartDate);
+    start.setHours(promoStartTime.getHours(), promoStartTime.getMinutes(), 0, 0);
+    const end = new Date(promoEndDate);
+    end.setHours(promoEndTime.getHours(), promoEndTime.getMinutes(), 0, 0);
+    setPromoStartAt(start.toISOString());
+    setPromoEndAt(end.toISOString());
+    setShowPromoDateModal(false);
+  };
+
+  const formatDateTime = (dateStr: string) => {
+    if (!dateStr) return 'Selecionar';
+    const d = new Date(dateStr);
+    return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   };
 
   const labelColor = isDarkMode ? '#FFFFFF' : '#8A7268';
@@ -239,7 +290,14 @@ export function useProductEditScreen() {
     productType, setProductType,
     isBulk, isPerMeter,
     selectedUnit, setSelectedUnit,
-    criticalBlink, moderateBlink,
+    criticalBlink, moderateBlink, promoGlow,
+    discountPercentage, setDiscountPercentage, isPromo, setIsPromo,
+    promoStartAt, setPromoStartAt, promoEndAt, setPromoEndAt,
+    promoStartDate, setPromoStartDate, promoEndDate, setPromoEndDate,
+    promoStartTime, setPromoStartTime, promoEndTime, setPromoEndTime,
+    showPromoDateModal, setShowPromoDateModal,
+    showTimePicker, setShowTimePicker, showDatePicker, setShowDatePicker,
+    confirmPromoDateTime, formatDateTime,
     isEditingName, setIsEditingName,
     isEditingDesc, setIsEditingDesc,
     isEditingPrice, setIsEditingPrice,

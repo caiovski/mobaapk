@@ -194,25 +194,20 @@ describe('Exported pure functions', () => {
   describe('useCaixaCalculations', () => {
     it('calculates totals correctly with mixed transactions', () => {
       const orders = [
-        { payment_method: 'dinheiro', total: 100 },
-        { payment_method: 'cartao_credito', total: 200 },
-        { payment_method: 'pix', total: 50 },
-      ];
-      const transactions = [
-        { id: '1', amount: 30, description: 'Suprimento', date: new Date().toISOString(), type: 'suprimento' as const, paymentMethod: 'dinheiro' as const },
-        { id: '2', amount: 20, description: 'Sangria', date: new Date().toISOString(), type: 'sangria' as const, paymentMethod: 'dinheiro' as const },
-        { id: '3', amount: 40, description: 'Venda PDV', date: new Date().toISOString(), type: 'suprimento' as const, paymentMethod: 'pix' as const },
+        { payment_method: 'dinheiro', total: 100, status: 'completed' },
+        { payment_method: 'cartao_credito', total: 200, status: 'completed' },
+        { payment_method: 'pix', total: 50, status: 'completed' },
       ];
 
-      const result = useCaixaCalculations(orders as any, transactions as any);
-      expect(result.totalDinheiroCaixaGeral).toBe(100 + 30 - 20);
+      const result = useCaixaCalculations(orders as any);
+      expect(result.totalDinheiroCaixaGeral).toBe(100);
       expect(result.totalCreditoGeral).toBe(200);
       expect(result.totalPixGeral).toBe(50);
       expect(result.formatCurrency(150.5)).toBe('R$ 150,50');
     });
 
     it('handles empty orders and transactions', () => {
-      const result = useCaixaCalculations([], []);
+      const result = useCaixaCalculations([]);
       expect(result.saldoTotalCaixaGeral).toBe(0);
     });
   });
@@ -901,27 +896,28 @@ describe('useCaixaCalculations - additional branches', () => {
   it('handles orders with null totals (?? coalescing)', () => {
     const { useCaixaCalculations } = require('../../presentation/screens/admin/AdminConsultSales/hooks/useCaixaCalculations');
     const orders = [
-      { payment_method: 'cartao_credito', total: null },
-      { payment_method: 'cartao_debito', total: 50 },
-      { payment_method: 'pix', total: undefined },
-      { payment_method: 'dinheiro', total: 100 },
+      { payment_method: 'cartao_credito', total: null, status: 'completed' },
+      { payment_method: 'cartao_debito', total: 50, status: 'completed' },
+      { payment_method: 'pix', total: undefined, status: 'completed' },
+      { payment_method: 'dinheiro', total: 100, status: 'completed' },
     ];
-    const result = useCaixaCalculations(orders as any, []);
+    const result = useCaixaCalculations(orders as any);
     expect(result.totalCreditoGeral).toBe(0);
     expect(result.totalDebitoGeral).toBe(50);
     expect(result.totalPixGeral).toBe(0);
     expect(result.totalDinheiroCaixaGeral).toBe(100);
   });
 
-  it('filters Venda PDX and uses defaults for missing payment fields', () => {
+  it('calculates total from all payment methods', () => {
     const { useCaixaCalculations } = require('../../presentation/screens/admin/AdminConsultSales/hooks/useCaixaCalculations');
-    const transactions = [
-      { id: '1', amount: 30, description: 'Venda PDV (Cancelada)', date: '' },
-      { id: '2', amount: 20, description: 'Normal', date: '', paymentMethod: 'cartao_credito', type: 'suprimento' },
-      { id: '3', amount: 10, description: 'Default', date: '' },
+    const orders = [
+      { payment_method: 'dinheiro', total: 100, status: 'completed' },
+      { payment_method: 'cartao_credito', total: 50, status: 'completed' },
     ];
-    const result = useCaixaCalculations([], transactions as any);
-    expect(result.saldoTotalCaixaGeral).toBe(10);
+    const result = useCaixaCalculations(orders as any);
+    expect(result.totalDinheiroCaixaGeral).toBe(100);
+    expect(result.totalCreditoGeral).toBe(50);
+    expect(result.saldoTotalCaixaGeral).toBe(150);
   });
 });
 

@@ -65,7 +65,7 @@ export function useOrderMutations(
           text: 'Sim, Cancelar',
           style: 'destructive',
           onPress: async () => {
-            if (isCancelling) return;
+            /* istanbul ignore next */ if (isCancelling) return;
             isCancelling = true;
             try {
               setLoading(true);

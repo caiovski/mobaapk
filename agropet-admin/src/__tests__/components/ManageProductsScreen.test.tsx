@@ -427,19 +427,20 @@ describe('ManageProductsScreen - Full Coverage', () => {
     fireEvent.press(getByText('Filtro'));
     fireEvent.press(getByText('Cancelar'));
 
-    // 1b. Open filter modal, toggle Yellow alert checkbox, apply
+    // 1b. Open filter modal, select type filter, toggle Yellow alert checkbox, apply
     fireEvent.press(getByText('Filtro'));
+    fireEvent.press(getByText('À granel'));
     fireEvent.press(getByText('Estoque Moderado (Alerta Amarelo)'));
     fireEvent.press(getByText('Aplicar Filtros'));
 
     // 2. Open modal again, toggle off Yellow, toggle on Red, apply
-    fireEvent.press(getByText('Moderado'));
+    fireEvent.press(getByText(/Moderado/));
     fireEvent.press(getByText('Estoque Moderado (Alerta Amarelo)')); // off
     fireEvent.press(getByText('Estoque Crítico (Alerta Vermelho)')); // on
     fireEvent.press(getByText('Aplicar Filtros'));
 
     // 3. Open modal again, toggle on Yellow to have both Yellow & Red alert active, select Active status filter, apply
-    fireEvent.press(getByText('Crítico'));
+    fireEvent.press(getByText(/Crítico/));
     fireEvent.press(getByText('Estoque Moderado (Alerta Amarelo)')); // on
     fireEvent.press(getByText('Somente ativos'));
     fireEvent.press(getByText('Aplicar Filtros'));

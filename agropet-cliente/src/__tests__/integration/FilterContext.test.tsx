@@ -136,6 +136,30 @@ describe('FilterContext & Helper Functions', () => {
       defaultContextVal.setSearchText('search');
       defaultContextVal.clearFilters();
       defaultContextVal.reloadCategories();
+      defaultContextVal.setSectionFilter('promocao');
+    });
+
+    it('should call setSectionFilter through provider', async () => {
+      function SectionConsumer() {
+        const { sectionFilter, setSectionFilter } = useFilter();
+        return (
+          <View>
+            <Text testID="section">{sectionFilter}</Text>
+            <Button title="Set Promo" onPress={() => setSectionFilter('promocao')} />
+            <Button title="Set All" onPress={() => setSectionFilter('all')} />
+          </View>
+        );
+      }
+      const { getByText, getByTestId } = render(
+        <FilterProvider>
+          <SectionConsumer />
+        </FilterProvider>
+      );
+      expect(getByTestId('section').props.children).toBe('all');
+      await act(async () => { fireEvent.press(getByText('Set Promo')); });
+      expect(getByTestId('section').props.children).toBe('promocao');
+      await act(async () => { fireEvent.press(getByText('Set All')); });
+      expect(getByTestId('section').props.children).toBe('all');
     });
 
     it('should cover provider search and clear via direct act', async () => {

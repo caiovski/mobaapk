@@ -443,6 +443,26 @@ describe('useManageProductsScreen - hook', () => {
     await act(async () => { await confirmCallback!(); });
   });
 
+  it('should filter by type Granel and exclude non-bulk', async () => {
+    const p1 = createTestProduct({ id: 'p1', name: 'Normal' });
+    const p2 = createTestProduct({ id: 'p2', name: 'Granel', is_bulk: true });
+    setup([p1, p2]);
+    await waitFor(() => expect(hookResult?.products?.length).toBe(2));
+    await act(() => { hookResult.setTypeFilter('Granel'); });
+    expect(hookResult.filteredProducts.length).toBe(1);
+    expect(hookResult.filteredProducts[0].name).toBe('Granel');
+  });
+
+  it('should filter by type PerMeter and exclude non-per-meter', async () => {
+    const p1 = createTestProduct({ id: 'p1', name: 'Normal' });
+    const p2 = createTestProduct({ id: 'p2', name: 'Tecido', is_per_meter: true });
+    setup([p1, p2]);
+    await waitFor(() => expect(hookResult?.products?.length).toBe(2));
+    await act(() => { hookResult.setTypeFilter('PerMeter'); });
+    expect(hookResult.filteredProducts.length).toBe(1);
+    expect(hookResult.filteredProducts[0].name).toBe('Tecido');
+  });
+
   it('should trigger || 0 fallback in alert re-sort with null stock', async () => {
     const p1 = createTestProduct({ id: 'p1', name: 'NullRed', stock: null as any, critical_stock: 5, moderate_stock: 40 });
     const p2 = createTestProduct({ id: 'p2', name: 'YellowProduct', stock: 30, critical_stock: 5, moderate_stock: 40 });

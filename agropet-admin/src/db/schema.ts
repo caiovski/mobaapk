@@ -23,6 +23,9 @@ export interface DBProduct {
   moderate_stock?: number;
   is_bulk?: boolean;
   is_per_meter?: boolean;
+  discount_percentage?: number;
+  promo_start_at?: string;
+  promo_end_at?: string;
 }
 
 export interface DBOrder {

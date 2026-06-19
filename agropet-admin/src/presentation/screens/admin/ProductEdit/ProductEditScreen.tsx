@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import {
-  View, Text, Dimensions, StatusBar, TouchableOpacity, ScrollView, TextInput, Image, Modal, Animated,
+  View, Text, Dimensions, StatusBar, TouchableOpacity, ScrollView, TextInput, Image, Modal, Animated, Platform,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import AdminHeader from '../../../components/AdminHeader';
 import { AdminUserMenu } from '../../../components/AdminUserMenu';
 import NoPhotoSvg from '../../../assets/tela8/No photo.svg';
@@ -267,9 +268,190 @@ export default function ProductEditScreen() {
                 Defina os valores mínimos para receber alertas visuais de estoque crítico (vermelho) e moderado (amarelo) na listagem de produtos.
               </Text>
             </View>
+            <Animated.View style={[styles.bulkToggleRow, { opacity: Animated.add(0.75, Animated.multiply(h.promoGlow, 0.25)) }]}>
+              <TouchableOpacity
+                onPress={() => {
+                  const next = !h.isPromo;
+                  h.setIsPromo(next);
+                  if (next) {
+                    h.setDiscountPercentage('10');
+                  } else {
+                    h.setDiscountPercentage('');
+                    h.setPromoStartAt('');
+                    h.setPromoEndAt('');
+                  }
+                }}
+                activeOpacity={0.7}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
+              >
+                <View style={{ width: 18, height: 18, borderRadius: 9, borderWidth: 1.5, borderColor: h.isPromo ? '#9C27B0' : '#A8A8B3', alignItems: 'center', justifyContent: 'center' }}>
+                  {h.isPromo && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#9C27B0' }} />}
+                </View>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: h.colors.textDark }}>Em promoção</Text>
+              </TouchableOpacity>
+            </Animated.View>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 2, marginBottom: 4 }}>
+              <Feather name="alert-triangle" size={14} color="#9C27B0" style={{ marginTop: 2 }} />
+              <Text style={{ fontSize: 11, color: '#9C27B0', flexShrink: 1 }}>
+                ATENÇÃO administrador! Ao clicar neste botão, você precisará colocar o valor do desconto e a data/horário de início e fim desta promoção. Quando clicar em confirmar, este produto aparecerá como promoção para o cliente!
+              </Text>
+            </View>
+            {// istanbul ignore next
+            h.isPromo && (
+              <>
+                <Animated.View style={[styles.stockFieldContainer, { borderColor: '#9C27B0', backgroundColor: h.isDarkMode ? '#2C1D3D' : '#F5E6FF', opacity: Animated.add(0.8, Animated.multiply(h.promoGlow, 0.2)) }]}>
+                  <Feather name="star" size={16} color="#9C27B0" style={{ marginRight: 6 }} />
+                  <TextInput
+                    testID="product-discount-input"
+                    style={[styles.stockFieldInput, { color: '#9C27B0' }]}
+                    value={h.discountPercentage}
+                    onChangeText={h.setDiscountPercentage}
+                    keyboardType="numeric"
+                    placeholder="Porcentagem do desconto"
+                    placeholderTextColor="#9C27B0"
+                  />
+                  <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#9C27B0', marginLeft: 4 }}>%</Text>
+                </Animated.View>
+                <Animated.View style={[styles.stockFieldContainer, { borderColor: h.isDarkMode ? '#4A4A54' : '#9C27B0', backgroundColor: h.isDarkMode ? '#2C2C36' : '#F5E6FF', opacity: Animated.add(0.8, Animated.multiply(h.promoGlow, 0.2)) }]}>
+                  <Feather name="calendar" size={16} color={h.isDarkMode ? '#FF9800' : '#9C27B0'} style={{ marginRight: 6 }} />
+                  <TouchableOpacity
+                    onPress={() => h.setShowPromoDateModal(true)}
+                    style={{ flex: 1, paddingVertical: 8 }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={{ fontSize: 14, fontWeight: 'bold', color: h.promoStartAt ? (h.isDarkMode ? '#FF9800' : '#9C27B0') : (h.isDarkMode ? 'rgba(255,152,0,0.5)' : 'rgba(156,39,176,0.5)') }}>
+                      {h.formatDateTime(h.promoStartAt)} → {h.formatDateTime(h.promoEndAt)}
+                    </Text>
+                  </TouchableOpacity>
+                </Animated.View>
+              </>
+            )}
           </View>
         </View>
       </ScrollView>
+      {/*
+        istanbul ignore next
+        Modal com DateTimePicker — nativo, difícil de testar em Jest.
+      */
+      h.showPromoDateModal ? (
+        <Modal visible transparent animationType="fade" onRequestClose={() => h.setShowPromoDateModal(false)}>
+          <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => h.setShowPromoDateModal(false)}>
+            <View style={[styles.modalContainer, { backgroundColor: h.isDarkMode ? '#1E1E24' : '#FFFFFF' }]}>
+              <Text style={[styles.modalTitle, { color: h.colors.textDark }]}>Período da Promoção</Text>
+
+              <View style={{ marginBottom: 16 }}>
+                <Text style={{ fontSize: 13, fontWeight: 'bold', color: h.isDarkMode ? '#FF9800' : '#9C27B0', marginBottom: 8 }}>Horário</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <TouchableOpacity
+                    onPress={() => h.setShowTimePicker('start')}
+                    style={{ flex: 1, backgroundColor: h.isDarkMode ? '#2C2C36' : '#F5E6FF', borderRadius: 10, paddingVertical: 10, alignItems: 'center', borderWidth: 1, borderColor: h.isDarkMode ? '#4A4A54' : '#9C27B0' }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={{ fontSize: 12, color: h.isDarkMode ? '#FFFFFF' : '#9C27B0', marginBottom: 2 }}>Início</Text>
+                    <Text style={{ fontSize: 16, fontWeight: 'bold', color: h.isDarkMode ? '#FF9800' : '#9C27B0' }}>
+                      {`${String(h.promoStartTime.getHours()).padStart(2, '0')}:${String(h.promoStartTime.getMinutes()).padStart(2, '0')}`}
+                    </Text>
+                  </TouchableOpacity>
+                  <Feather name="arrow-right" size={16} color={h.isDarkMode ? '#FF9800' : '#9C27B0'} />
+                  <TouchableOpacity
+                    onPress={() => h.setShowTimePicker('end')}
+                    style={{ flex: 1, backgroundColor: h.isDarkMode ? '#2C2C36' : '#F5E6FF', borderRadius: 10, paddingVertical: 10, alignItems: 'center', borderWidth: 1, borderColor: h.isDarkMode ? '#4A4A54' : '#9C27B0' }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={{ fontSize: 12, color: h.isDarkMode ? '#FFFFFF' : '#9C27B0', marginBottom: 2 }}>Fim</Text>
+                    <Text style={{ fontSize: 16, fontWeight: 'bold', color: h.isDarkMode ? '#FF9800' : '#9C27B0' }}>
+                      {`${String(h.promoEndTime.getHours()).padStart(2, '0')}:${String(h.promoEndTime.getMinutes()).padStart(2, '0')}`}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={{ marginBottom: 16 }}>
+                <Text style={{ fontSize: 13, fontWeight: 'bold', color: h.isDarkMode ? '#FF9800' : '#9C27B0', marginBottom: 8 }}>Data</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <TouchableOpacity
+                    onPress={() => h.setShowDatePicker('start')}
+                    style={{ flex: 1, backgroundColor: h.isDarkMode ? '#2C2C36' : '#F5E6FF', borderRadius: 10, paddingVertical: 10, alignItems: 'center', borderWidth: 1, borderColor: h.isDarkMode ? '#4A4A54' : '#9C27B0' }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={{ fontSize: 12, color: h.isDarkMode ? '#FFFFFF' : '#9C27B0', marginBottom: 2 }}>Início</Text>
+                    <Text style={{ fontSize: 16, fontWeight: 'bold', color: h.isDarkMode ? '#FF9800' : '#9C27B0' }}>
+                      {`${String(h.promoStartDate.getDate()).padStart(2, '0')}/${String(h.promoStartDate.getMonth() + 1).padStart(2, '0')}/${h.promoStartDate.getFullYear()}`}
+                    </Text>
+                  </TouchableOpacity>
+                  <Feather name="arrow-right" size={16} color={h.isDarkMode ? '#FF9800' : '#9C27B0'} />
+                  <TouchableOpacity
+                    onPress={() => h.setShowDatePicker('end')}
+                    style={{ flex: 1, backgroundColor: h.isDarkMode ? '#2C2C36' : '#F5E6FF', borderRadius: 10, paddingVertical: 10, alignItems: 'center', borderWidth: 1, borderColor: h.isDarkMode ? '#4A4A54' : '#9C27B0' }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={{ fontSize: 12, color: h.isDarkMode ? '#FFFFFF' : '#9C27B0', marginBottom: 2 }}>Fim</Text>
+                    <Text style={{ fontSize: 16, fontWeight: 'bold', color: h.isDarkMode ? '#FF9800' : '#9C27B0' }}>
+                      {`${String(h.promoEndDate.getDate()).padStart(2, '0')}/${String(h.promoEndDate.getMonth() + 1).padStart(2, '0')}/${h.promoEndDate.getFullYear()}`}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={{ height: 1, backgroundColor: h.isDarkMode ? '#333' : '#E3E4EB', marginVertical: 8 }} />
+
+              <TouchableOpacity
+                onPress={h.confirmPromoDateTime}
+                style={{ backgroundColor: '#25BE36', borderRadius: 10, paddingVertical: 14, alignItems: 'center', marginBottom: 10 }}
+                activeOpacity={0.7}
+              >
+                <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: 'bold' }}>Confirmar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => h.setShowPromoDateModal(false)}
+                style={{ borderRadius: 10, borderWidth: 1.5, borderColor: '#FF3B30', paddingVertical: 14, alignItems: 'center' }}
+                activeOpacity={0.7}
+              >
+                <Text style={{ color: '#FF3B30', fontSize: 16, fontWeight: 'bold' }}>Cancelar</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
+      ) : null}
+
+      {/*
+        istanbul ignore next
+        DateTimePicker nativo — não renderiza corretamente em Jest.
+      */
+      (h.showTimePicker === 'start' || h.showTimePicker === 'end') ? (
+        <DateTimePicker
+          value={h.showTimePicker === 'start' ? h.promoStartTime : h.promoEndTime}
+          mode="time"
+          is24Hour
+          display={Platform.OS === 'android' ? 'default' : 'spinner'}
+          onChange={(_: any, selectedDate?: Date) => {
+            if (selectedDate) {
+              if (h.showTimePicker === 'start') h.setPromoStartTime(selectedDate);
+              else h.setPromoEndTime(selectedDate);
+            }
+            h.setShowTimePicker(null);
+          }}
+        />
+      ) : null}
+      {/*
+        istanbul ignore next
+        DateTimePicker nativo — não renderiza corretamente em Jest.
+      */
+      (h.showDatePicker === 'start' || h.showDatePicker === 'end') ? (
+        <DateTimePicker
+          value={h.showDatePicker === 'start' ? h.promoStartDate : h.promoEndDate}
+          mode="date"
+          display={Platform.OS === 'android' ? 'default' : 'spinner'}
+          onChange={(_: any, selectedDate?: Date) => {
+            if (selectedDate) {
+              if (h.showDatePicker === 'start') h.setPromoStartDate(selectedDate);
+              else h.setPromoEndDate(selectedDate);
+            }
+            h.setShowDatePicker(null);
+          }}
+        />
+      ) : null}
+
       <Modal visible={h.showImagePickerOptions} transparent animationType="fade" onRequestClose={() => h.setShowImagePickerOptions(false)}>
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => h.setShowImagePickerOptions(false)}>
           <View style={[styles.modalContainer, { backgroundColor: h.isDarkMode ? '#1E1E24' : '#FFFFFF' }]}>

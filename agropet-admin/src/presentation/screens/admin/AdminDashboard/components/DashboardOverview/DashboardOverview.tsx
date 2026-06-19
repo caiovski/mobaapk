@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Dimensions, ActivityIndicator, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, Dimensions, ActivityIndicator, Animated, Easing } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import Svg, { Path, Circle, Defs, LinearGradient, Stop, Line, G, Text as SvgText } from 'react-native-svg';
 import { styles } from './DashboardOverview.styles';
@@ -61,13 +61,58 @@ export default function DashboardOverview({
 }: DashboardOverviewProps) {
   const [showOptions, setShowOptions] = useState(false);
   const optionsAnim = useRef(new Animated.Value(0)).current;
+  const gearAnim = useRef(new Animated.Value(0)).current;
+  const [displayedText, setDisplayedText] = useState('Ver Opções');
+  const typingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const prevShowRef = useRef(showOptions);
+
   useEffect(() => {
     Animated.timing(optionsAnim, {
       toValue: showOptions ? 1 : 0,
       duration: 300,
       useNativeDriver: false,
     }).start();
-  }, [showOptions, optionsAnim]);
+    Animated.timing(gearAnim, {
+      toValue: showOptions ? 1 : 0,
+      duration: 1000,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+
+    if (prevShowRef.current === showOptions) return;
+    prevShowRef.current = showOptions;
+
+    if (typingRef.current) {
+      clearInterval(typingRef.current);
+      typingRef.current = null;
+    }
+
+    const targetText = showOptions ? 'Mostrar menos' : 'Ver Opções';
+    const textToErase = displayedText;
+    let idx = textToErase.length;
+    let isErasing = true;
+
+    typingRef.current = setInterval(() => {
+      if (isErasing) {
+        idx--;
+        if (idx < 0) {
+          isErasing = false;
+          idx = 0;
+          setDisplayedText('');
+        } else {
+          setDisplayedText(textToErase.slice(0, idx));
+        }
+      }
+      if (!isErasing) {
+        idx++;
+        setDisplayedText(targetText.slice(0, idx));
+        if (idx >= targetText.length) {
+          clearInterval(typingRef.current!);
+          typingRef.current = null;
+        }
+      }
+    }, 50);
+  }, [showOptions, optionsAnim, gearAnim]);
   return (
     <>
       <View style={[styles.caixaCard, { backgroundColor: isDarkMode ? '#2E2E38' : '#1C2434' }]}>
@@ -124,8 +169,10 @@ export default function DashboardOverview({
         style={[styles.sangriaTriggerBtn, { backgroundColor: isDarkMode ? '#1E1E24' : '#1C2434', borderColor: isDarkMode ? '#3E3E4A' : '#1C2434', marginBottom: 12 }]}
         onPress={() => setShowOptions(!showOptions)}
       >
-        <Feather name={showOptions ? 'chevron-up' : 'menu'} size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-        <Text style={[styles.sangriaTriggerText, { color: '#FFFFFF' }]}>{showOptions ? 'Mostrar menos' : 'Ver Opções'}</Text>
+        <Animated.View style={{ transform: [{ rotate: gearAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '720deg'] }) }], marginRight: 8 }}>
+          <Feather name="settings" size={20} color="#FFFFFF" />
+        </Animated.View>
+        <Text style={[styles.sangriaTriggerText, { color: '#FFFFFF' }]}>{displayedText}</Text>
       </TouchableOpacity>
 
       <Animated.View style={{

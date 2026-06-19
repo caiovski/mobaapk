@@ -1,4 +1,4 @@
-import { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { CartContext } from '../../../contexts/CartContext';
 import { useUserMenu } from '../../../contexts/UserMenuContext';
@@ -40,6 +40,15 @@ export default function useProductDetailScreen() {
   const { addToCart } = useContext(CartContext);
   const { searchText, setSearchText } = useFilter();
   const { user } = useContext(AuthContext);
+
+  useEffect(() => {
+    const productId = route.params?.product?.id;
+    if (productId) {
+      (async () => {
+        try { await supabase.rpc('increment_product_view', { p_product_id: productId }); } catch {}
+      })();
+    }
+  }, [route.params?.product?.id]);
   const [clientName, setClientName] = useState('');
   const [dismissAlert, setDismissAlert] = useState(false);
 
@@ -52,6 +61,37 @@ export default function useProductDetailScreen() {
   const isBulk = product?.is_bulk === true;
   const isPerMeter = product?.is_per_meter === true;
   const [loadingRelated, setLoadingRelated] = useState(true);
+  const [discountPercentage, setDiscountPercentage] = useState<number | null>(
+    product?.discount_percentage ?? null
+  );
+  const [promoEndAt, setPromoEndAt] = useState<string | null>(null);
+  const [countdownText, setCountdownText] = useState('');
+
+  const discountedPrice = discountPercentage
+    ? product?.price * (1 - discountPercentage / 100)
+    : null;
+
+  useEffect(() => {
+    if (!promoEndAt) return;
+    const update = () => {
+      const now = new Date();
+      const end = new Date(promoEndAt);
+      const diff = end.getTime() - now.getTime();
+      if (diff <= 0) { setCountdownText('Promoção encerrada'); return; }
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+      setCountdownText(
+        days > 0
+          ? `${String(days).padStart(2, '0')} : ${String(hours).padStart(2, '0')} : ${String(minutes).padStart(2, '0')} : ${String(seconds).padStart(2, '0')}`
+          : `${String(hours).padStart(2, '0')} : ${String(minutes).padStart(2, '0')} : ${String(seconds).padStart(2, '0')}`
+      );
+    };
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [promoEndAt]);
 
   const [photos, setPhotos] = useState<string[]>(() => getAllImageUrls(product?.image_url));
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
@@ -97,6 +137,21 @@ export default function useProductDetailScreen() {
     };
 
     fetchStock();
+
+    const fetchPromoFields = async () => {
+      try {
+        const { data } = await supabase
+          .from('products')
+          .select('discount_percentage, promo_end_at')
+          .eq('id', product.id)
+          .single();
+        if (data) {
+          if (data.discount_percentage != null) setDiscountPercentage(data.discount_percentage);
+          if (data.promo_end_at) setPromoEndAt(data.promo_end_at);
+        }
+      } catch {}
+    };
+    fetchPromoFields();
 
     const channel = supabase
       .channel(`product_stock_${product.id}`)
@@ -152,7 +207,7 @@ export default function useProductDetailScreen() {
       setLoadingRelated(true);
       const { data, error } = await supabase
         .from('products')
-        .select('id, name, description, price, stock, active, category_id, created_at, image_url, is_bulk, is_per_meter')
+        .select('id, name, description, price, stock, active, category_id, created_at, image_url, is_bulk, is_per_meter, discount_percentage')
         .eq('active', true)
         .neq('id', product.id);
 
@@ -197,6 +252,11 @@ export default function useProductDetailScreen() {
           });
         }
 
+        filtered.sort((a, b) => {
+          const aDisc = a.discount_percentage ? 1 : 0;
+          const bDisc = b.discount_percentage ? 1 : 0;
+          return bDisc - aDisc;
+        });
         setRelatedProducts(filtered);
       }
     } catch (err) {
@@ -213,15 +273,20 @@ export default function useProductDetailScreen() {
   const increment = () => setQuantity(q => q + 1);
   const decrement = () => setQuantity(q => (q > 1 ? q - 1 : 1));
 
+  const enrichedProduct = React.useMemo(() => ({
+    ...product,
+    discount_percentage: discountPercentage,
+  }), [product, discountPercentage]);
+
   const handleAddToCart = () => {
     if (isBulk) {
       const grams = bulkUnit === 'kg' ? Math.round(parseFloat(bulkInput.replace(',', '.')) * 1000) : parseInt(bulkInput, 10);
-      addToCart(product, grams);
+      addToCart(enrichedProduct, grams);
     } else if (isPerMeter) {
       const meters = parseFloat(bulkInput.replace(',', '.'));
-      addToCart(product, meters);
+      addToCart(enrichedProduct, meters);
     } else {
-      addToCart(product, quantity);
+      addToCart(enrichedProduct, quantity);
     }
   };
 
@@ -252,5 +317,9 @@ export default function useProductDetailScreen() {
     setSearchText,
     getFirstImageUrl,
     addToCart,
+    discountPercentage,
+    discountedPrice,
+    countdownText,
+    promoEndAt,
   };
 }

@@ -116,7 +116,7 @@ describe('CartContext & CartProvider', () => {
     expect(mockDb.getFirstAsync).toHaveBeenCalledWith(expect.any(String), ['p-1']);
     expect(mockDb.runAsync).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO cart'),
-      ['p-1', 'Product A', 10, 2, 'img', 0, 0]
+      ['p-1', 'Product A', 10, 2, 'img', 0, 0, null]
     );
   });
 
@@ -137,7 +137,7 @@ describe('CartContext & CartProvider', () => {
 
     expect(mockDb.runAsync).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO cart'),
-      ['p-2', 'Product B', 20, 1, '', 0, 0]
+      ['p-2', 'Product B', 20, 1, '', 0, 0, null]
     );
   });
 
@@ -159,8 +159,8 @@ describe('CartContext & CartProvider', () => {
     });
 
     expect(mockDb.runAsync).toHaveBeenCalledWith(
-      expect.stringContaining('UPDATE cart SET quantity = ?, is_bulk = ?, is_per_meter = ? WHERE id = ?'),
-      [4, 0, 0, 'p-1']
+      expect.stringContaining('UPDATE cart SET quantity = ?, is_bulk = ?, is_per_meter = ?, discount_percentage = ? WHERE id = ?'),
+      [4, 0, 0, null, 'p-1']
     );
   });
 
@@ -388,7 +388,7 @@ describe('CartContext & CartProvider', () => {
 
     expect(mockDb.runAsync).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO cart'),
-      ['p-3', 'Product C', 5, 1, '', 0, 0]
+      ['p-3', 'Product C', 5, 1, '', 0, 0, null]
     );
   });
 
@@ -442,7 +442,7 @@ describe('CartContext & CartProvider', () => {
 
     expect(mockDb.runAsync).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO cart'),
-      ['p-4', 'Bulk Item', 10, 1000, '', 1, 0]
+      ['p-4', 'Bulk Item', 10, 1000, '', 1, 0, null]
     );
   });
 
@@ -464,7 +464,7 @@ describe('CartContext & CartProvider', () => {
 
     expect(mockDb.runAsync).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO cart'),
-      ['p-5', 'Meter Item', 5, 3, '', 0, 1]
+      ['p-5', 'Meter Item', 5, 3, '', 0, 1, null]
     );
   });
 
@@ -486,8 +486,8 @@ describe('CartContext & CartProvider', () => {
     });
 
     expect(mockDb.runAsync).toHaveBeenCalledWith(
-      expect.stringContaining('UPDATE cart SET quantity = ?, is_bulk = ?, is_per_meter = ? WHERE id = ?'),
-      [2000, 1, 0, 'p-4']
+      expect.stringContaining('UPDATE cart SET quantity = ?, is_bulk = ?, is_per_meter = ?, discount_percentage = ? WHERE id = ?'),
+      [2000, 1, 0, null, 'p-4']
     );
   });
 
@@ -525,8 +525,53 @@ describe('CartContext & CartProvider', () => {
     });
 
     expect(mockDb.runAsync).toHaveBeenCalledWith(
-      expect.stringContaining('UPDATE cart SET quantity = ?, is_bulk = ?, is_per_meter = ? WHERE id = ?'),
-      [6, 0, 1, 'p-5']
+      expect.stringContaining('UPDATE cart SET quantity = ?, is_bulk = ?, is_per_meter = ?, discount_percentage = ? WHERE id = ?'),
+      [6, 0, 1, null, 'p-5']
     );
+  });
+
+  it('should handle addToCart with discount_percentage on product', async () => {
+    function DiscountConsumer() {
+      const { addToCart } = useContext(CartContext);
+      return (
+        <View>
+          <Button title="Add Discount" onPress={() => addToCart({ id: 'p-10', name: 'Disc', price: 50, discount_percentage: 15, image_url: '' }, 1)} />
+        </View>
+      );
+    }
+    const { getByText } = render(
+      <CartProvider>
+        <DiscountConsumer />
+      </CartProvider>
+    );
+
+    await waitFor(() => {
+      expect(initDB).toHaveBeenCalled();
+    });
+
+    await act(async () => {
+      fireEvent.press(getByText('Add Discount'));
+    });
+
+    expect(mockDb.runAsync).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO cart'),
+      ['p-10', 'Disc', 50, 1, '', 0, 0, 15]
+    );
+  });
+
+  it('should calculate total with discount_percentage on cart item', async () => {
+    mockDb.getAllAsync.mockResolvedValue([
+      { id: 'p-6', name: 'Discounted Item', price: 100, quantity: 2, image_url: '', is_bulk: 0, is_per_meter: 0, discount_percentage: 10 },
+    ]);
+
+    const { getByTestId } = render(
+      <CartProvider>
+        <CartConsumer />
+      </CartProvider>
+    );
+
+    await waitFor(() => {
+      expect(getByTestId('cart-total').props.children).toBe(180);
+    });
   });
 });

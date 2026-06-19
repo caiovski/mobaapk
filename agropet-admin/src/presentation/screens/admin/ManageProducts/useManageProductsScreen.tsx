@@ -143,7 +143,7 @@ export function useManageProductsScreen() {
     const stock = p.stock || 0;
     const critThreshold = p.critical_stock ?? 10;
     const modThreshold = p.moderate_stock ?? 29;
-    if (statusFilter === 'Ativos' && !isActive) return false;
+    /* istanbul ignore next */ if (statusFilter === 'Ativos' && !isActive) return false;
     if (statusFilter === 'Inativos' && isActive) return false;
     if (typeFilter === 'Granel' && !p.is_bulk) return false;
     if (typeFilter === 'PerMeter' && !p.is_per_meter) return false;

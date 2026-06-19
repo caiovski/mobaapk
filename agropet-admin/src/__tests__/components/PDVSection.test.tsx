@@ -575,6 +575,76 @@ describe('PDVSection', () => {
     }
   });
 
+  it('should filter by type Granel and exclude non-bulk', () => {
+    const { queryByText } = render(
+      <PDVSection
+        {...createProps({
+          pdvProducts: [
+            { ...baseProduct, id: 'p1', name: 'Normal', is_bulk: false },
+            { id: 'p2', name: 'Granel', price: 10, stock: 5, is_bulk: true },
+          ],
+          pdvCart: {},
+          pdvTypeFilter: 'Granel',
+        })}
+      />
+    );
+    expect(queryByText('Granel')).toBeTruthy();
+    expect(queryByText('Normal')).toBeNull();
+  });
+
+  it('should filter by type PerMeter and exclude non-per-meter', () => {
+    const { queryByText } = render(
+      <PDVSection
+        {...createProps({
+          pdvProducts: [
+            { ...baseProduct, id: 'p1', name: 'Normal' },
+            { id: 'p2', name: 'Tecido', price: 10, stock: 5, is_per_meter: true },
+          ],
+          pdvCart: {},
+          pdvTypeFilter: 'PerMeter',
+        })}
+      />
+    );
+    expect(queryByText('Tecido')).toBeTruthy();
+    expect(queryByText('Normal')).toBeNull();
+  });
+
+  it('should display per-meter indicator in quantity input mode', () => {
+    const perMeterProduct = {
+      ...baseProduct, id: 'p-perm', name: 'Tecido',
+      is_per_meter: true, stock: 10, price: 15,
+    };
+    const { getByText } = render(
+      <PDVSection
+        {...createProps({
+          pdvSelectMode: true,
+          quantityInputMode: true,
+          pdvProducts: [perMeterProduct],
+          pdvCart: { 'p-perm': { qty: 3, checked: false } },
+        })}
+      />
+    );
+    expect(getByText('m')).toBeTruthy();
+  });
+
+  it('should display per-meter unit in non-input mode', () => {
+    const perMeterProduct = {
+      ...baseProduct, id: 'p-perm2', name: 'Tecido',
+      is_per_meter: true, stock: 10, price: 15,
+    };
+    const { getByText } = render(
+      <PDVSection
+        {...createProps({
+          pdvSelectMode: true,
+          quantityInputMode: false,
+          pdvProducts: [perMeterProduct],
+          pdvCart: { 'p-perm2': { qty: 3, checked: false } },
+        })}
+      />
+    );
+    expect(getByText(/3m/)).toBeTruthy();
+  });
+
   it('should call onUpdateQty when minus pressed in select mode', () => {
     const onUpdateQty = jest.fn();
     const { UNSAFE_getAllByProps } = render(

@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext, useRef } from 'react';
+import { useState, useEffect, useContext, useRef, useMemo } from 'react';
 import { Animated } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../../contexts/ThemeContext';
@@ -15,6 +15,9 @@ export default function useHomeScreen() {
   const { colors, isDarkMode } = useTheme();
   const navigation = useNavigation<any>();
   const [products, setProducts] = useState<any[]>([]);
+  const [promoProducts, setPromoProducts] = useState<any[]>([]);
+  const [mostViewedProducts, setMostViewedProducts] = useState<any[]>([]);
+  const [mostSoldProducts, setMostSoldProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { searchText, setSearchText, selectedCategories, categories, reloadCategories } = useFilter();
@@ -161,7 +164,7 @@ export default function useHomeScreen() {
     if (showLoadingIndicator) setLoading(true);
     const { data, error } = await supabase
       .from('products')
-      .select('id, name, description, price, stock, active, category_id, created_at, image_url, is_bulk, is_per_meter')
+      .select('id, name, description, price, stock, active, category_id, created_at, image_url, is_bulk, is_per_meter, discount_percentage')
       .eq('active', true)
       .order('created_at', { ascending: false });
 
@@ -182,6 +185,9 @@ export default function useHomeScreen() {
     setRefreshing(true);
     await Promise.all([
       fetchProducts(false),
+      fetchPromoProducts(),
+      fetchMostViewedToday(),
+      fetchMostSoldToday(),
       checkRecentEsgotados(),
       checkDeliveryStatus()
     ]);
@@ -256,8 +262,87 @@ export default function useHomeScreen() {
     await SecureStore.setItemAsync('seen_reactivated_alert', 'true');
   };
 
+  const fetchPromoProducts = async () => {
+    try {
+      const now = new Date().toISOString();
+      const { data, error } = await supabase
+        .from('products')
+        .select('id, name, description, price, stock, active, category_id, created_at, image_url, is_bulk, is_per_meter, discount_percentage')
+        .eq('active', true)
+        .not('discount_percentage', 'is', null)
+        .or(`promo_start_at.is.null,promo_start_at.lte.${now}`)
+        .or(`promo_end_at.is.null,promo_end_at.gte.${now}`)
+        .order('created_at', { ascending: false });
+      if (!error && data) setPromoProducts(data);
+      else setPromoProducts([]);
+    } catch {
+      setPromoProducts([]);
+    }
+  };
+
+  const fetchMostViewedToday = async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const { data, error } = await supabase
+        .from('product_daily_views')
+        .select('product_id, views')
+        .eq('date', today)
+        .order('views', { ascending: false })
+        .limit(10);
+      if (!error && data && data.length > 0) {
+        const ids = data.map(v => v.product_id);
+        const { data: prodData } = await supabase
+          .from('products')
+          .select('id, name, description, price, stock, active, category_id, created_at, image_url, is_bulk, is_per_meter, discount_percentage')
+          .in('id', ids)
+          .eq('active', true);
+        if (prodData) {
+          const ordered = ids.map(id => prodData.find(p => p.id === id)).filter(Boolean);
+          setMostViewedProducts(ordered);
+        } else setMostViewedProducts([]);
+      } else setMostViewedProducts([]);
+    } catch {
+      setMostViewedProducts([]);
+    }
+  };
+
+  const fetchMostSoldToday = async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const { data, error } = await supabase
+        .from('order_items')
+        .select('product_id, quantity')
+        .gte('created_at', today);
+      if (!error && data && data.length > 0) {
+        const grouped: Record<string, number> = {};
+        data.forEach(item => {
+          grouped[item.product_id] = (grouped[item.product_id] || 0) + Number(item.quantity);
+        });
+        const sorted = Object.entries(grouped)
+          .sort(([, a], [, b]) => b - a)
+          .slice(0, 10);
+        const ids = sorted.map(([id]) => id);
+        if (ids.length === 0) { setMostSoldProducts([]); return; }
+        const { data: prodData } = await supabase
+          .from('products')
+          .select('id, name, description, price, stock, active, category_id, created_at, image_url, is_bulk, is_per_meter, discount_percentage')
+          .in('id', ids)
+          .eq('active', true);
+        if (prodData) {
+          const ordered = ids.map(id => prodData.find(p => p.id === id)).filter(Boolean);
+          setMostSoldProducts(ordered);
+        } else setMostSoldProducts([]);
+      } else setMostSoldProducts([]);
+    } catch {
+      setMostSoldProducts([]);
+    }
+  };
+
   useEffect(() => {
     fetchProducts();
+    fetchPromoProducts();
+    fetchMostViewedToday();
+    fetchMostSoldToday();
     checkRecentEsgotados();
     checkDeliveryStatus();
     fetchProfileName();
@@ -308,21 +393,85 @@ export default function useHomeScreen() {
       )
       .subscribe();
 
+    const prodChannel = supabase
+      .channel(`products_home_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'products' },
+        async () => {
+          await fetchProducts(false);
+          await fetchPromoProducts();
+        }
+      )
+      .subscribe();
+
+    const viewsChannel = supabase
+      .channel(`views_home_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'product_daily_views' },
+        async () => {
+          await fetchMostViewedToday();
+        }
+      )
+      .subscribe();
+
+    const ordersChannel = supabase
+      .channel(`orders_home_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'order_items' },
+        async () => {
+          await fetchMostSoldToday();
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(channel);
+      supabase.removeChannel(prodChannel);
+      supabase.removeChannel(viewsChannel);
+      supabase.removeChannel(ordersChannel);
       unsubscribeBlur();
       unsubscribeFocus();
     };
   }, [navigation]);
 
-  const filteredProducts = products.filter(p => {
+  const matchesFilter = (p: any) => {
     const name = (p.name || '').toLowerCase();
     const desc = (p.description || '').toLowerCase();
     const query = searchText.toLowerCase();
-    const matchesSearch = name.includes(query) || desc.includes(query);
-    const matchesCategory = isProductInCategories(p, selectedCategories, categories);
-    return matchesSearch && matchesCategory;
-  });
+    return (name.includes(query) || desc.includes(query)) && isProductInCategories(p, selectedCategories, categories);
+  };
+
+  const filteredPromo = useMemo(() => promoProducts.filter(matchesFilter), [promoProducts, searchText, selectedCategories, categories]);
+  const filteredViewed = useMemo(() => mostViewedProducts.filter(matchesFilter), [mostViewedProducts, searchText, selectedCategories, categories]);
+  const filteredSold = useMemo(() => mostSoldProducts.filter(matchesFilter), [mostSoldProducts, searchText, selectedCategories, categories]);
+
+  const getDestaqueSections = (productId: string) => {
+    let count = 0;
+    if (filteredPromo.some(p => p.id === productId)) count++;
+    if (filteredViewed.some(p => p.id === productId)) count++;
+    if (filteredSold.some(p => p.id === productId)) count++;
+    return count;
+  };
+
+  const prioritySections: Array<{ id: string; list: any[] }> = [
+    { id: 'promocao', list: filteredPromo },
+    { id: 'acessados', list: filteredViewed },
+    { id: 'comprados', list: filteredSold },
+  ];
+
+  const getShowDestaque = (productId: string, currentSectionId: string) => {
+    for (const sec of prioritySections) {
+      if (sec.list.some(p => p.id === productId)) {
+        return sec.id === currentSectionId;
+      }
+    }
+    return false;
+  };
+
+  const allFiltered = useMemo(() => products.filter(matchesFilter), [products, searchText, selectedCategories, categories]);
 
   return {
     colors,
@@ -334,6 +483,7 @@ export default function useHomeScreen() {
     searchText,
     setSearchText,
     selectedCategories,
+    categories,
     addToCart,
     esgotadoAlert,
     setEsgotadoAlert,
@@ -346,9 +496,15 @@ export default function useHomeScreen() {
     greetingScale,
     closeButtonRotate,
     closeButtonScale,
-    filteredProducts,
+    filteredPromo,
+    filteredViewed,
+    filteredSold,
+    allFiltered,
+    getDestaqueSections,
+    getShowDestaque,
     handleRefresh,
     handleCloseReactivated,
     handleDismissGreeting,
+    clientName,
   };
 }

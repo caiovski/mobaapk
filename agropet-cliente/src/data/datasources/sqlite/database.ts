@@ -31,6 +31,11 @@ export function initDB(): Promise<SQLite.SQLiteDatabase> {
       } catch {
         // Coluna já existe — ignorar
       }
+      try {
+        await db.execAsync('ALTER TABLE cart ADD COLUMN discount_percentage INTEGER DEFAULT NULL');
+      } catch {
+        // Coluna já existe — ignorar
+      }
     } catch (e) {
       initPromise = null;
       throw e;

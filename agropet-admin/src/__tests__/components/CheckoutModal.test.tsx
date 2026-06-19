@@ -117,4 +117,94 @@ describe('CheckoutModal', () => {
     expect(getByText('Arroz')).toBeTruthy();
     expect(getByText(/Kg/)).toBeTruthy();
   });
+
+  it('should display per-meter quantity with meters unit (qty >= 1)', () => {
+    const perMeterProduct = {
+      id: 'p3', name: 'Tecido', price: 15,
+      image_url: null, is_per_meter: true,
+    };
+    const perMeterCart = { p3: { qty: 2, checked: true } };
+    const { getByText } = render(
+      <CheckoutModal
+        {...baseProps}
+        pdvProducts={[perMeterProduct]}
+        pdvCart={perMeterCart}
+        bulkValueMode={true}
+      />
+    );
+    expect(getByText('Tecido')).toBeTruthy();
+    expect(getByText('2,00 m')).toBeTruthy();
+  });
+
+  it('should display per-meter quantity with meters unit (qty < 1)', () => {
+    const perMeterProduct = {
+      id: 'p7', name: 'Linha', price: 10,
+      image_url: null, is_per_meter: true,
+    };
+    const perMeterCart = { p7: { qty: 0.5, checked: true } };
+    const { getByText } = render(
+      <CheckoutModal
+        {...baseProps}
+        pdvProducts={[perMeterProduct]}
+        pdvCart={perMeterCart}
+        bulkValueMode={true}
+      />
+    );
+    expect(getByText('Linha')).toBeTruthy();
+    expect(getByText('0,5 m')).toBeTruthy();
+  });
+
+  it('should display bulk product with bulk value mode', () => {
+    const bulkProduct = {
+      id: 'p4', name: 'Açúcar', price: 5,
+      image_url: null, is_bulk: true,
+    };
+    const bulkCart = { p4: { qty: 2, checked: true } };
+    const { getByText } = render(
+      <CheckoutModal
+        {...baseProps}
+        pdvProducts={[bulkProduct]}
+        pdvCart={bulkCart}
+        bulkValueMode={true}
+        bulkInputUnit={{ p4: 'kg' }}
+      />
+    );
+    expect(getByText('Açúcar')).toBeTruthy();
+    expect(getByText(/Kg/)).toBeTruthy();
+  });
+
+  it('should display bulk product with grams unit', () => {
+    const bulkProduct = {
+      id: 'p5', name: 'Açúcar', price: 5,
+      image_url: null, is_bulk: true,
+    };
+    const bulkCart = { p5: { qty: 500, checked: true } };
+    const { getByText } = render(
+      <CheckoutModal
+        {...baseProps}
+        pdvProducts={[bulkProduct]}
+        pdvCart={bulkCart}
+        bulkValueMode={true}
+        bulkInputUnit={{ p5: 'g' }}
+      />
+    );
+    expect(getByText('500,000 g')).toBeTruthy();
+  });
+
+  it('should display regular item quantity directly', () => {
+    const regularProduct = {
+      id: 'p6', name: 'Coleira', price: 30,
+      image_url: null,
+    };
+    const regularCart = { p6: { qty: 3, checked: true } };
+    const { getByText } = render(
+      <CheckoutModal
+        {...baseProps}
+        pdvProducts={[regularProduct]}
+        pdvCart={regularCart}
+      />
+    );
+    expect(getByText('Coleira')).toBeTruthy();
+    expect(getByText('3')).toBeTruthy();
+  });
 });

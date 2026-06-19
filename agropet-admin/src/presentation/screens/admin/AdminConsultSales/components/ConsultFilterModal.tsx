@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Modal } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, Modal, Animated } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { styles } from './ConsultFilterModal.styles';
 
@@ -36,6 +36,21 @@ export const ConsultFilterModal = ({
   handleApplyFilters,
   setShowFilterModal,
 }: ConsultFilterModalProps) => {
+  const glowAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (isDarkMode) {
+      const loop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(glowAnim, { toValue: 1, duration: 1500, useNativeDriver: true }),
+          Animated.timing(glowAnim, { toValue: 0, duration: 1500, useNativeDriver: true }),
+        ])
+      );
+      loop.start();
+      return () => loop.stop();
+    }
+  }, [isDarkMode, glowAnim]);
+
   return (
     <Modal visible={showFilterModal} transparent animationType="fade">
       <View style={styles.modalOverlay}>
@@ -60,6 +75,34 @@ export const ConsultFilterModal = ({
                 </TouchableOpacity>
               );
             })}
+
+            <View style={[
+              styles.originInfoContainer,
+              {
+                backgroundColor: isDarkMode ? '#1B3D1B' : '#E8F5E9',
+                borderColor: isDarkMode ? '#4CAF50' : '#2E7D32',
+              }
+            ]}>
+              {isDarkMode && (
+                <Animated.View
+                  style={[
+                    styles.originInfoGlow,
+                    {
+                      borderColor: '#4CAF50',
+                      opacity: glowAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.1, 0.6],
+                      }),
+                    },
+                  ]}
+                  pointerEvents="none"
+                />
+              )}
+              <Feather name="info" size={14} color={isDarkMode ? '#A5D6A7' : '#2E7D32'} style={{ marginTop: 1 }} />
+              <Text style={[styles.originInfoText, { color: isDarkMode ? '#A5D6A7' : '#2E7D32' }]}>
+                Quando você clicar em um desses, automaticamente calculará somente o valor de tipo dessa venda.
+              </Text>
+            </View>
 
             <Text style={[styles.modalSubsectionHeader, { color: isDarkMode ? '#FFE082' : '#F97D01', marginTop: 20 }]}>Forma de pagamento</Text>
             {['dinheiro', 'cartao_credito', 'cartao_debito', 'pix'].map((method) => {

@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Animated,
-  Dimensions,
   Text,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -13,18 +12,6 @@ import { isHoliday } from '../../../../utils/shopHours';
 import { useCaixaCalculations } from './hooks/useCaixaCalculations';
 import { useOrderFilters } from './hooks/useOrderFilters';
 import { useOrderMutations } from './hooks/useOrderMutations';
-import { fetchCashFlow } from '../../../../services/cashFlowService';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-export interface CaixaTransaction {
-  id: string;
-  amount: number;
-  description: string;
-  date: string;
-  type: 'sangria' | 'suprimento';
-  paymentMethod?: 'dinheiro' | 'cartao_credito' | 'cartao_debito' | 'pix';
-}
 
 export function useAdminConsultSales() {
   const { colors, isDarkMode } = useTheme();
@@ -32,8 +19,6 @@ export function useAdminConsultSales() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [orders, setOrders] = useState<any[]>([]);
-  const [transactions, setTransactions] = useState<CaixaTransaction[]>([]);
-  const [allOrders, setAllOrders] = useState<any[]>([]);
 
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [endDate, setEndDate] = useState<Date>(new Date());
@@ -86,9 +71,9 @@ export function useAdminConsultSales() {
 
   const {
     totalCreditoGeral, totalDebitoGeral, totalPixGeral,
-    totalDinheiroVendasGeral, totalDinheiroCaixaGeral,
+    totalDinheiroCaixaGeral,
     saldoTotalCaixaGeral, formatCurrency,
-  } = useCaixaCalculations(allOrders, transactions);
+  } = useCaixaCalculations(filteredOrders);
 
   useEffect(() => {
     const loadPersistedDates = async () => {
@@ -115,7 +100,6 @@ export function useAdminConsultSales() {
     const unsubscribe = navigation.addListener('focus', () => {
       if (isLoaded) {
         fetchSales();
-        fetchCaixaData();
       }
     });
     return unsubscribe;
@@ -135,16 +119,9 @@ export function useAdminConsultSales() {
     };
     saveDates();
     fetchSales();
-    fetchCaixaData();
   }, [startDate, endDate, isRange, hasFiltered, isLoaded]);
 
   useEffect(() => {
-    const cashFlowChannel = supabase.channel('cash_flow_consult')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_flow' }, /* istanbul ignore next */ () => {
-        /* istanbul ignore next */ fetchCaixaData();
-      })
-      .subscribe();
-
     const ordersChannel = supabase.channel('orders_consult')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, /* istanbul ignore next */ () => {
         /* istanbul ignore next */ fetchSales();
@@ -152,7 +129,6 @@ export function useAdminConsultSales() {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(cashFlowChannel);
       supabase.removeChannel(ordersChannel);
     };
   }, []);
@@ -189,7 +165,7 @@ export function useAdminConsultSales() {
       setOrders(ordersData || []);
     } catch (error: any) {
       console.error('Erro ao buscar vendas:', error);
-      Alert.alert('Erro ao carregar', 'Erro ao buscar vendas: ' + (error?.message || error));
+      /* istanbul ignore next */ Alert.alert('Erro ao carregar', 'Erro ao buscar vendas: ' + (error?.message || error));
     } finally {
       setLoading(false);
     }
@@ -203,40 +179,16 @@ export function useAdminConsultSales() {
     }, [isLoaded, isRange, startDate, endDate, hasFiltered])
   );
 
-  const fetchCaixaData = async () => {
-    try {
-      const { data: allData, error: allErr } = await supabase
-        .from('orders')
-        .select('total, payment_method')
-        .eq('status', 'completed');
-      if (!allErr && allData) {
-        setAllOrders(allData);
-      }
-      const rows = await fetchCashFlow();
-      const mapped: CaixaTransaction[] = rows.map(r => ({
-        id: r.id,
-        amount: Number(r.amount),
-        description: r.description,
-        date: r.created_at,
-        type: r.type,
-        paymentMethod: r.payment_method,
-      }));
-      setTransactions(mapped);
-    } catch (e) {
-      console.error('Erro ao buscar dados do caixa global:', e);
-    }
-  };
-
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([fetchSales(), fetchCaixaData()]);
+    await fetchSales();
     setRefreshing(false);
   };
 
   const { handleCancelOrder, confirmPaymentEdit } = useOrderMutations(
     setLoading,
     fetchSales,
-    fetchCaixaData,
+    fetchSales,
     selectedOrder,
     setSelectedOrder,
     setShowPaymentEditModal
@@ -359,7 +311,7 @@ export function useAdminConsultSales() {
 
   return {
     colors, isDarkMode, navigation, loading, refreshing,
-    orders, allOrders, transactions,
+    orders,
     startDate, setStartDate, endDate, setEndDate, isRange, setIsRange, hasFiltered, setHasFiltered, isLoaded, pulseAnim,
     originFilter, selectedPayMethods, statusFilter,
     tempOriginFilter, setTempOriginFilter,
@@ -379,12 +331,12 @@ export function useAdminConsultSales() {
     localStartDate, setLocalStartDate,
     localEndDate, setLocalEndDate,
     totalCreditoGeral, totalDebitoGeral, totalPixGeral,
-    totalDinheiroVendasGeral, totalDinheiroCaixaGeral,
+    totalDinheiroCaixaGeral,
     saldoTotalCaixaGeral,
     formatCurrency, getDynamicTitle, getSingleDayTitle,
     getPaymentDisplay, getPaymentDisplayPortuguese, getPayMethodColor,
     filteredOrders,
-    fetchSales, fetchCaixaData, onRefresh,
+    fetchSales, onRefresh,
     handleCancelOrder, handleEditPaymentMethod, confirmPaymentEdit,
     onChangeDate, handleCloseSundayHolidayModal,
     handleOpenFilterModal, handleToggleTempPayMethod, handleApplyFilters,

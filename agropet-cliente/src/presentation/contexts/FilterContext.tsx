@@ -2,6 +2,8 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import { fetchActiveCategories } from '../../services/categoryService';
 import type { DBCustomCategory } from '../../db/schema';
 
+export type SectionFilterType = 'all' | 'promocao' | 'acessados' | 'vendidos';
+
 interface FilterContextType {
   selectedCategories: string[];
   toggleCategory: (category: string) => void;
@@ -10,6 +12,8 @@ interface FilterContextType {
   clearFilters: () => void;
   categories: DBCustomCategory[];
   reloadCategories: () => Promise<void>;
+  sectionFilter: SectionFilterType;
+  setSectionFilter: (filter: SectionFilterType) => void;
 }
 
 export const FilterContext = createContext<FilterContextType>({
@@ -20,12 +24,15 @@ export const FilterContext = createContext<FilterContextType>({
   clearFilters: () => {},
   categories: [],
   reloadCategories: async () => {},
+  sectionFilter: 'all' as SectionFilterType,
+  setSectionFilter: () => {},
 });
 
 export const FilterProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [searchText, setSearchTextState] = useState<string>('');
   const [categories, setCategories] = useState<DBCustomCategory[]>([]);
+  const [sectionFilter, setSectionFilter] = useState<SectionFilterType>('all');
 
   const reloadCategories = React.useCallback(async () => {
     try {
@@ -53,6 +60,7 @@ export const FilterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const clearFilters = () => {
     setSelectedCategories([]);
     setSearchTextState('');
+    setSectionFilter('all');
   };
 
   return (
@@ -64,6 +72,8 @@ export const FilterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       clearFilters,
       categories,
       reloadCategories,
+      sectionFilter,
+      setSectionFilter,
     }}>
       {children}
     </FilterContext.Provider>

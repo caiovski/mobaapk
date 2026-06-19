@@ -15,7 +15,10 @@ export class Product {
     public readonly imageUrl?: string,
     public readonly description?: string,
     public readonly criticalStock?: number,
-    public readonly moderateStock?: number
+    public readonly moderateStock?: number,
+    public readonly discountPercentage?: number,
+    public readonly promoStartAt?: string,
+    public readonly promoEndAt?: string
   ) {
     this.priceVO = new Price(price);
     this.stockVO = new Stock(stock);
@@ -54,7 +57,10 @@ export class Product {
       this.imageUrl,
       this.description,
       this.criticalStock,
-      this.moderateStock
+      this.moderateStock,
+      this.discountPercentage,
+      this.promoStartAt,
+      this.promoEndAt
     );
   }
 

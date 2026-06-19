@@ -10,6 +10,7 @@ import { OrdersScreen } from '../screens/client/Orders';
 import OrderDetailScreen from '../screens/client/OrderDetail';
 import TrackingScreen from '../screens/client/Tracking';
 import ProfileScreen from '../screens/client/Profile';
+import VerTudoScreen from '../screens/client/VerTudo';
 
 const Stack = createStackNavigator();
 
@@ -32,6 +33,8 @@ export default function ClientStack() {
         <Stack.Screen name="TrackingScreen" component={TrackingScreen} options={{ headerShown: false }} />
         {/* Nova Tela de Perfil (Tela 13) */}
         <Stack.Screen name="ProfileScreen" component={ProfileScreen} options={{ headerShown: false }} />
+        {/* Ver tudo de uma sessão */}
+        <Stack.Screen name="VerTudo" component={VerTudoScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
       <GlobalUserMenu />
     </UserMenuProvider>

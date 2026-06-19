@@ -10,6 +10,7 @@ export interface CartItem {
   image_url: string;
   is_bulk: boolean;
   is_per_meter: boolean;
+  discount_percentage?: number | null;
 }
 
 interface CartContextProps {
@@ -50,6 +51,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         ...row,
         is_bulk: row.is_bulk === 1 || row.is_bulk === true,
         is_per_meter: row.is_per_meter === 1 || row.is_per_meter === true,
+        discount_percentage: row.discount_percentage ?? null,
       }));
       setCart(mapped);
     } catch (error) {
@@ -69,6 +71,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     
     const isBulk = product.is_bulk === true;
     const isPerMeter = product.is_per_meter === true;
+    const discountPct = product.discount_percentage != null ? Number(product.discount_percentage) : null;
     
     try {
       const existing: any = await db.getFirstAsync('SELECT * FROM cart WHERE id = ?', [product.id]);
@@ -78,12 +81,13 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         if (newQty <= 0) {
           await db.runAsync('DELETE FROM cart WHERE id = ?', [product.id]);
         } else {
-          await db.runAsync('UPDATE cart SET quantity = ?, is_bulk = ?, is_per_meter = ? WHERE id = ?', [newQty, isBulk ? 1 : 0, isPerMeter ? 1 : 0, product.id]);
+          await db.runAsync('UPDATE cart SET quantity = ?, is_bulk = ?, is_per_meter = ?, discount_percentage = ? WHERE id = ?',
+            [newQty, isBulk ? 1 : 0, isPerMeter ? 1 : 0, discountPct, product.id]);
         }
       } else if (qty > 0) {
         await db.runAsync(
-          'INSERT INTO cart (id, name, price, quantity, image_url, is_bulk, is_per_meter) VALUES (?, ?, ?, ?, ?, ?, ?)',
-          [product.id, product.name, product.price, qty, product.image_url ?? '', isBulk ? 1 : 0, isPerMeter ? 1 : 0]
+          'INSERT INTO cart (id, name, price, quantity, image_url, is_bulk, is_per_meter, discount_percentage) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          [product.id, product.name, product.price, qty, product.image_url ?? '', isBulk ? 1 : 0, isPerMeter ? 1 : 0, discountPct]
         );
       }
       
@@ -115,7 +119,10 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   const total = cart.reduce((acc, item) => {
     const effectiveQty = item.is_bulk ? item.quantity / 1000 : item.quantity;
-    return acc + (item.price * effectiveQty);
+    const effectivePrice = item.discount_percentage
+      ? item.price * (1 - item.discount_percentage / 100)
+      : item.price;
+    return acc + (effectivePrice * effectiveQty);
   }, 0);
 
   return (

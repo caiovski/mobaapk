@@ -28,6 +28,13 @@ jest.mock('../../presentation/contexts/useCategories', () => ({
   }),
 }));
 
+// ── Mock DateTimePicker ──
+jest.mock('@react-native-community/datetimepicker', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return (props: any) => React.createElement(View, { testID: props.testID || 'mock-datetimepicker', ...props });
+});
+
 // ── Mock expo-image-picker ──
 jest.mock('expo-image-picker', () => ({
   getCameraPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted' }),
@@ -843,5 +850,38 @@ describe('ProductEditScreen - Deep Coverage', () => {
 
     expect(getByText('Produto à granel')).toBeTruthy();
     expect(getAllByText('Kg').length).toBe(1);
+  });
+
+  it('should toggle promo on, show modal, and confirm promo date', async () => {
+    mockUseRoute.mockReturnValueOnce({
+      params: {
+        product: { id: 'p-promo', name: 'Promo Test', price: 30, stock: 5, active: true, description: '', image_url: null }
+      }
+    });
+    const { getByText, getByTestId, queryByText } = renderScreen(ProductEditScreen);
+
+    fireEvent.press(getByText('Em promoção'));
+
+    expect(getByTestId('product-discount-input')).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.changeText(getByTestId('product-discount-input'), '20');
+      fireEvent.press(getByText('Selecionar → Selecionar'));
+    });
+
+    expect(getByText('Período da Promoção')).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.press(getByText('Confirmar'));
+    });
+
+    expect(queryByText('Período da Promoção')).toBeNull();
+  });
+
+  it('should toggle promo off to clear discount fields', async () => {
+    const { getByText } = renderScreen(ProductEditScreen);
+
+    fireEvent.press(getByText('Em promoção'));
+    fireEvent.press(getByText('Em promoção'));
   });
 });

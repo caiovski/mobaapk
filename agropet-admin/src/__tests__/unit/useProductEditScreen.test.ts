@@ -472,4 +472,56 @@ describe('useProductEditScreen', () => {
       })
     );
   });
+
+  it('should formatDateTime return placeholder for empty string', async () => {
+    setup();
+    await waitFor(() => expect(hookResult).toBeTruthy());
+    expect(hookResult.formatDateTime('')).toBe('Selecionar');
+  });
+
+  it('should formatDateTime return formatted date string', async () => {
+    setup();
+    await waitFor(() => expect(hookResult).toBeTruthy());
+    const d = new Date(2025, 0, 15, 9, 30, 0);
+    expect(hookResult.formatDateTime(d.toISOString())).toBe('15/01/2025 09:30');
+  });
+
+  it('should confirmPromoDateTime combine date and time and close modal', async () => {
+    setup();
+    await waitFor(() => expect(hookResult).toBeTruthy());
+
+    act(() => {
+      hookResult.setPromoStartDate(new Date(2025, 5, 10));
+      hookResult.setPromoEndDate(new Date(2025, 5, 20));
+      hookResult.setPromoStartTime(new Date(2025, 0, 1, 8, 0, 0));
+      hookResult.setPromoEndTime(new Date(2025, 0, 1, 18, 0, 0));
+    });
+
+    act(() => {
+      hookResult.confirmPromoDateTime();
+    });
+
+    expect(hookResult.promoStartAt).toBe(new Date(2025, 5, 10, 8, 0, 0).toISOString());
+    expect(hookResult.promoEndAt).toBe(new Date(2025, 5, 20, 18, 0, 0).toISOString());
+    expect(hookResult.showPromoDateModal).toBe(false);
+  });
+
+  it('should initialize promo date/time from product on mount', async () => {
+    const orig = { ...mockRouteProduct };
+    mockRouteProduct = {
+      ...orig,
+      discount_percentage: 15,
+      promo_start_at: '2025-06-01T08:30:00.000Z',
+      promo_end_at: '2025-06-20T17:45:00.000Z',
+    };
+    setup();
+    await waitFor(() => expect(hookResult).toBeTruthy());
+
+    expect(hookResult.isPromo).toBe(true);
+    expect(hookResult.discountPercentage).toBe('15');
+    expect(hookResult.promoStartAt).toBe('2025-06-01T08:30:00.000Z');
+    expect(hookResult.promoEndAt).toBe('2025-06-20T17:45:00.000Z');
+
+    mockRouteProduct = orig;
+  });
 });
