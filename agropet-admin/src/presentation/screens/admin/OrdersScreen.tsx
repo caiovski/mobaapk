@@ -27,7 +27,7 @@ export default function OrdersScreen({ navigation }: any) {
       setOrders(data || []);
     }
     setLoading(false);
-  };
+  }, []);
 
   useEffect(() => {
     fetchOrders();

@@ -35,56 +35,56 @@ export default function CashRegisterHistoryScreen() {
     );
   }
 
+  const renderItem = useCallback(({ item }: any) => {
+    const isHighlighted = item.date === h.highlightDate;
+    const cardOpacity = highlightAnim.interpolate({
+      inputRange: [0, 1], outputRange: [1, 0.55],
+    });
+    const cardScale = highlightAnim.interpolate({
+      inputRange: [0, 1], outputRange: [1, 1.04],
+    });
+    return (
+      <Animated.View style={[
+        styles.card, { backgroundColor: cardBg },
+        /* istanbul ignore next */ isHighlighted ? { opacity: cardOpacity, transform: [{ scale: cardScale }] } : undefined,
+      ]}>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 13, fontWeight: 'bold', color: textColor }}>
+            { /* istanbul ignore next */ item.closingCode || item.openingCode || '---'}
+          </Text>
+          <Text style={[styles.dateText, { color: textColor }]}>
+            {new Date(item.date + 'T12:00:00').toLocaleDateString('pt-BR')}
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+            {item.hasOpening && (
+              <Text style={{ fontSize: 12, color: greenColor, fontWeight: 'bold' }}>Abertura ✓</Text>
+            )}
+            {/* istanbul ignore next */}
+            { /* istanbul ignore next */ !item.hasOpening && (
+              <Text style={{ fontSize: 12, color: redColor, fontWeight: 'bold' }}>Abertura ✗</Text>
+            )}
+            {item.hasClosing && (
+              <Text style={{ fontSize: 12, color: greenColor, fontWeight: 'bold' }}>Fechamento ✓</Text>
+            )}
+            {!item.hasClosing && (
+              <Text style={{ fontSize: 12, color: redColor, fontWeight: 'bold' }}>Fechamento ✗</Text>
+            )}
+          </View>
+        </View>
+        <TouchableOpacity style={[styles.viewBtn, { backgroundColor: '#2D8CE5' }]}
+          activeOpacity={0.7} onPress={() => h.handleView(item.date)}>
+          <Text style={styles.viewBtnText}>Ver</Text>
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  }, [h.highlightDate, h.handleView, highlightAnim, cardBg, textColor, greenColor, redColor]);
+
   return (
     <View style={[styles.mainContainer, { backgroundColor: bgColor }]}>
       <AdminHeader title="histórico_caixa" />
       <Text style={{ color: textColor, fontSize: 22, fontWeight: 'bold', paddingHorizontal: 16, paddingVertical: 8 }}>
         Registro de abertura/fechamento do caixa:
       </Text>
-      const renderItem = useCallback(({ item }: any) => {
-        const isHighlighted = item.date === h.highlightDate;
-        const cardOpacity = highlightAnim.interpolate({
-          inputRange: [0, 1], outputRange: [1, 0.55],
-        });
-        const cardScale = highlightAnim.interpolate({
-          inputRange: [0, 1], outputRange: [1, 1.04],
-        });
-        return (
-          <Animated.View style={[
-            styles.card, { backgroundColor: cardBg },
-            /* istanbul ignore next */ isHighlighted ? { opacity: cardOpacity, transform: [{ scale: cardScale }] } : undefined,
-          ]}>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 13, fontWeight: 'bold', color: textColor }}>
-                { /* istanbul ignore next */ item.closingCode || item.openingCode || '---'}
-              </Text>
-              <Text style={[styles.dateText, { color: textColor }]}>
-                {new Date(item.date + 'T12:00:00').toLocaleDateString('pt-BR')}
-              </Text>
-              <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
-                {item.hasOpening && (
-                  <Text style={{ fontSize: 12, color: greenColor, fontWeight: 'bold' }}>Abertura ✓</Text>
-                )}
-                {/* istanbul ignore next */}
-                { /* istanbul ignore next */ !item.hasOpening && (
-                  <Text style={{ fontSize: 12, color: redColor, fontWeight: 'bold' }}>Abertura ✗</Text>
-                )}
-                {item.hasClosing && (
-                  <Text style={{ fontSize: 12, color: greenColor, fontWeight: 'bold' }}>Fechamento ✓</Text>
-                )}
-                {!item.hasClosing && (
-                  <Text style={{ fontSize: 12, color: redColor, fontWeight: 'bold' }}>Fechamento ✗</Text>
-                )}
-              </View>
-            </View>
-            <TouchableOpacity style={[styles.viewBtn, { backgroundColor: '#2D8CE5' }]}
-              activeOpacity={0.7} onPress={() => h.handleView(item.date)}>
-              <Text style={styles.viewBtnText}>Ver</Text>
-            </TouchableOpacity>
-          </Animated.View>
-        );
-      }, [h.highlightDate, h.handleView, highlightAnim, cardBg, textColor, greenColor, redColor]);
-
       <FlatList
         data={h.dates}
         keyExtractor={keyExtractor}
