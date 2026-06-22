@@ -1,3 +1,4 @@
 trigger_ci admin on github
 
 do trigger 1;
+do trigger 2;
