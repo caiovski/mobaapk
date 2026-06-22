@@ -38,11 +38,12 @@ export function useRegisterScreen() {
     if (error) {
       Alert.alert('Erro ao cadastrar', error.message);
     } else if (data.session == null) {
-      // Quando for confirmado via E-mail
+      // Quando for confirmado via E-mail (Configuração antiga do Supabase)
       navigation.navigate('OTPVerificationScreen', { email, type: 'signup' });
     } else {
-      // Se a confirmação de e-mail estiver desligada
-      navigation.navigate('OTPVerificationScreen', { email, type: 'signup' });
+      // Se a confirmação de e-mail estiver desligada no Supabase
+      // O App.tsx ou ClientNavigation.tsx automaticamente vai capturar a 'session' e mandar para a Home!
+      Alert.alert('Sucesso', 'Cadastro realizado com sucesso!');
     }
     setLoading(false);
   };

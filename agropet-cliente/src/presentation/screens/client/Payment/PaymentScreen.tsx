@@ -89,9 +89,20 @@ export default function PaymentScreen({ navigation }: any) {
               </View>
               <View style={[styles.tColDivider, { backgroundColor: h.isDarkMode ? '#121212' : '#F5F5F5' }]} />
               <View style={styles.tColPreco}>
-                <Text style={styles.itemText}>
-                  R$ {item.price.toFixed(2)}{item.is_bulk ? ' /Kg' : item.is_per_meter ? ' /m' : ''}
-                </Text>
+                {item.discount_percentage ? (
+                  <>
+                    <Text style={[styles.itemText, { fontSize: 11, color: '#999', textDecorationLine: 'line-through' }]}>
+                      R$ {item.price.toFixed(2)}
+                    </Text>
+                    <Text style={[styles.itemText, { color: '#E91E63' }]}>
+                      R$ {(item.price * (1 - item.discount_percentage / 100)).toFixed(2)}
+                    </Text>
+                  </>
+                ) : (
+                  <Text style={styles.itemText}>
+                    R$ {item.price.toFixed(2)}{item.is_bulk ? ' /Kg' : item.is_per_meter ? ' /m' : ''}
+                  </Text>
+                )}
               </View>
             </View>
           ))}

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, ActivityIndicator,
   Platform, Modal, RefreshControl, Animated,
@@ -12,20 +12,26 @@ import { styles } from './AdminConsultSalesScreen.styles';
 import { CaixaGlobalPanel } from './components/CaixaGlobalPanel';
 import { ConsultFilterModal } from './components/ConsultFilterModal';
 import { OrderListItem } from './components/OrderListItem';
+import ScrollToTopButton from '../../../components/ScrollToTopButton';
 
 import FundoBtnFiltro from '../../../assets/tela6/selecionar data/Fundo.svg';
 import SetaBaixo from '../../../assets/tela6/selecionar data/Upside Down.svg';
 
 export default function AdminConsultSalesScreen() {
   const h = useAdminConsultSales();
+  const scrollRef = useRef<ScrollView>(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
 
   return (
     <View style={[styles.mainContainer, { backgroundColor: h.colors.white }]}>
       <AdminHeader title="consultar_vendas" />
 
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        onScroll={/* istanbul ignore next */ (e) => setShowScrollTop(e.nativeEvent.contentOffset.y > 500)}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={h.refreshing}
@@ -312,6 +318,7 @@ export default function AdminConsultSalesScreen() {
         </TouchableOpacity>
       </View>
 
+      <ScrollToTopButton scrollRef={scrollRef} visible={showScrollTop} isDarkMode={h.isDarkMode} />
       <AdminUserMenu />
     </View>
   );

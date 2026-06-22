@@ -1,5 +1,4 @@
 import { useState, useEffect, useContext, useRef, useMemo } from 'react';
-import { Animated } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../../contexts/ThemeContext';
 import * as SecureStore from 'expo-secure-store';
@@ -10,6 +9,8 @@ import { useConnectivity } from '../../../contexts/ConnectivityContext';
 import { useFilter } from '../../../contexts/FilterContext';
 import { isProductInCategories } from '../../../../services/categoryService';
 import { getShopStatus } from '../../../../utils/shopHours';
+import useHomeSubscriptions from './useHomeSubscriptions';
+import useHomeGreeting from './useHomeGreeting';
 
 export default function useHomeScreen() {
   const { colors, isDarkMode } = useTheme();
@@ -28,148 +29,28 @@ export default function useHomeScreen() {
   const [esgotadoAlert, setEsgotadoAlert] = useState<string | null>(null);
   const [deliveryActive, setDeliveryActive] = useState<boolean>(true);
   const [showReactivatedAlert, setShowReactivatedAlert] = useState(false);
-  const [clientName, setClientName] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
-  const [greeting, setGreeting] = useState('');
-  const [shopStatus, setShopStatusState] = useState<any>(null);
-  const [showGreetingBar, setShowGreetingBar] = useState(true);
 
-  const greetingOpacity = useRef(new Animated.Value(1)).current;
-  const greetingScale = useRef(new Animated.Value(1)).current;
-  const closeButtonRotate = useRef(new Animated.Value(0)).current;
-  const closeButtonScale = useRef(new Animated.Value(1)).current;
-
-  const fetchProfileName = async () => {
-    if (user?.id) {
-      try {
-        const { data } = await supabase
-          .from('users')
-          .select('name, role')
-          .eq('id', user.id)
-          .single();
-        if (data?.name) {
-          const firstName = data.name.trim().split(' ')[0];
-          setClientName(firstName);
-        } else {
-          setClientName('');
-        }
-        setIsAdmin(data?.role === 'admin');
-      } catch (e) {
-        console.log('Erro ao buscar nome do cliente para a saudação:', e);
-      }
-    } else {
-      setClientName('');
-      setIsAdmin(false);
-    }
-  };
-
-  const checkGreetingPreference = async () => {
-    try {
-      const val = await SecureStore.getItemAsync('show_greeting_bar');
-      if (val === 'false') {
-        setShowGreetingBar(false);
-      } else {
-        greetingOpacity.setValue(0);
-        greetingScale.setValue(0.95);
-        closeButtonRotate.setValue(0);
-        closeButtonScale.setValue(1);
-        setShowGreetingBar(true);
-
-        Animated.parallel([
-          Animated.timing(greetingOpacity, {
-            toValue: 1,
-            duration: 400,
-            useNativeDriver: true,
-          }),
-          Animated.timing(greetingScale, {
-            toValue: 1,
-            duration: 400,
-            useNativeDriver: true,
-          }),
-        ]).start();
-      }
-    } catch (e) {
-      console.log('Erro ao ler preferência de saudação:', e);
-    }
-  };
-
-  const handleDismissGreeting = () => {
-    Animated.parallel([
-      Animated.timing(closeButtonRotate, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }),
-      Animated.timing(closeButtonScale, {
-        toValue: 0,
-        duration: 450,
-        useNativeDriver: true,
-      }),
-      Animated.timing(greetingOpacity, {
-        toValue: 0,
-        duration: 450,
-        useNativeDriver: true,
-      }),
-      Animated.timing(greetingScale, {
-        toValue: 0.95,
-        duration: 450,
-        useNativeDriver: true,
-      }),
-    ]).start(async () => {
-      setShowGreetingBar(false);
-      try {
-        await SecureStore.setItemAsync('show_greeting_bar', 'false');
-      } catch (e) {
-        console.log('Erro ao salvar preferência de saudação:', e);
-      }
-    });
-  };
-
-  useEffect(() => {
-    fetchProfileName();
-    checkGreetingPreference();
-  }, [user]);
-
-  useEffect(() => {
-    const updateStatus = () => {
-      const now = new Date();
-      const status = getShopStatus(now);
-
-      if (isAdmin) {
-        setGreeting('Bem-vindo admin, o que vamos testar hoje?');
-        if (status.isOpen) {
-          setShopStatusState(status);
-        } else {
-          setShopStatusState({ ...status, isOpen: true, countdownText: 'Modo teste — loja fechada' });
-        }
-      } else {
-        setShopStatusState(status);
-        const hour = now.getHours();
-        const isDay = hour >= 6 && hour < 18;
-        const nameToUse = clientName || 'Cliente';
-        if (isDay) {
-          setGreeting(`Bom dia, ${nameToUse}!`);
-        } else {
-          setGreeting(`Boa noite, ${nameToUse}!`);
-        }
-      }
-    };
-
-    updateStatus();
-    const interval = setInterval(updateStatus, 1000);
-    return () => clearInterval(interval);
-  }, [clientName, isAdmin]);
+  const {
+    clientName, greeting, shopStatus, showGreetingBar,
+    greetingOpacity, greetingScale, closeButtonRotate, closeButtonScale,
+    fetchProfileName, checkGreetingPreference, handleDismissGreeting,
+  } = useHomeGreeting(user, isAdmin, setIsAdmin);
 
   const fetchProducts = async (showLoadingIndicator = true) => {
     if (showLoadingIndicator) setLoading(true);
+    const now = new Date().toISOString();
     const { data, error } = await supabase
       .from('products')
-      .select('id, name, description, price, stock, active, category_id, created_at, image_url, is_bulk, is_per_meter, discount_percentage')
+      .select('id, name, description, price, stock, active, category_id, created_at, image_url, is_bulk, is_per_meter, discount_percentage, promo_end_at')
       .eq('active', true)
       .order('created_at', { ascending: false });
 
     if (!error && data) {
-      setProducts(data);
+      const normalized = data.map((p: any) =>
+        p.promo_end_at && p.promo_end_at < now ? { ...p, discount_percentage: null } : p
+      );
+      setProducts(normalized);
       if (productCacheService) {
         await productCacheService.saveProductsToCache(data);
       }
@@ -267,11 +148,10 @@ export default function useHomeScreen() {
       const now = new Date().toISOString();
       const { data, error } = await supabase
         .from('products')
-        .select('id, name, description, price, stock, active, category_id, created_at, image_url, is_bulk, is_per_meter, discount_percentage')
+        .select('id, name, description, price, stock, active, category_id, created_at, image_url, is_bulk, is_per_meter, discount_percentage, promo_end_at')
         .eq('active', true)
         .not('discount_percentage', 'is', null)
-        .or(`promo_start_at.is.null,promo_start_at.lte.${now}`)
-        .or(`promo_end_at.is.null,promo_end_at.gte.${now}`)
+        .or(`promo_end_at.gt.${now},promo_end_at.is.null`)
         .order('created_at', { ascending: false });
       if (!error && data) setPromoProducts(data);
       else setPromoProducts([]);
@@ -291,13 +171,24 @@ export default function useHomeScreen() {
         .limit(10);
       if (!error && data && data.length > 0) {
         const ids = data.map(v => v.product_id);
+        const now = new Date().toISOString();
         const { data: prodData } = await supabase
           .from('products')
-          .select('id, name, description, price, stock, active, category_id, created_at, image_url, is_bulk, is_per_meter, discount_percentage')
+          .select('id, name, description, price, stock, active, category_id, created_at, image_url, is_bulk, is_per_meter, discount_percentage, promo_end_at')
           .in('id', ids)
           .eq('active', true);
         if (prodData) {
-          const ordered = ids.map(id => prodData.find(p => p.id === id)).filter(Boolean);
+          const normalized = prodData.map((p: any) =>
+            p.promo_end_at && p.promo_end_at < now ? { ...p, discount_percentage: null } : p
+          );
+          const ordered = ids.map(id => normalized.find((p: any) => p.id === id)).filter(Boolean);
+          ordered.sort((a: any, b: any) => {
+            const aIsPromo = a.discount_percentage && a.discount_percentage > 0;
+            const bIsPromo = b.discount_percentage && b.discount_percentage > 0;
+            if (aIsPromo && !bIsPromo) return -1;
+            if (!aIsPromo && bIsPromo) return 1;
+            return 0;
+          });
           setMostViewedProducts(ordered);
         } else setMostViewedProducts([]);
       } else setMostViewedProducts([]);
@@ -323,13 +214,24 @@ export default function useHomeScreen() {
           .slice(0, 10);
         const ids = sorted.map(([id]) => id);
         if (ids.length === 0) { setMostSoldProducts([]); return; }
+        const now = new Date().toISOString();
         const { data: prodData } = await supabase
           .from('products')
-          .select('id, name, description, price, stock, active, category_id, created_at, image_url, is_bulk, is_per_meter, discount_percentage')
+          .select('id, name, description, price, stock, active, category_id, created_at, image_url, is_bulk, is_per_meter, discount_percentage, promo_end_at')
           .in('id', ids)
           .eq('active', true);
         if (prodData) {
-          const ordered = ids.map(id => prodData.find(p => p.id === id)).filter(Boolean);
+          const normalized = prodData.map((p: any) =>
+            p.promo_end_at && p.promo_end_at < now ? { ...p, discount_percentage: null } : p
+          );
+          const ordered = ids.map(id => normalized.find((p: any) => p.id === id)).filter(Boolean);
+          ordered.sort((a: any, b: any) => {
+            const aIsPromo = a.discount_percentage && a.discount_percentage > 0;
+            const bIsPromo = b.discount_percentage && b.discount_percentage > 0;
+            if (aIsPromo && !bIsPromo) return -1;
+            if (!aIsPromo && bIsPromo) return 1;
+            return 0;
+          });
           setMostSoldProducts(ordered);
         } else setMostSoldProducts([]);
       } else setMostSoldProducts([]);
@@ -338,104 +240,17 @@ export default function useHomeScreen() {
     }
   };
 
+  useHomeSubscriptions({
+    fetchProducts, fetchPromoProducts, fetchMostViewedToday, fetchMostSoldToday,
+    checkRecentEsgotados, checkDeliveryStatus,
+    fetchProfileName, checkGreetingPreference,
+    reloadCategories, setShowReactivatedAlert, setDeliveryActive,
+  });
+
   useEffect(() => {
-    fetchProducts();
-    fetchPromoProducts();
-    fetchMostViewedToday();
-    fetchMostSoldToday();
-    checkRecentEsgotados();
-    checkDeliveryStatus();
-    fetchProfileName();
-
-    const unsubscribeBlur = navigation.addListener('blur', () => {
-      setShowReactivatedAlert(false);
-    });
-
-    const unsubscribeFocus = navigation.addListener('focus', () => {
-      fetchProfileName();
-      checkGreetingPreference();
-      reloadCategories();
-    });
-
-    const channel = supabase
-      .channel(`store_settings_home_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'store_settings' },
-        async (payload) => {
-          if (payload.new && (payload.new as any).delivery_active !== undefined) {
-            const currentActive = (payload.new as any).delivery_active;
-            setDeliveryActive(currentActive);
-
-            if (typeof (global as any).refreshDeliveryTabs === 'function') {
-              (global as any).refreshDeliveryTabs();
-            }
-
-            const lastKnownRaw = await SecureStore.getItemAsync('last_known_delivery_active');
-            if (lastKnownRaw !== null) {
-              const lastKnown = lastKnownRaw === 'true';
-              if (!lastKnown && currentActive) {
-                setShowReactivatedAlert(true);
-                await SecureStore.setItemAsync('seen_reactivated_alert', 'true');
-              }
-            } else {
-              await SecureStore.setItemAsync('seen_reactivated_alert', 'true');
-            }
-
-            if (!currentActive) {
-              await SecureStore.setItemAsync('seen_reactivated_alert', 'false');
-              setShowReactivatedAlert(false);
-            }
-
-            await SecureStore.setItemAsync('last_known_delivery_active', String(currentActive));
-          }
-        }
-      )
-      .subscribe();
-
-    const prodChannel = supabase
-      .channel(`products_home_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'products' },
-        async () => {
-          await fetchProducts(false);
-          await fetchPromoProducts();
-        }
-      )
-      .subscribe();
-
-    const viewsChannel = supabase
-      .channel(`views_home_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'product_daily_views' },
-        async () => {
-          await fetchMostViewedToday();
-        }
-      )
-      .subscribe();
-
-    const ordersChannel = supabase
-      .channel(`orders_home_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'order_items' },
-        async () => {
-          await fetchMostSoldToday();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-      supabase.removeChannel(prodChannel);
-      supabase.removeChannel(viewsChannel);
-      supabase.removeChannel(ordersChannel);
-      unsubscribeBlur();
-      unsubscribeFocus();
-    };
-  }, [navigation]);
+    const interval = setInterval(() => { fetchPromoProducts(); }, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const matchesFilter = (p: any) => {
     const name = (p.name || '').toLowerCase();
@@ -462,49 +277,28 @@ export default function useHomeScreen() {
     { id: 'comprados', list: filteredSold },
   ];
 
-  const getShowDestaque = (productId: string, currentSectionId: string) => {
+  const getShowDestaque = (productId: string, _currentSectionId: string) => {
+    let count = 0;
     for (const sec of prioritySections) {
-      if (sec.list.some(p => p.id === productId)) {
-        return sec.id === currentSectionId;
-      }
+      if (sec.list.some(p => p.id === productId)) count++;
     }
-    return false;
+    return count > 1;
   };
 
   const allFiltered = useMemo(() => products.filter(matchesFilter), [products, searchText, selectedCategories, categories]);
 
   return {
-    colors,
-    isDarkMode,
-    navigation,
-    products,
-    loading,
-    refreshing,
-    searchText,
-    setSearchText,
-    selectedCategories,
-    categories,
+    colors, isDarkMode, navigation,
+    products, loading, refreshing,
+    searchText, setSearchText, selectedCategories, categories,
     addToCart,
-    esgotadoAlert,
-    setEsgotadoAlert,
-    deliveryActive,
-    showReactivatedAlert,
-    greeting,
-    shopStatus,
-    showGreetingBar,
-    greetingOpacity,
-    greetingScale,
-    closeButtonRotate,
-    closeButtonScale,
-    filteredPromo,
-    filteredViewed,
-    filteredSold,
-    allFiltered,
-    getDestaqueSections,
-    getShowDestaque,
-    handleRefresh,
-    handleCloseReactivated,
-    handleDismissGreeting,
+    esgotadoAlert, setEsgotadoAlert,
+    deliveryActive, showReactivatedAlert,
+    greeting, shopStatus, showGreetingBar,
+    greetingOpacity, greetingScale, closeButtonRotate, closeButtonScale,
+    filteredPromo, filteredViewed, filteredSold, allFiltered,
+    getDestaqueSections, getShowDestaque,
+    handleRefresh, handleCloseReactivated, handleDismissGreeting,
     clientName,
   };
 }

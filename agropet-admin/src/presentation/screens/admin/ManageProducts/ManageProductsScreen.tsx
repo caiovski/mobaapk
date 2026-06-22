@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 import { View, Text, StatusBar, TouchableOpacity, FlatList, ActivityIndicator, Animated, TextInput, Modal, RefreshControl } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import Colors from '../../../theme/colors';
@@ -11,6 +11,9 @@ import { ProductCard } from './ProductCard';
 import { FilterModal } from './FilterModal';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { styles } from './styles';
+import ScrollToTopButton from '../../../components/ScrollToTopButton';
+
+const keyExtractor = (item: any) => item.id;
 
 export default function ManageProductsScreen() {
   const h = useManageProductsScreen();
@@ -18,6 +21,8 @@ export default function ManageProductsScreen() {
   const sepColor = h.isDarkMode ? 'rgba(255,255,255,0.2)' : '#8A7268';
 
   const pulseAnim = useRef(new Animated.Value(0.6)).current;
+  const scrollRef = useRef<FlatList<any>>(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
   const [showCreateCatModal, setShowCreateCatModal] = useState(false);
   const [newCatName, setNewCatName] = useState('');
   const [newCatKeywords, setNewCatKeywords] = useState('');
@@ -53,28 +58,36 @@ export default function ManageProductsScreen() {
     return parts.length === 0 ? 'Filtro' : parts.join(' + ');
   };
 
-  /* istanbul ignore next */ const renderTag = (category: { id: string; name: string }) => {
-    const isSelected = h.activeCategories.includes(category.name);
+  /* istanbul ignore next */ const renderTag = useCallback(({ item }: { item: { id: string; name: string } }) => {
+    const isSelected = h.activeCategories.includes(item.name);
     return (
-      <TouchableOpacity key={category.id} onPress={() => h.setActiveCategories(prev => prev.includes(category.name) ? prev.filter((c: string) => c !== category.name) : [...prev, category.name])} activeOpacity={0.7}
+      <TouchableOpacity onPress={() => h.setActiveCategories(prev => prev.includes(item.name) ? prev.filter((c: string) => c !== item.name) : [...prev, item.name])} activeOpacity={0.7}
         style={[styles.tagItem, { backgroundColor: isSelected ? (h.isDarkMode ? '#5B86E5' : '#E3DAD9') : 'transparent' }]}>
-        <Text style={[styles.tagText, { color: isSelected ? (h.isDarkMode ? '#FFFFFF' : '#9C3F07') : labelColor, fontWeight: isSelected ? 'bold' : 'normal' }]}>{category.name}</Text>
+        <Text style={[styles.tagText, { color: isSelected ? (h.isDarkMode ? '#FFFFFF' : '#9C3F07') : labelColor, fontWeight: isSelected ? 'bold' : 'normal' }]}>{item.name}</Text>
       </TouchableOpacity>
     );
-  };
+  }, [h.activeCategories, h.isDarkMode, h.setActiveCategories, labelColor]);
 
-  const renderProduct = ({ item }: any) => (
+  const handleEdit = useCallback((product: any) => {
+    h.navigation.navigate('ProductEditScreen', { product });
+  }, [h.navigation]);
+
+  const handleScroll = useCallback(/* istanbul ignore next */ (e: any) => {
+    setShowScrollTop(e.nativeEvent.contentOffset.y > 500);
+  }, []);
+
+  const renderProduct = useCallback(({ item }: any) => (
     <ProductCard
       item={item}
       selectionMode={h.selectionMode}
       isSelected={h.selectedProductIds.has(item.id)}
       onToggleSelect={h.toggleSelection}
-      onEdit={(product: any) => h.navigation.navigate('ProductEditScreen', { product })}
+      onEdit={handleEdit}
       onDelete={h.deleteProduct}
       onToggleStatus={h.toggleProductStatus}
       onDismissAlert={h.dismissAlert}
     />
-  );
+  ), [h.selectionMode, h.selectedProductIds, h.toggleSelection, h.deleteProduct, h.toggleProductStatus, h.dismissAlert, handleEdit]);
 
   return (
     <View style={[styles.mainContainer, { backgroundColor: h.isDarkMode ? '#18181C' : '#F5F5F5' }]}>
@@ -90,7 +103,7 @@ export default function ManageProductsScreen() {
           <View style={[styles.filterSep, { backgroundColor: sepColor }]} />
           <Text style={[styles.categoryLabelText, { color: labelColor }]}>Categoria</Text>
           <View style={[styles.filterSep, { backgroundColor: sepColor }]} />
-          <FlatList horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoriesRow} data={h.categories} renderItem={({ item }) => renderTag(item)} keyExtractor={(item) => item.id} />
+          <FlatList horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoriesRow} data={h.categories} renderItem={renderTag} keyExtractor={keyExtractor} />
           <TouchableOpacity onPress={() => setShowCreateCatModal(true)} activeOpacity={0.7}>
             <Animated.View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: '#2BE060', alignItems: 'center', justifyContent: 'center', opacity: pulseAnim }}>
               <Feather name="plus" size={16} color="#FFF" />
@@ -137,7 +150,15 @@ export default function ManageProductsScreen() {
           <ActivityIndicator size="large" color={Colors.primaryDark} />
         </View>
       ) : (
-        <FlatList data={h.filteredProducts} keyExtractor={(item) => item.id} renderItem={renderProduct} contentContainerStyle={styles.productsList} showsVerticalScrollIndicator={false}
+        <FlatList
+          ref={scrollRef}
+          data={h.filteredProducts}
+          keyExtractor={keyExtractor}
+          renderItem={renderProduct}
+          contentContainerStyle={styles.productsList}
+          showsVerticalScrollIndicator={false}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
           refreshControl={<RefreshControl refreshing={h.refreshing} onRefresh={h.onRefresh} tintColor="#FF5C00" colors={['#FF5C00']} />}
           ListEmptyComponent={<View style={styles.emptyContainer}><Text style={[styles.emptyText, { color: h.isDarkMode ? '#8E8E93' : '#919191', textAlign: 'center' }]}>{h.hasError ? "Não foi possível carregar os produtos." : "Este produto não foi encontrado/registrado ainda."}</Text></View>} />
       )}
@@ -156,6 +177,7 @@ export default function ManageProductsScreen() {
         onManageCategories={/* istanbul ignore next */ () => h.navigation.navigate('CategoryManagerScreen')}
         allCategories={h.allCategories} categories={h.categories}
         onCreateCategory={h.createCategory} onToggleCategoryActive={h.toggleCategoryActive} onDeleteCategory={h.deleteCategory} />
+      <ScrollToTopButton scrollRef={scrollRef} visible={showScrollTop} isFlatList isDarkMode={h.isDarkMode} />
       <AdminUserMenu />
       <Modal visible={showCreateCatModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>

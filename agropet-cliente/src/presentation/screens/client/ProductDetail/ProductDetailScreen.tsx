@@ -27,6 +27,9 @@ import MapaLabel from '../../../assets/tela5/barra/MapaLabel.svg';
 import CarrinhoLabel from '../../../assets/tela5/barra/CarrinhoLabel.svg';
 import OpcoesLabel from '../../../assets/tela5/barra/OpcoesLabel.svg';
 import useProductDetailScreen from './useProductDetailScreen';
+import DiscountBanner from './components/DiscountBanner';
+import LowStockAlert from './components/LowStockAlert';
+import RelatedProducts from './components/RelatedProducts';
 import { styles } from './ProductDetailScreen.styles';
 
 export default function ProductDetailScreen() {
@@ -68,19 +71,7 @@ export default function ProductDetailScreen() {
       <StatusBar backgroundColor={colors.headerBackground} barStyle="light-content" />
       <CatalogHeader searchText={searchText} onSearchChange={setSearchText} />
       <CatalogFilter />
-      {discountPercentage != null && discountPercentage > 0 && (
-        <View style={{
-          marginHorizontal: 16, marginTop: 8, marginBottom: 4,
-          paddingVertical: 12, paddingHorizontal: 16,
-          backgroundColor: isDarkMode ? '#2A1A3A' : '#F3E5F5',
-          borderRadius: 14,
-          borderWidth: 1.5, borderColor: '#9C27B0',
-        }}>
-          <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#9C27B0', textAlign: 'center', lineHeight: 20 }}>
-            Aproveite este produto, {clientName || 'cliente'}! Ele está com {discountPercentage}% de desconto{countdownText ? ` e durará somente por ${countdownText}` : ''}!
-          </Text>
-        </View>
-      )}
+      <DiscountBanner discountPercentage={discountPercentage} clientName={clientName} countdownText={countdownText} isDarkMode={isDarkMode} />
       <ScrollView style={styles.contentScroll} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
         <View style={[styles.productCard, { backgroundColor: discountPercentage ? (isDarkMode ? '#2A1A3A' : '#FFF0F5') : colors.cardBackground, borderWidth: discountPercentage ? 2 : 0, borderColor: isDarkMode ? '#9C27B0' : '#E91E63' }]}>
           <View style={styles.topRow}>
@@ -127,22 +118,7 @@ export default function ProductDetailScreen() {
               </Text>
             </View>
           </View>
-          {stock < 10 && !dismissAlert && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 16, borderWidth: 1, borderRadius: 10, backgroundColor: isDarkMode ? '#2C1D1E' : '#FFF0F0', borderColor: '#FF3B30', marginTop: 10, marginBottom: 10, position: 'relative' }}>
-              <Feather name="alert-circle" size={16} color="#FF3B30" style={{ marginRight: 8 }} />
-              <Text style={{ fontSize: 13, fontWeight: 'bold', color: isDarkMode ? '#FF8A8A' : '#D32F2F', flexShrink: 1, lineHeight: 18, paddingRight: 20 }}>
-                {stock === 1 && discountPercentage != null && discountPercentage > 0
-                  ? 'ATENÇÃO: ÚLTIMA UNIDADE DESTE PRODUTO E COM PROMOÇÃO! APROVEITE ESTA OFERTA E SEJA O PRIMEIRO A LEVAR O PRODUTO!!!'
-                  : stock === 1
-                    ? `Última unidade deste produto, ${clientName || 'Cliente'}! Aproveite antes que esgote.`
-                    : `Atenção: Últimas unidades. Aproveite este produto, caro ${clientName || 'Cliente'}.`
-                }
-              </Text>
-              <TouchableOpacity onPress={() => setDismissAlert(true)} style={{ position: 'absolute', right: 12, top: 12, padding: 2 }}>
-                <Feather name="x" size={16} color={isDarkMode ? '#FF8A8A' : '#D32F2F'} />
-              </TouchableOpacity>
-            </View>
-          )}
+          <LowStockAlert stock={stock} dismissAlert={dismissAlert} setDismissAlert={setDismissAlert} discountPercentage={discountPercentage} clientName={clientName} isDarkMode={isDarkMode} />
           {discountPercentage != null && discountPercentage > 0 && (
             <View style={{
               position: 'absolute', top: -6, left: -6,
@@ -237,64 +213,8 @@ export default function ProductDetailScreen() {
             </TouchableOpacity>
           </View>
         </View>
-        <Text style={[styles.relatedTitle, { color: colors.textDark }]}>Produtos Relacionados:</Text>
-        {loadingRelated ? (
-          <ActivityIndicator size="small" color={colors.primaryDark} style={{ marginVertical: 20 }} />
-        ) : relatedProducts.length === 0 ? (
-          <Text style={[styles.noRelatedText, { color: colors.textDark }]}>No momento, não há nenhum produto relacionado à {product.name}</Text>
-        ) : (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.relatedScroll}>
-            {relatedProducts.map((relProduct) => {
-              const relDiscount = relProduct.discount_percentage || 0;
-              return (
-              <TouchableOpacity key={relProduct.id} onPress={() => navigation.replace('ProductDetail', { product: relProduct })} activeOpacity={0.7} style={[styles.relatedCard, { backgroundColor: colors.cardBackground, borderWidth: relDiscount > 0 ? 1.5 : 0, borderColor: relDiscount > 0 ? '#E91E63' : 'transparent' }]}>
-                {relDiscount > 0 && (
-                  <View style={{
-                    position: 'absolute', top: -4, left: -4,
-                    backgroundColor: '#FF6F00', borderRadius: 10,
-                    paddingHorizontal: 6, paddingVertical: 2,
-                    zIndex: 10, elevation: 6,
-                  }}>
-                    <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: 'bold' }}>{relDiscount}% OFF</Text>
-                  </View>
-                )}
-                <View style={[styles.relatedPhotoBox, { backgroundColor: isDarkMode ? '#1E1E24' : '#FFFFFF' }]}>
-                  {relProduct.image_url ? (
-                    <Image source={{ uri: getFirstImageUrl(relProduct.image_url) || '' }} style={styles.relatedPhoto} contentFit="cover" cachePolicy="disk" />
-                  ) : (
-                    <View style={styles.relatedPhotoPlaceholder}>
-                      <Text style={{ fontSize: 40 }}>📦</Text>
-                    </View>
-                  )}
-                </View>
-                <View style={styles.relatedInfoRow}>
-                  {!relProduct.is_bulk && !relProduct.is_per_meter ? (
-                  <TouchableOpacity style={[styles.relatedCartCircle, { backgroundColor: isDarkMode ? '#000000' : '#FFFFFF' }]} onPress={() => addToCart(relProduct)} activeOpacity={0.7}>
-                    <MaterialIcons name="shopping-cart" size={16} color={isDarkMode ? '#FFFFFF' : '#042A7D'} />
-                  </TouchableOpacity>
-                  ) : <View style={{ width: 32 }} />}
-                  <View style={styles.relatedTexts}>
-                    <Text style={[styles.relatedName, { color: colors.textDark }]} numberOfLines={1}>{relProduct.name}</Text>
-                    {relDiscount > 0 ? (
-                      <>
-                        <Text style={{ fontSize: 11, color: '#999', textDecorationLine: 'line-through' }}>
-                          R$ {relProduct.price?.toFixed(2)}
-                        </Text>
-                        <Text style={[styles.relatedPrice, { color: '#E91E63' }]}>
-                          R$ {(relProduct.price * (1 - relDiscount / 100)).toFixed(2)}
-                        </Text>
-                      </>
-                    ) : (
-                      <Text style={[styles.relatedPrice, { color: colors.textDark }]}>
-                        R$ {relProduct.price?.toFixed(2)}
-                      </Text>
-                    )}
-                  </View>
-                </View>
-              </TouchableOpacity>
-            )})}
-          </ScrollView>
-        )}
+        <RelatedProducts relatedProducts={relatedProducts} loadingRelated={loadingRelated} productName={product.name}
+          colors={colors} isDarkMode={isDarkMode} addToCart={addToCart} navigation={navigation} />
       </ScrollView>
       <View style={styles.bottomBarOuter}>
         <View style={[styles.bottomBarInner, { backgroundColor: isDarkMode ? '#000000' : colors.cardBackground }]}>

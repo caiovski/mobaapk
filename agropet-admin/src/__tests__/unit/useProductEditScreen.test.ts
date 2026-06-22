@@ -508,20 +508,170 @@ describe('useProductEditScreen', () => {
 
   it('should initialize promo date/time from product on mount', async () => {
     const orig = { ...mockRouteProduct };
+    const futureStart = new Date(Date.now() + 86400000).toISOString();
+    const futureEnd = new Date(Date.now() + 86400000 * 30).toISOString();
     mockRouteProduct = {
       ...orig,
       discount_percentage: 15,
-      promo_start_at: '2025-06-01T08:30:00.000Z',
-      promo_end_at: '2025-06-20T17:45:00.000Z',
+      promo_start_at: futureStart,
+      promo_end_at: futureEnd,
     };
     setup();
     await waitFor(() => expect(hookResult).toBeTruthy());
 
     expect(hookResult.isPromo).toBe(true);
     expect(hookResult.discountPercentage).toBe('15');
-    expect(hookResult.promoStartAt).toBe('2025-06-01T08:30:00.000Z');
-    expect(hookResult.promoEndAt).toBe('2025-06-20T17:45:00.000Z');
+    expect(hookResult.promoStartAt).toBe(futureStart);
+    expect(hookResult.promoEndAt).toBe(futureEnd);
 
     mockRouteProduct = orig;
+  });
+
+  it('should auto-clear promo when promoEndAt expires (timer interval)', async () => {
+    jest.useFakeTimers();
+    const orig = { ...mockRouteProduct };
+    const futureEnd = new Date(Date.now() + 5000).toISOString();
+    mockRouteProduct = {
+      ...orig,
+      discount_percentage: 20,
+      promo_start_at: new Date(Date.now()).toISOString(),
+      promo_end_at: futureEnd,
+    };
+    setup();
+    await waitFor(() => expect(hookResult).toBeTruthy());
+
+    expect(hookResult.isPromo).toBe(true);
+    expect(hookResult.discountPercentage).toBe('20');
+
+    await act(async () => { jest.advanceTimersByTime(20000); });
+
+    expect(hookResult.isPromo).toBe(false);
+    expect(hookResult.discountPercentage).toBe('');
+    expect(hookResult.promoEndAt).toBe('');
+    expect(hookResult.promoStartAt).toBe('');
+
+    jest.useRealTimers();
+    mockRouteProduct = orig;
+  });
+
+  it('should not clear promo when interval fires before expiry', async () => {
+    jest.useFakeTimers();
+    const orig = { ...mockRouteProduct };
+    const farFutureEnd = new Date(Date.now() + 50000).toISOString();
+    mockRouteProduct = {
+      ...orig,
+      discount_percentage: 25,
+      promo_start_at: new Date(Date.now()).toISOString(),
+      promo_end_at: farFutureEnd,
+    };
+    setup();
+    await waitFor(() => expect(hookResult).toBeTruthy());
+
+    expect(hookResult.isPromo).toBe(true);
+
+    await act(async () => { jest.advanceTimersByTime(10000); });
+
+    expect(hookResult.isPromo).toBe(true);
+    expect(hookResult.discountPercentage).toBe('25');
+
+    jest.useRealTimers();
+    mockRouteProduct = orig;
+  });
+
+  it('should handleEndPromo set showConfirmEndPromoModal to true', () => {
+    setup();
+    expect(hookResult).toBeTruthy();
+    act(() => { hookResult.handleEndPromo(); });
+    expect(hookResult.showConfirmEndPromoModal).toBe(true);
+  });
+
+  it('should confirmEndPromo update DB and clear promo state on success', async () => {
+    const savedProduct = { ...mockRouteProduct };
+    mockRouteProduct = { ...savedProduct, id: 'p-confirm-test' };
+    setup();
+    await waitFor(() => expect(hookResult).toBeTruthy());
+
+    const { supabase: supabaseMock } = require('../../data/datasources/supabase/client');
+    const eqMock = jest.fn().mockResolvedValue({ error: null });
+    (supabaseMock.from as jest.Mock).mockImplementation(() => ({
+      update: jest.fn().mockReturnValue({ eq: eqMock }),
+    }));
+
+    await act(async () => {
+      await hookResult.confirmEndPromo();
+    });
+
+    expect(eqMock).toHaveBeenCalledWith('id', 'p-confirm-test');
+    expect(hookResult.isPromo).toBe(false);
+    expect(hookResult.discountPercentage).toBe('');
+    expect(hookResult.promoStartAt).toBe('');
+    expect(hookResult.promoEndAt).toBe('');
+    expect(Alert.alert).toHaveBeenCalledWith('Sucesso', 'Promoção encerrada com sucesso!');
+    mockRouteProduct = savedProduct;
+  });
+
+  it('should confirmEndPromo alert error on update failure', async () => {
+    setup();
+    await waitFor(() => expect(hookResult).toBeTruthy());
+
+    const { supabase: supabaseMock } = require('../../data/datasources/supabase/client');
+    const eqMock = jest.fn().mockResolvedValue({ error: new Error('DB error') });
+    (supabaseMock.from as jest.Mock).mockImplementation(() => ({
+      update: jest.fn().mockReturnValue({ eq: eqMock }),
+    }));
+
+    await act(async () => {
+      await hookResult.confirmEndPromo();
+    });
+
+    expect(Alert.alert).toHaveBeenCalledWith('Erro', 'Não foi possível encerrar a promoção.');
+    expect(hookResult.showConfirmEndPromoModal).toBe(false);
+  });
+
+  it('should confirmEndPromo work without product id', async () => {
+    mockRouteProduct = { name: 'No ID' };
+    setup();
+    await waitFor(() => expect(hookResult).toBeTruthy());
+
+    await act(async () => {
+      await hookResult.confirmEndPromo();
+    });
+
+    expect(hookResult.isPromo).toBe(false);
+    expect(Alert.alert).toHaveBeenCalledWith('Sucesso', 'Promoção encerrada com sucesso!');
+    mockRouteProduct = { id: 'p-test', name: 'Test Product', price: 50, stock: 10, critical_stock: 3, moderate_stock: 8, active: true, description: 'Test', image_url: null };
+  });
+
+  it('should handle base64 photo upload in handleConfirm via openCamera', async () => {
+    setup();
+    await waitFor(() => expect(hookResult).toBeTruthy());
+
+    const { launchCameraAsync } = require('expo-image-picker');
+    launchCameraAsync.mockResolvedValueOnce({
+      canceled: false,
+      assets: [{ uri: 'camera-uri', base64: 'ZmFrZWJhc2U2NA==' }],
+    });
+
+    await act(async () => {
+      await hookResult.openCamera();
+    });
+
+    expect(hookResult.photos.length).toBe(1);
+    expect(hookResult.photos[0].base64).toBe('ZmFrZWJhc2U2NA==');
+
+    act(() => {
+      hookResult.setName('Base64 Test');
+      hookResult.setPrice('50');
+      hookResult.setQuantity('10');
+      hookResult.setCriticalStock('3');
+      hookResult.setModerateStock('8');
+    });
+
+    await act(async () => {
+      await hookResult.handleConfirm();
+    });
+
+    const { supabase: supabaseMock } = require('../../data/datasources/supabase/client');
+    expect(supabaseMock.storage.from).toHaveBeenCalledWith('products');
   });
 });

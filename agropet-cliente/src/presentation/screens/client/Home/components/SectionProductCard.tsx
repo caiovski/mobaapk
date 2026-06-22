@@ -9,10 +9,12 @@ interface SectionProductCardProps {
   item: any;
   onVerItem: (product: any) => void;
   addToCart?: (product: any) => void;
+  showDestaque?: boolean;
+  destaqueCount?: number;
   cardWidth: number;
 }
 
-export default function SectionProductCard({ item, onVerItem, addToCart, cardWidth }: SectionProductCardProps) {
+export default function SectionProductCard({ item, onVerItem, addToCart, showDestaque, destaqueCount, cardWidth }: SectionProductCardProps) {
   const { colors, isDarkMode } = useTheme();
   const photoWidth = cardWidth - 20;
   const photoHeight = (photoWidth * 120) / 129;
@@ -46,6 +48,16 @@ export default function SectionProductCard({ item, onVerItem, addToCart, cardWid
           zIndex: 10, elevation: 6,
         }}>
           <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: 'bold' }}>{discount}% OFF</Text>
+        </View>
+      )}
+      {showDestaque && destaqueCount && destaqueCount > 1 && (
+        <View style={{
+          position: 'absolute', top: -6, right: -6,
+          backgroundColor: '#6A1B9A', borderRadius: 10,
+          paddingHorizontal: 6, paddingVertical: 2,
+          zIndex: 10, elevation: 8,
+        }}>
+          <Text style={{ color: '#FFF', fontSize: 10, fontWeight: 'bold' }}>⭐ Destaque {destaqueCount}x</Text>
         </View>
       )}
       <View style={{

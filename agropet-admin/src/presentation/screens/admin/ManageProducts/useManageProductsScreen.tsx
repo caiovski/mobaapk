@@ -109,9 +109,9 @@ export function useManageProductsScreen() {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  const dismissAlert = (id: string) => setDismissedProductIds(prev => { const n = new Set(prev); n.add(id); return n; });
+  const dismissAlert = useCallback((id: string) => setDismissedProductIds(prev => { const n = new Set(prev); n.add(id); return n; }), []);
 
-  const toggleProductStatus = async (product: any) => {
+  const toggleProductStatus = useCallback(async (product: any) => {
     const newStatus = !product.active;
     if (newStatus && (product.stock || 0) === 0) {
       Alert.alert('Aviso', 'Você não pode ativar este produto pois o mesmo encontra-se sem estoque. Mas não se preocupe! Assim que você editar esse produto e colocar mais estoque, ele reativará automaticamente. Fantástico, não?');
@@ -120,9 +120,9 @@ export function useManageProductsScreen() {
     const { error } = await supabase.from('products').update({ active: newStatus }).eq('id', product.id);
     if (!error) setProducts(prev => prev.map(p => p.id === product.id ? { ...p, active: newStatus } : p));
     else Alert.alert('Erro', 'Não foi possível alterar o status do produto.');
-  };
+  }, []);
 
-  const deleteProduct = (id: string) => {
+  const deleteProduct = useCallback((id: string) => {
     Alert.alert('Atenção', 'Tem certeza que deseja excluir este produto? Ele será removido permanentemente.', [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Excluir', style: 'destructive', onPress: async () => {
@@ -131,7 +131,7 @@ export function useManageProductsScreen() {
         else Alert.alert('Erro', 'Não foi possível excluir o produto.');
       }}
     ]);
-  };
+  }, []);
 
   const filteredProductsRaw = useMemo(() => products.filter(p => {
     const name = (p.name || '').toLowerCase();
@@ -256,11 +256,13 @@ export function useManageProductsScreen() {
     finally { setLoading(false); }
   };
 
-  const toggleSelection = (id: string) => {
-    const n = new Set(selectedProductIds);
-    n.has(id) ? n.delete(id) : n.add(id);
-    setSelectedProductIds(n);
-  };
+  const toggleSelection = useCallback((id: string) => {
+    setSelectedProductIds(prev => {
+      const n = new Set(prev);
+      n.has(id) ? n.delete(id) : n.add(id);
+      return n;
+    });
+  }, []);
 
   return {
     colors, isDarkMode, navigation,

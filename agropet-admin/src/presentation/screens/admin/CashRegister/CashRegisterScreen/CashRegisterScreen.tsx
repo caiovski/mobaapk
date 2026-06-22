@@ -8,6 +8,7 @@ import { DenominationRow } from './components/DenominationRow';
 import { GlowButton } from './components/GlowButton';
 import { useCashRegisterScreen } from './useCashRegisterScreen';
 import { styles } from './CashRegisterScreen.styles';
+import ScrollToTopButton from '../../../../components/ScrollToTopButton';
 
 import type { DenominationInput } from '../../../../../db/schema';
 
@@ -34,6 +35,8 @@ const COINS: { key: DenomKey; label: string }[] = [
 export default function CashRegisterScreen() {
   const h = useCashRegisterScreen();
   const isDarkMode = h.isDarkMode;
+  const scrollRef = useRef<ScrollView>(null);
+  const [showScrollTop, setShowScrollTop] = React.useState(false);
   const textColor = isDarkMode ? '#FFFFFF' : '#1C2434';
   const bgColor = isDarkMode ? '#18181C' : '#F5F5F5';
   const cardBg = isDarkMode ? '#2E2E38' : '#FFFFFF';
@@ -196,7 +199,13 @@ export default function CashRegisterScreen() {
           onChange={h.handleDateChange} themeVariant={h.isDarkMode ? 'dark' : 'light'} />
       )}
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        onScroll={/* istanbul ignore next */ (e) => setShowScrollTop(e.nativeEvent.contentOffset.y > 500)}
+        scrollEventThrottle={16}
+      >
         {renderSection('Cédulas', BILLS)}
         {renderSection('Moedas', COINS)}
         {renderTotals()}
@@ -221,6 +230,7 @@ export default function CashRegisterScreen() {
         {h.isViewMode ? renderViewModeActions() : renderEditModeActions()}
       </ScrollView>
 
+      <ScrollToTopButton scrollRef={scrollRef} visible={showScrollTop} isDarkMode={isDarkMode} />
       <AdminUserMenu />
     </View>
   );

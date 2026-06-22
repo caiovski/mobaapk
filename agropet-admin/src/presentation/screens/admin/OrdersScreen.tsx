@@ -1,16 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, Alert, ScrollView } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { supabase } from '../../../data/datasources/supabase/client';
 import { useTheme } from '../../contexts/ThemeContext';
+
+const keyExtractor = (item: any) => item.id;
 
 export default function OrdersScreen({ navigation }: any) {
   const { colors, isDarkMode } = useTheme();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     setLoading(true);
-    // Realiza um 'Join' brutal passando por 3 Tabelas para pegar Tudo
     const { data, error } = await supabase
       .from('orders')
       .select(`
@@ -34,9 +35,9 @@ export default function OrdersScreen({ navigation }: any) {
       fetchOrders();
     });
     return unsubscribe;
-  }, [navigation]);
+  }, [navigation, fetchOrders]);
 
-  const renderItem = ({ item }: any) => {
+  const renderItem = useCallback(({ item }: any) => {
     // Formata a data bonitinha
     const orderDate = new Date(item.created_at).toLocaleString('pt-BR');
     
@@ -65,9 +66,9 @@ export default function OrdersScreen({ navigation }: any) {
           <Text style={[styles.method, { backgroundColor: isDarkMode ? '#1E1E24' : '#e2e6ef', color: colors.textDark }]}>PAGTO: {item.payment_method?.toUpperCase() || ''}</Text>
           <Text style={styles.totalText}>Total: R$ {(item.total ?? 0).toFixed(2)}</Text>
         </View>
-      </View>
-    );
-  };
+        </View>
+      );
+  }, [colors, isDarkMode]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.white }]}>
@@ -78,7 +79,7 @@ export default function OrdersScreen({ navigation }: any) {
       ) : (
         <FlatList
           data={orders}
-          keyExtractor={(item) => item.id}
+          keyExtractor={keyExtractor}
           renderItem={renderItem}
           contentContainerStyle={{ padding: 10, paddingBottom: 20 }}
         />

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,10 +6,11 @@ import {
   Modal,
   FlatList,
   ActivityIndicator,
-  ScrollView,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { styles } from './AdminSettingsScreen.styles';
+
+const deletedUserKeyExtractor = (item: DeletedUser) => item.id;
 
 interface DeletedUser {
   id: string;
@@ -72,7 +73,7 @@ export default function DeletedUsersModal({
           ) : (
             <FlatList
               data={deletedUsers}
-              keyExtractor={(item) => item.id}
+              keyExtractor={deletedUserKeyExtractor}
               renderItem={({ item }) => (
                 <View style={{
                   backgroundColor: isDarkMode ? '#2E2E38' : '#F5F5F5',

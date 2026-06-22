@@ -17,6 +17,7 @@ import SundayHolidayModal from './components/SundayHolidayModal';
 import TransactionModal from './components/TransactionModal';
 
 import AdminBottomTabBar from './components/AdminBottomTabBar';
+import ScrollToTopButton from '../../../components/ScrollToTopButton';
 import AdminPDVBottomBar from './components/AdminPDVBottomBar';
 import CheckIcon from '../../../assets/tela7/registrar/Adicionar/Remover/Check.svg';
 import type { SortOption } from './components/PDVSection';
@@ -39,6 +40,9 @@ export default function AdminDashboardScreen() {
   const manualOverride = useRef(false);
   const scrollYRef = useRef(0);
 
+  const scrollRef = useRef<ScrollView>(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
   const stickyAnim = useRef(new Animated.Value(1)).current;
   /* istanbul ignore next */
   useEffect(() => {
@@ -54,6 +58,7 @@ export default function AdminDashboardScreen() {
     const y = event.nativeEvent.contentOffset.y;
     const prevY = scrollYRef.current;
     scrollYRef.current = y;
+    setShowScrollTop(y > 300);
     if (!manualOverride.current) {
       if (y > 80 && y > prevY) {
         setStickyExpanded(false);
@@ -270,6 +275,7 @@ export default function AdminDashboardScreen() {
       )}
 
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={[
           styles.scrollContent,
           d.isPDVMode && { paddingBottom: Platform.OS === 'ios' ? 160 : 140 }
@@ -364,6 +370,8 @@ export default function AdminDashboardScreen() {
           />
         )}
       </ScrollView>
+
+      <ScrollToTopButton scrollRef={scrollRef} visible={showScrollTop} isDarkMode={isDarkMode} />
 
       <CheckoutModal
         visible={d.showCheckoutModal}

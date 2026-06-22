@@ -83,11 +83,11 @@ export default function PromoCard({ item, addToCart, onVerItem, showDestaque, de
       {showDestaque && destaqueCount && destaqueCount > 1 && (
         <View style={{
           position: 'absolute', top: -6, right: -6,
-          backgroundColor: '#FFD600', borderRadius: 10,
+          backgroundColor: '#6A1B9A', borderRadius: 10,
           paddingHorizontal: 6, paddingVertical: 2,
           zIndex: 10, elevation: 8,
         }}>
-          <Text style={{ color: '#000', fontSize: 10, fontWeight: 'bold' }}>⭐ Destaque {destaqueCount}x</Text>
+          <Text style={{ color: '#FFF', fontSize: 10, fontWeight: 'bold' }}>⭐ Destaque {destaqueCount}x</Text>
         </View>
       )}
       <View style={{

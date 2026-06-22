@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import { initDB } from '../../data/datasources/sqlite/database';
 import * as SQLite from 'expo-sqlite';
+import { supabase } from '../../data/datasources/supabase/client';
 
 export interface CartItem {
   id: string;
@@ -47,12 +48,49 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const loadCart = async (database: SQLite.SQLiteDatabase) => {
     try {
       const allRows: any[] = await database.getAllAsync('SELECT * FROM cart');
-      const mapped: CartItem[] = (allRows || []).map(row => ({
+      let mapped: CartItem[] = (allRows || []).map(row => ({
         ...row,
         is_bulk: row.is_bulk === 1 || row.is_bulk === true,
         is_per_meter: row.is_per_meter === 1 || row.is_per_meter === true,
         discount_percentage: row.discount_percentage ?? null,
       }));
+
+      const discounted = mapped.filter(item => item.discount_percentage != null);
+      if (discounted.length > 0) {
+        try {
+          const ids = discounted.map(item => item.id);
+          const now = new Date().toISOString();
+          const { data: products } = await supabase
+            .from('products')
+            .select('id, discount_percentage, promo_end_at')
+            .in('id', ids);
+          if (products) {
+            let needsUpdate = false;
+            for (const item of discounted) {
+              const current = products.find((p: any) => p.id === item.id);
+              if (!current || !current.discount_percentage || (current.promo_end_at && current.promo_end_at < now)) {
+                await database.runAsync(
+                  'UPDATE cart SET discount_percentage = ? WHERE id = ?',
+                  [null, item.id]
+                );
+                needsUpdate = true;
+              }
+            }
+            if (needsUpdate) {
+              const updatedRows: any[] = await database.getAllAsync('SELECT * FROM cart');
+              mapped = (updatedRows || []).map(row => ({
+                ...row,
+                is_bulk: row.is_bulk === 1 || row.is_bulk === true,
+                is_per_meter: row.is_per_meter === 1 || row.is_per_meter === true,
+                discount_percentage: row.discount_percentage ?? null,
+              }));
+            }
+          }
+        } catch (e) {
+          console.warn('Failed to validate cart discounts:', e);
+        }
+      }
+
       setCart(mapped);
     } catch (error) {
       console.error('Failed to load cart from SQLite:', error);

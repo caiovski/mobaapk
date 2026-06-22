@@ -187,7 +187,8 @@ describe('RegisterScreen', () => {
     expect(mockReplace).toHaveBeenCalledWith('ClientLoginScreen');
   });
 
-  it('should handle signUp when session is returned immediately', async () => {
+  it('should show success alert when session is returned immediately', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     mockSignUp.mockResolvedValue({ data: { session: { id: 'sess-1' } }, error: null });
     const { getByPlaceholderText, getByTestId, UNSAFE_getAllByType } = render(<RegisterScreen />);
 
@@ -213,7 +214,9 @@ describe('RegisterScreen', () => {
     });
 
     expect(mockSignUp).toHaveBeenCalled();
-    expect(mockNavigate).toHaveBeenCalledWith('OTPVerificationScreen', { email: 'client@email.com', type: 'signup' });
+    expect(alertSpy).toHaveBeenCalledWith('Sucesso', 'Cadastro realizado com sucesso!');
+    expect(mockNavigate).not.toHaveBeenCalled();
+    alertSpy.mockRestore();
   });
 
   it('should cover stylesheet iOS branch', () => {

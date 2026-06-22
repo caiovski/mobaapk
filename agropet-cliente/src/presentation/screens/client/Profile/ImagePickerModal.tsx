@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Modal } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
-import { styles } from './ProfileScreen.styles';
+import { modalStyles as styles } from './ProfileScreen.modalStyles';
 
 type Props = { h: any };
 

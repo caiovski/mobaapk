@@ -145,8 +145,21 @@ export default function CartScreen() {
               <View style={[styles.colSep, { backgroundColor: h.colors.backgroundLight }]} />
 
               <View style={styles.colInfo}>
-                <Text style={[styles.colHeader, { color: h.colors.textDark }]}>Cód. do{'\n'}produto</Text>
-                <Text style={[styles.colValue, { color: h.colors.textDark }]}>{item.id?.substring(0, 7) || '---'}</Text>
+                <Text style={[styles.colHeader, { color: h.colors.textDark }]}>Preço</Text>
+                {item.discount_percentage ? (
+                  <>
+                    <Text style={{ fontSize: 11, color: '#999', textDecorationLine: 'line-through' }}>
+                      R$ {item.price.toFixed(2)}
+                    </Text>
+                    <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#E91E63' }}>
+                      R$ {(item.price * (1 - item.discount_percentage / 100)).toFixed(2)}
+                    </Text>
+                  </>
+                ) : (
+                  <Text style={[styles.colValue, { color: h.colors.textDark }]}>
+                    R$ {item.price.toFixed(2)}{item.is_bulk ? ' /Kg' : item.is_per_meter ? ' /m' : ''}
+                  </Text>
+                )}
               </View>
 
               <View style={[styles.colSep, { backgroundColor: h.colors.backgroundLight }]} />

@@ -9,6 +9,7 @@ const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
     backgroundColor: '#F5F5F5',
+    position: 'relative',
   },
 
   productsGrid: {

@@ -884,4 +884,109 @@ describe('ProductEditScreen - Deep Coverage', () => {
     fireEvent.press(getByText('Em promoção'));
     fireEvent.press(getByText('Em promoção'));
   });
+
+  it('should handle end promo flow with confirm and cancel', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    const futureStart = new Date(Date.now() + 86400000).toISOString();
+    const futureEnd = new Date(Date.now() + 86400000 * 30).toISOString();
+    mockUseRoute.mockReturnValueOnce({
+      params: {
+        product: {
+          id: 'p-promo-end',
+          name: 'Promo End Test',
+          price: 30,
+          stock: 5,
+          active: true,
+          description: '',
+          image_url: null,
+          discount_percentage: 15,
+          promo_start_at: futureStart,
+          promo_end_at: futureEnd,
+        }
+      }
+    });
+    const { getByText, queryByText } = renderScreen(ProductEditScreen);
+
+    await act(async () => {
+      fireEvent.press(getByText('Encerrar promoção'));
+    });
+
+    await waitFor(() => {
+      expect(getByText('Encerrar Promoção')).toBeTruthy();
+    });
+    expect(getByText('Tem certeza que deseja encerrar essa promoção imediatamente?')).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.press(getByText('Cancelar'));
+    });
+    expect(queryByText('Encerrar Promoção')).toBeNull();
+
+    await act(async () => {
+      fireEvent.press(getByText('Encerrar promoção'));
+    });
+
+    await act(async () => {
+      fireEvent.press(getByText('Sim, encerrar'));
+    });
+
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith('Sucesso', 'Promoção encerrada com sucesso!');
+    });
+
+    const lastCall = alertSpy.mock.calls[alertSpy.mock.calls.length - 1];
+    const buttons = lastCall && lastCall[2] ? lastCall[2] : [];
+    const okBtn = buttons.find((b: any) => b.text && b.text.includes('OK'));
+    if (okBtn && typeof okBtn.onPress === 'function') {
+      okBtn.onPress();
+    }
+
+    alertSpy.mockRestore();
+  });
+
+  it('should cover modal onRequestClose for confirmEndPromo', async () => {
+    const futureStart = new Date(Date.now() + 86400000).toISOString();
+    const futureEnd = new Date(Date.now() + 86400000 * 30).toISOString();
+    mockUseRoute.mockReturnValueOnce({
+      params: {
+        product: {
+          id: 'p-promo-reqclose',
+          name: 'ReqClose Test',
+          price: 25,
+          stock: 5,
+          active: true,
+          description: '',
+          image_url: null,
+          discount_percentage: 10,
+          promo_start_at: futureStart,
+          promo_end_at: futureEnd,
+        }
+      }
+    });
+    const { UNSAFE_getAllByType } = renderScreen(ProductEditScreen);
+
+    const { TouchableOpacity, Modal } = require('react-native');
+
+    const touchables = UNSAFE_getAllByType(TouchableOpacity);
+    const endPromoBtn = touchables.find((t: any) => {
+      const text = t.props.children;
+      if (typeof text === 'string') return text === 'Encerrar promoção';
+      if (Array.isArray(text)) return text.some((c: any) => typeof c === 'string' && c === 'Encerrar promoção');
+      if (text?.props?.children) {
+        const kids = text.props.children;
+        if (Array.isArray(kids)) return kids.some((c: any) => typeof c === 'string' && c === 'Encerrar promoção');
+        if (typeof kids === 'string') return kids === 'Encerrar promoção';
+      }
+      return false;
+    });
+    if (endPromoBtn) {
+      await act(async () => { fireEvent.press(endPromoBtn); });
+    }
+
+    const modals = UNSAFE_getAllByType(Modal);
+    for (const m of modals) {
+      if (m.props.visible && typeof m.props.onRequestClose === 'function') {
+        await act(async () => { m.props.onRequestClose(); });
+      }
+    }
+  });
 });

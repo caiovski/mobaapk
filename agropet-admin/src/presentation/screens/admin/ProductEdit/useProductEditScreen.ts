@@ -27,6 +27,7 @@ export function useProductEditScreen() {
   const [searchText, setSearchText] = useState('');
   const [activeCategory, setActiveCategory] = useState<string | null>(product?.category_id || null);
   const [showImagePickerOptions, setShowImagePickerOptions] = useState(false);
+  const [showConfirmEndPromoModal, setShowConfirmEndPromoModal] = useState(false);
   const [photos, setPhotos] = useState<Array<{ uri: string; base64?: string | null }>>(() => {
     return getAllImageUrls(product?.image_url).map(u => ({ uri: u, base64: null }));
   });
@@ -37,8 +38,10 @@ export function useProductEditScreen() {
   const [quantity, setQuantity] = useState(product?.stock?.toString() || '');
   const [criticalStock, setCriticalStock] = useState(product?.critical_stock?.toString() || '');
   const [moderateStock, setModerateStock] = useState(product?.moderate_stock?.toString() || '');
-  const [discountPercentage, setDiscountPercentage] = useState(product?.discount_percentage?.toString() || '');
-  const [isPromo, setIsPromo] = useState(() => !!product?.discount_percentage);
+  const promoFromProduct = product?.promo_end_at && new Date(product.promo_end_at).getTime() <= Date.now()
+    ? null : product?.discount_percentage;
+  const [discountPercentage, setDiscountPercentage] = useState(promoFromProduct?.toString() || '');
+  const [isPromo, setIsPromo] = useState(() => !!promoFromProduct);
   const [promoStartAt, setPromoStartAt] = useState(product?.promo_start_at || '');
   const [promoEndAt, setPromoEndAt] = useState(product?.promo_end_at || '');
   const [promoStartDate, setPromoStartDate] = useState(() => product?.promo_start_at ? new Date(product.promo_start_at) : new Date());
@@ -116,14 +119,15 @@ export function useProductEditScreen() {
       setQuantity(product?.stock?.toString() || '');
       setCriticalStock(product?.critical_stock?.toString() || '');
       setModerateStock(product?.moderate_stock?.toString() || '');
-      setDiscountPercentage(product?.discount_percentage?.toString() || '');
-      setIsPromo(!!product?.discount_percentage);
-      setPromoStartAt(product?.promo_start_at || '');
-      setPromoEndAt(product?.promo_end_at || '');
-      setPromoStartDate(product?.promo_start_at ? new Date(product.promo_start_at) : new Date());
-      setPromoEndDate(product?.promo_end_at ? new Date(product.promo_end_at) : new Date());
-      setPromoStartTime(product?.promo_start_at ? new Date(product.promo_start_at) : new Date(new Date().setHours(8, 0, 0, 0)));
-      setPromoEndTime(product?.promo_end_at ? new Date(product.promo_end_at) : new Date(new Date().setHours(18, 0, 0, 0)));
+      const paramsPromoExpired = product?.promo_end_at && new Date(product.promo_end_at).getTime() <= Date.now();
+      setDiscountPercentage(paramsPromoExpired ? '' : (product?.discount_percentage?.toString() || ''));
+      setIsPromo(!paramsPromoExpired && !!product?.discount_percentage);
+      setPromoStartAt(paramsPromoExpired ? '' : (product?.promo_start_at || ''));
+      setPromoEndAt(paramsPromoExpired ? '' : (product?.promo_end_at || ''));
+      setPromoStartDate(paramsPromoExpired ? new Date() : (product?.promo_start_at ? new Date(product.promo_start_at) : new Date()));
+      setPromoEndDate(paramsPromoExpired ? new Date() : (product?.promo_end_at ? new Date(product.promo_end_at) : new Date()));
+      setPromoStartTime(paramsPromoExpired ? new Date(new Date().setHours(8, 0, 0, 0)) : (product?.promo_start_at ? new Date(product.promo_start_at) : new Date(new Date().setHours(8, 0, 0, 0))));
+      setPromoEndTime(paramsPromoExpired ? new Date(new Date().setHours(18, 0, 0, 0)) : (product?.promo_end_at ? new Date(product.promo_end_at) : new Date(new Date().setHours(18, 0, 0, 0))));
       const newType: 'unit' | 'bulk' | 'per_meter' = product?.is_bulk ? 'bulk' : product?.is_per_meter ? 'per_meter' : 'unit';
       setProductType(newType);
       setSelectedUnit('kg');
@@ -136,9 +140,35 @@ export function useProductEditScreen() {
       setIsEditingQty(false);
       
       /* istanbul ignore next */ if (product?.id) {
-        const { data } = await supabase.from('products').select('image_url').eq('id', product.id).single();
-        if (data && data.image_url) {
-          setPhotos(getAllImageUrls(data.image_url).map(u => ({ uri: u, base64: null })));
+        // Fetch fresh data to guarantee we don't have stale route params
+        const { data } = await supabase.from('products').select('*').eq('id', product.id).single();
+        if (data) {
+          if (data.image_url) {
+            setPhotos(getAllImageUrls(data.image_url).map(u => ({ uri: u, base64: null })));
+          } else {
+            setPhotos([]);
+          }
+          setName(data.name || '');
+          setDescription(data.description || '');
+          setPrice(data.price?.toString() || '');
+          setCriticalStock(data.critical_stock?.toString() || '');
+          setModerateStock(data.moderate_stock?.toString() || '');
+          const dbPromoExpired = data.promo_end_at && new Date(data.promo_end_at).getTime() <= Date.now();
+          setDiscountPercentage(dbPromoExpired ? '' : (data.discount_percentage?.toString() || ''));
+          setIsPromo(!dbPromoExpired && !!data.discount_percentage);
+          setPromoStartAt(dbPromoExpired ? '' : (data.promo_start_at || ''));
+          setPromoEndAt(dbPromoExpired ? '' : (data.promo_end_at || ''));
+          setPromoStartDate(dbPromoExpired ? new Date() : (data.promo_start_at ? new Date(data.promo_start_at) : new Date()));
+          setPromoEndDate(dbPromoExpired ? new Date() : (data.promo_end_at ? new Date(data.promo_end_at) : new Date()));
+          setPromoStartTime(dbPromoExpired ? new Date(new Date().setHours(8, 0, 0, 0)) : (data.promo_start_at ? new Date(data.promo_start_at) : new Date(new Date().setHours(8, 0, 0, 0))));
+          setPromoEndTime(dbPromoExpired ? new Date(new Date().setHours(18, 0, 0, 0)) : (data.promo_end_at ? new Date(data.promo_end_at) : new Date(new Date().setHours(18, 0, 0, 0))));
+          const updatedType: 'unit' | 'bulk' | 'per_meter' = data.is_bulk ? 'bulk' : data.is_per_meter ? 'per_meter' : 'unit';
+          setProductType(updatedType);
+          if (updatedType === 'bulk' && data.stock != null) {
+            setQuantity((data.stock / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 }));
+          } else {
+            setQuantity(data.stock?.toString() || '');
+          }
         } else {
           setPhotos([]);
         }
@@ -148,6 +178,20 @@ export function useProductEditScreen() {
     });
     return unsubscribe;
   }, [navigation, product]);
+
+  useEffect(() => {
+    if (!promoEndAt) return;
+    const interval = setInterval(() => {
+      if (new Date(promoEndAt).getTime() <= Date.now()) {
+        setIsPromo(false);
+        setDiscountPercentage('');
+        setPromoStartAt('');
+        setPromoEndAt('');
+        setShowPromoDateModal(false);
+      }
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [promoEndAt]);
 
   const handleSelectPhoto = () => setShowImagePickerOptions(true);
 
@@ -265,6 +309,35 @@ export function useProductEditScreen() {
     setShowPromoDateModal(false);
   };
 
+  const handleEndPromo = () => {
+    setShowConfirmEndPromoModal(true);
+  };
+
+  const confirmEndPromo = async () => {
+    if (product?.id) {
+      const { error } = await supabase.from('products').update({
+        discount_percentage: null,
+        promo_start_at: null,
+        promo_end_at: null
+      }).eq('id', product.id);
+      
+      if (error) {
+        Alert.alert('Erro', 'Não foi possível encerrar a promoção.');
+        setShowConfirmEndPromoModal(false);
+        return;
+      }
+    }
+    
+    setIsPromo(false);
+    setDiscountPercentage('');
+    setPromoStartAt('');
+    setPromoEndAt('');
+    setPromoStartDate(new Date());
+    setPromoEndDate(new Date());
+    setShowConfirmEndPromoModal(false);
+    Alert.alert('Sucesso', 'Promoção encerrada com sucesso!');
+  };
+
   const formatDateTime = (dateStr: string) => {
     if (!dateStr) return 'Selecionar';
     const d = new Date(dateStr);
@@ -297,7 +370,8 @@ export function useProductEditScreen() {
     promoStartTime, setPromoStartTime, promoEndTime, setPromoEndTime,
     showPromoDateModal, setShowPromoDateModal,
     showTimePicker, setShowTimePicker, showDatePicker, setShowDatePicker,
-    confirmPromoDateTime, formatDateTime,
+    confirmPromoDateTime, formatDateTime, handleEndPromo, confirmEndPromo,
+    showConfirmEndPromoModal, setShowConfirmEndPromoModal,
     isEditingName, setIsEditingName,
     isEditingDesc, setIsEditingDesc,
     isEditingPrice, setIsEditingPrice,

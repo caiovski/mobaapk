@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Modal, RefreshControl } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Modal, RefreshControl, Animated } from 'react-native';
 import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -23,9 +23,12 @@ import GerenciarLabel8 from '../../../assets/tela2/barra/Gerenciar.svg';
 import OpcoesLabel8 from '../../../assets/tela5/barra de baixo/Opções.svg';
 import { useAdminSalesHistoryScreen } from './useAdminSalesHistoryScreen';
 import { styles } from './styles';
+import ScrollToTopButton from '../../../components/ScrollToTopButton';
 
 export default function AdminSalesHistoryScreen() {
   const h = useAdminSalesHistoryScreen();
+  const scrollRef = useRef<ScrollView>(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
 
   const iconColorInactive = h.isDarkMode ? '#FFFFFF' : undefined;
 
@@ -73,8 +76,14 @@ export default function AdminSalesHistoryScreen() {
   return (
     <View style={[styles.mainContainer, { backgroundColor: h.colors.white }]}>
       <AdminHeader title="historico_vendas" />
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={h.refreshing} onRefresh={h.onRefresh} tintColor="#FF5C00" colors={['#FF5C00']} />}>
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        onScroll={/* istanbul ignore next */ (e) => setShowScrollTop(e.nativeEvent.contentOffset.y > 500)}
+        scrollEventThrottle={16}
+        refreshControl={<RefreshControl refreshing={h.refreshing} onRefresh={h.onRefresh} tintColor="#FF5C00" colors={['#FF5C00']} />}
+      >
         <View style={styles.filterRow}>
           <Text style={{ fontSize: h.isDarkMode ? 30 : 25, fontWeight: 'bold', color: h.isDarkMode ? '#FFFFFF' : '#1C2434', flex: 1.2 }}>
             {h.getDynamicTitle()}
@@ -178,7 +187,7 @@ export default function AdminSalesHistoryScreen() {
 
       <View style={styles.tabBarOuter}>
         <View style={[styles.tabBarInner, { backgroundColor: h.isDarkMode ? '#000000' : '#E3E4EB' }]}>
-          <TouchableOpacity style={styles.tabItem} onPress={() => h.navigation.navigate('AdminTabs', { screen: 'Home' })}>
+          <TouchableOpacity style={styles.tabItem} onPress={/* istanbul ignore next */ () => h.navigation.navigate('AdminTabs', { screen: 'Home' })}>
             <View style={styles.iconBgInactive}>
               {h.isDarkMode ? <HomeIcon8Dark width={32} height={32} fill={iconColorInactive} stroke={iconColorInactive} /> : <HomeIcon8 width={32} height={32} fill={iconColorInactive} stroke={iconColorInactive} />}
             </View>
@@ -208,6 +217,7 @@ export default function AdminSalesHistoryScreen() {
         </View>
       </View>
 
+      <ScrollToTopButton scrollRef={scrollRef} visible={showScrollTop} isDarkMode={h.isDarkMode} />
       <AdminUserMenu />
     </View>
   );

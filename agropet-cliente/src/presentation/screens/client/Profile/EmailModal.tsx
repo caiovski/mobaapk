@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, TextInput, Text, TouchableOpacity, Modal } from 'react-native';
-import { styles } from './ProfileScreen.styles';
+import { modalStyles as styles } from './ProfileScreen.modalStyles';
 
 type Props = { h: any };
 

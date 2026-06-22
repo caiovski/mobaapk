@@ -8,6 +8,13 @@ jest.mock('../../data/datasources/sqlite/database', () => ({
   initDB: jest.fn(),
 }));
 
+const mockSupabaseFrom = jest.fn();
+jest.mock('../../data/datasources/supabase/client', () => ({
+  supabase: {
+    from: (...args: any[]) => mockSupabaseFrom(...args),
+  },
+}));
+
 const mockDb = {
   getAllAsync: jest.fn().mockResolvedValue([]),
   getFirstAsync: jest.fn().mockResolvedValue(null),
@@ -44,6 +51,11 @@ describe('CartContext & CartProvider', () => {
     mockDb.getAllAsync.mockResolvedValue([]);
     mockDb.getFirstAsync.mockResolvedValue(null);
     mockDb.runAsync.mockResolvedValue({ changes: 1, lastInsertRowId: 1 });
+    mockSupabaseFrom.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        in: jest.fn().mockResolvedValue({ data: null, error: null }),
+      }),
+    });
   });
 
   it('should initialize the database, load cart items and calculate total', async () => {
@@ -560,6 +572,14 @@ describe('CartContext & CartProvider', () => {
   });
 
   it('should calculate total with discount_percentage on cart item', async () => {
+    mockSupabaseFrom.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        in: jest.fn().mockResolvedValue({
+          data: [{ id: 'p-6', discount_percentage: 10, promo_end_at: null }],
+          error: null,
+        }),
+      }),
+    });
     mockDb.getAllAsync.mockResolvedValue([
       { id: 'p-6', name: 'Discounted Item', price: 100, quantity: 2, image_url: '', is_bulk: 0, is_per_meter: 0, discount_percentage: 10 },
     ]);
@@ -572,6 +592,135 @@ describe('CartContext & CartProvider', () => {
 
     await waitFor(() => {
       expect(getByTestId('cart-total').props.children).toBe(180);
+    });
+  });
+
+  it('should remove expired discount when promo has ended', async () => {
+    const futureDate = new Date(Date.now() + 86400000).toISOString();
+    const pastDate = new Date(Date.now() - 86400000).toISOString();
+    mockSupabaseFrom.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        in: jest.fn().mockResolvedValue({
+          data: [
+            { id: 'p-active', discount_percentage: 15, promo_end_at: futureDate },
+            { id: 'p-expired', discount_percentage: 20, promo_end_at: pastDate },
+            { id: 'p-no-end', discount_percentage: 10, promo_end_at: null },
+          ],
+          error: null,
+        }),
+      }),
+    });
+    // Second getAllAsync returns updated data (discount cleared for p-expired)
+    mockDb.getAllAsync
+      .mockResolvedValueOnce([
+        { id: 'p-active', name: 'Active Promo', price: 50, quantity: 2, image_url: '', is_bulk: 0, is_per_meter: 0, discount_percentage: 15 },
+        { id: 'p-expired', name: 'Expired Promo', price: 100, quantity: 1, image_url: '', is_bulk: 0, is_per_meter: 0, discount_percentage: 20 },
+        { id: 'p-no-end', name: 'No End Promo', price: 30, quantity: 3, image_url: '', is_bulk: 0, is_per_meter: 0, discount_percentage: 10 },
+      ])
+      .mockResolvedValueOnce([
+        { id: 'p-active', name: 'Active Promo', price: 50, quantity: 2, image_url: '', is_bulk: 0, is_per_meter: 0, discount_percentage: 15 },
+        { id: 'p-expired', name: 'Expired Promo', price: 100, quantity: 1, image_url: '', is_bulk: 0, is_per_meter: 0, discount_percentage: null },
+        { id: 'p-no-end', name: 'No End Promo', price: 30, quantity: 3, image_url: '', is_bulk: 0, is_per_meter: 0, discount_percentage: 10 },
+      ]);
+
+    const { getByTestId } = render(
+      <CartProvider>
+        <CartConsumer />
+      </CartProvider>
+    );
+
+    await waitFor(() => {
+      expect(mockDb.runAsync).toHaveBeenCalledWith(
+        'UPDATE cart SET discount_percentage = ? WHERE id = ?',
+        [null, 'p-expired']
+      );
+      expect(getByTestId('cart-length').props.children).toBe(3);
+    });
+
+    // p-active: 2 × (50 × 0.85) = 85, p-expired: 1 × 100 = 100 (discount removed), p-no-end: 3 × (30 × 0.9) = 81
+    // total = 85 + 100 + 81 = 266
+    await waitFor(() => {
+      expect(getByTestId('cart-total').props.children).toBe(266);
+    });
+  });
+
+  it('should handle supabase failure gracefully when validating discounts', async () => {
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    mockSupabaseFrom.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        in: jest.fn().mockRejectedValue(new Error('Network error')),
+      }),
+    });
+    mockDb.getAllAsync.mockResolvedValue([
+      { id: 'p-7', name: 'Discount Item', price: 50, quantity: 1, image_url: '', is_bulk: 0, is_per_meter: 0, discount_percentage: 10 },
+    ]);
+
+    const { getByTestId } = render(
+      <CartProvider>
+        <CartConsumer />
+      </CartProvider>
+    );
+
+    await waitFor(() => {
+      expect(warnSpy).toHaveBeenCalled();
+    });
+
+    // Discount should remain since validation failed
+    await waitFor(() => {
+      expect(getByTestId('cart-total').props.children).toBe(45);
+    });
+
+    warnSpy.mockRestore();
+  });
+
+  it('should keep discount when supabase returns no data', async () => {
+    mockDb.getAllAsync.mockResolvedValue([
+      { id: 'p-8', name: 'No Data Item', price: 40, quantity: 2, image_url: '', is_bulk: 0, is_per_meter: 0, discount_percentage: 25 },
+    ]);
+
+    const { getByTestId } = render(
+      <CartProvider>
+        <CartConsumer />
+      </CartProvider>
+    );
+
+    // No data returned → products is null → discount kept
+    await waitFor(() => {
+      expect(getByTestId('cart-total').props.children).toBe(60);
+    });
+  });
+
+  it('should handle null updatedRows after clearing expired discount', async () => {
+    const futureDate = new Date(Date.now() + 86400000).toISOString();
+    const pastDate = new Date(Date.now() - 86400000).toISOString();
+    mockSupabaseFrom.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        in: jest.fn().mockResolvedValue({
+          data: [
+            { id: 'p-expired-2', discount_percentage: 20, promo_end_at: pastDate },
+          ],
+          error: null,
+        }),
+      }),
+    });
+    mockDb.getAllAsync
+      .mockResolvedValueOnce([
+        { id: 'p-expired-2', name: 'Expired Item', price: 30, quantity: 1, image_url: '', is_bulk: 0, is_per_meter: 0, discount_percentage: 20 },
+      ])
+      .mockResolvedValueOnce(null);
+
+    const { getByTestId } = render(
+      <CartProvider>
+        <CartConsumer />
+      </CartProvider>
+    );
+
+    await waitFor(() => {
+      expect(mockDb.runAsync).toHaveBeenCalledWith(
+        'UPDATE cart SET discount_percentage = ? WHERE id = ?',
+        [null, 'p-expired-2']
+      );
+      expect(getByTestId('cart-length').props.children).toBe(0);
     });
   });
 });

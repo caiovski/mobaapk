@@ -312,18 +312,26 @@ export default function ProductEditScreen() {
                   />
                   <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#9C27B0', marginLeft: 4 }}>%</Text>
                 </Animated.View>
-                <Animated.View style={[styles.stockFieldContainer, { borderColor: h.isDarkMode ? '#4A4A54' : '#9C27B0', backgroundColor: h.isDarkMode ? '#2C2C36' : '#F5E6FF', opacity: Animated.add(0.8, Animated.multiply(h.promoGlow, 0.2)) }]}>
-                  <Feather name="calendar" size={16} color={h.isDarkMode ? '#FF9800' : '#9C27B0'} style={{ marginRight: 6 }} />
+                <Animated.View style={[styles.stockFieldContainer, { borderColor: '#9C27B0', backgroundColor: h.isDarkMode ? '#2C1D3D' : '#F5E6FF', opacity: Animated.add(0.8, Animated.multiply(h.promoGlow, 0.2)) }]}>
+                  <Feather name="calendar" size={16} color="#9C27B0" style={{ marginRight: 6 }} />
                   <TouchableOpacity
                     onPress={() => h.setShowPromoDateModal(true)}
                     style={{ flex: 1, paddingVertical: 8 }}
                     activeOpacity={0.7}
                   >
-                    <Text style={{ fontSize: 14, fontWeight: 'bold', color: h.promoStartAt ? (h.isDarkMode ? '#FF9800' : '#9C27B0') : (h.isDarkMode ? 'rgba(255,152,0,0.5)' : 'rgba(156,39,176,0.5)') }}>
+                    <Text style={{ fontSize: 14, fontWeight: 'bold', color: h.promoStartAt ? '#9C27B0' : 'rgba(156,39,176,0.5)' }}>
                       {h.formatDateTime(h.promoStartAt)} → {h.formatDateTime(h.promoEndAt)}
                     </Text>
                   </TouchableOpacity>
                 </Animated.View>
+                <TouchableOpacity
+                  onPress={h.handleEndPromo}
+                  style={{ marginTop: 12, paddingVertical: 12, borderRadius: 10, backgroundColor: 'rgba(255, 59, 48, 0.1)', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255, 59, 48, 0.3)' }}
+                  activeOpacity={0.7}
+                >
+                  <Feather name="power" size={16} color="#FF3B30" style={{ marginRight: 8 }} />
+                  <Text style={{ color: '#FF3B30', fontWeight: 'bold' }}>Encerrar promoção</Text>
+                </TouchableOpacity>
               </>
             )}
           </View>
@@ -470,6 +478,44 @@ export default function ProductEditScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/*
+        istanbul ignore next
+      */
+      true && (
+        <Modal visible={h.showConfirmEndPromoModal} transparent animationType="fade" onRequestClose={() => h.setShowConfirmEndPromoModal(false)}>
+          <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => h.setShowConfirmEndPromoModal(false)}>
+            <View style={[styles.modalContainer, { backgroundColor: h.isDarkMode ? '#1E1E24' : '#FFFFFF', padding: 24 }]}>
+              <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(255, 59, 48, 0.1)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                  <Feather name="alert-triangle" size={32} color="#FF3B30" />
+                </View>
+                <Text style={[styles.modalTitle, { color: h.colors.textDark, textAlign: 'center', marginBottom: 8 }]}>Encerrar Promoção</Text>
+                <Text style={{ fontSize: 15, color: h.isDarkMode ? '#A8A8B3' : '#666666', textAlign: 'center', lineHeight: 22 }}>
+                  Tem certeza que deseja encerrar essa promoção imediatamente?
+                </Text>
+              </View>
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <TouchableOpacity
+                  onPress={() => h.setShowConfirmEndPromoModal(false)}
+                  style={{ flex: 1, paddingVertical: 14, borderRadius: 10, borderWidth: 1.5, borderColor: h.isDarkMode ? '#4A4A54' : '#E3E4EB', alignItems: 'center' }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={{ color: h.colors.textDark, fontSize: 15, fontWeight: 'bold' }}>Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={h.confirmEndPromo}
+                  style={{ flex: 1, paddingVertical: 14, borderRadius: 10, backgroundColor: '#FF3B30', alignItems: 'center' }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: 'bold' }}>Sim, encerrar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </TouchableOpacity>
+        </Modal>
+      )}
+
       <AdminUserMenu />
     </View>
   );

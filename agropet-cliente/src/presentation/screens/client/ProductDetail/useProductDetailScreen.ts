@@ -5,33 +5,10 @@ import { useUserMenu } from '../../../contexts/UserMenuContext';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { supabase } from '../../../../data/datasources/supabase/client';
 import { useFilter } from '../../../contexts/FilterContext';
-import { fetchActiveCategories } from '../../../../services/categoryService';
 import { AuthContext } from '../../../contexts/AuthContext';
 import { formatStock } from '../../../../utils/formatStock';
-
-function getFirstImageUrl(url: string | null | undefined): string | null {
-  if (!url) return null;
-  const trimmed = url.trim();
-  if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
-    try {
-      const parsed = JSON.parse(trimmed);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed[0];
-    } catch (_) {}
-  }
-  return url;
-}
-
-function getAllImageUrls(url: string | null | undefined): string[] {
-  if (!url) return [];
-  const trimmed = url.trim();
-  if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
-    try {
-      const parsed = JSON.parse(trimmed);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed.filter(u => !!u);
-    } catch (_) {}
-  }
-  return [url];
-}
+import { getFirstImageUrl, getAllImageUrls } from './useProductDetailUtils';
+import useRelatedProducts from './useRelatedProducts';
 
 export default function useProductDetailScreen() {
   const { colors, isDarkMode } = useTheme();
@@ -55,12 +32,10 @@ export default function useProductDetailScreen() {
   const product = route.params?.product;
   const [stock, setStock] = useState(product?.stock ?? 0);
   const [quantity, setQuantity] = useState(1);
-  const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
   const [bulkUnit, setBulkUnit] = useState<'kg' | 'g'>('kg');
   const [bulkInput, setBulkInput] = useState('1');
   const isBulk = product?.is_bulk === true;
   const isPerMeter = product?.is_per_meter === true;
-  const [loadingRelated, setLoadingRelated] = useState(true);
   const [discountPercentage, setDiscountPercentage] = useState<number | null>(
     product?.discount_percentage ?? null
   );
@@ -77,7 +52,7 @@ export default function useProductDetailScreen() {
       const now = new Date();
       const end = new Date(promoEndAt);
       const diff = end.getTime() - now.getTime();
-      if (diff <= 0) { setCountdownText('Promoção encerrada'); return; }
+      if (diff <= 0) { setCountdownText(''); setDiscountPercentage(null); return; }
       const days = Math.floor(diff / (1000 * 60 * 60 * 24));
       const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
@@ -164,8 +139,16 @@ export default function useProductDetailScreen() {
           filter: `id=eq.${product.id}`,
         },
         (payload: any) => {
-          if (payload.new && typeof payload.new.stock === 'number') {
-            setStock(payload.new.stock);
+          if (payload.new) {
+            if (typeof payload.new.stock === 'number') {
+              setStock(payload.new.stock);
+            }
+            if (payload.new.discount_percentage !== undefined) {
+              setDiscountPercentage(payload.new.discount_percentage);
+            }
+            if (payload.new.promo_end_at !== undefined) {
+              setPromoEndAt(payload.new.promo_end_at);
+            }
           }
         }
       )
@@ -202,73 +185,7 @@ export default function useProductDetailScreen() {
     fetchProfileName();
   }, [user?.id]);
 
-  const fetchRelatedProducts = async () => {
-    try {
-      setLoadingRelated(true);
-      const { data, error } = await supabase
-        .from('products')
-        .select('id, name, description, price, stock, active, category_id, created_at, image_url, is_bulk, is_per_meter, discount_percentage')
-        .eq('active', true)
-        .neq('id', product.id);
-
-      if (!error && data) {
-        const currentName = (product.name || '').toLowerCase();
-        const currentDesc = (product.description || '').toLowerCase();
-        let matchedKeywords: string[] = [];
-
-        try {
-          const allCategories = await fetchActiveCategories();
-          for (const cat of allCategories) {
-            if (cat.keywords.some(kw => currentName.includes(kw.toLowerCase()) || currentDesc.includes(kw.toLowerCase()))) {
-              matchedKeywords = [...matchedKeywords, ...cat.keywords];
-            }
-          }
-        } catch (_) {}
-
-        let filtered = data.filter(p => {
-          const name = (p.name || '').toLowerCase();
-          const description = (p.description || '').toLowerCase();
-          return matchedKeywords.some(kw =>
-            name.includes(kw.toLowerCase()) ||
-            description.includes(kw.toLowerCase())
-          );
-        });
-
-        if (filtered.length === 0) {
-          const cleanText = `${currentName} ${currentDesc}`
-            .replace(/[^\w\sà-úÀ-Ú]/g, '')
-            .toLowerCase();
-          const words = cleanText
-            .split(/\s+/)
-            .filter((w: string) => w.length > 3);
-
-          filtered = data.filter(p => {
-            const name = (p.name || '').toLowerCase();
-            const description = (p.description || '').toLowerCase();
-            return words.some((w: string) =>
-              name.includes(w) ||
-              description.includes(w)
-            );
-          });
-        }
-
-        filtered.sort((a, b) => {
-          const aDisc = a.discount_percentage ? 1 : 0;
-          const bDisc = b.discount_percentage ? 1 : 0;
-          return bDisc - aDisc;
-        });
-        setRelatedProducts(filtered);
-      }
-    } catch (err) {
-      console.log(err);
-    } finally {
-      setLoadingRelated(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchRelatedProducts();
-  }, [product]);
+  const { relatedProducts, loadingRelated } = useRelatedProducts(product);
 
   const increment = () => setQuantity(q => q + 1);
   const decrement = () => setQuantity(q => (q > 1 ? q - 1 : 1));
@@ -291,35 +208,21 @@ export default function useProductDetailScreen() {
   };
 
   return {
-    colors,
-    isDarkMode,
-    navigation,
-    product,
-    stock,
-    quantity,
-    increment,
-    decrement,
+    colors, isDarkMode, navigation,
+    product, stock, quantity,
+    increment, decrement,
     handleAddToCart,
-    isBulk,
-    isPerMeter,
+    isBulk, isPerMeter,
     bulkUnit, setBulkUnit,
     bulkInput, setBulkInput,
     formatStock,
-    relatedProducts,
-    loadingRelated,
-    photos,
-    currentPhotoIndex,
-    setCurrentPhotoIndex,
-    dismissAlert,
-    setDismissAlert,
+    relatedProducts, loadingRelated,
+    photos, currentPhotoIndex, setCurrentPhotoIndex,
+    dismissAlert, setDismissAlert,
     clientName,
-    searchText,
-    setSearchText,
-    getFirstImageUrl,
-    addToCart,
-    discountPercentage,
-    discountedPrice,
-    countdownText,
-    promoEndAt,
+    searchText, setSearchText,
+    getFirstImageUrl, addToCart,
+    discountPercentage, discountedPrice,
+    countdownText, promoEndAt,
   };
 }
