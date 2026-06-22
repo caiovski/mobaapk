@@ -1,1 +1,3 @@
 trigger_ci client on github
+
+do trigger 1;
