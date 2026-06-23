@@ -29,7 +29,7 @@ export default function ProductGridBlock({ products, offset = 0, revealedRef, ha
             paddingRight: isSecondInRow ? 16 : 8,
             marginBottom: 6,
           }}>
-            <SlideInWrapper visible={adjustedIdx < 4 || revealedRef.current.has(adjustedIdx)} delay={adjustedIdx % 2 === 0 ? 0 : 60}>
+            <SlideInWrapper visible={true} delay={adjustedIdx % 2 === 0 ? 0 : 60}>
               <ProductCardContent product={item} addToCart={addToCart} onNavigate={(p) => navigation.navigate('ProductDetail', { product: p })} />
             </SlideInWrapper>
           </View>

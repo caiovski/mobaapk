@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  View, StatusBar, TouchableOpacity, ScrollView, ActivityIndicator, RefreshControl, Dimensions,
+  View, StatusBar, Text, ActivityIndicator, RefreshControl, Dimensions, FlatList, ScrollView,
 } from 'react-native';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { CatalogHeader, CatalogFilter } from '../../../components/CatalogHeader';
@@ -17,9 +17,13 @@ import HomeBanners from './components/HomeBanners';
 import HomeGreetingBar from './components/HomeGreetingBar';
 import SlideInWrapper from './components/SlideInWrapper';
 import InterstitialRow from './components/InterstitialRow';
-import ProductCardContent from './components/ProductCardContent';
 import ProductGridBlock from './components/ProductGridBlock';
 import ScrollToTopButton from '../../../components/ScrollToTopButton';
+
+type GridItem = 
+  | { type: 'product-row', products: any[], offset: number }
+  | { type: 'frete-banner' }
+  | { type: 'promo-banner' };
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = (SCREEN_WIDTH - 48) / 2;
@@ -41,10 +45,9 @@ export default function HomeScreen() {
   const revealedRef = React.useRef<Set<number>>(new Set());
   const itemPositions = React.useRef<Map<number, number>>(new Map());
   const scrollPos = React.useRef(0);
-  const scrollRef = React.useRef<ScrollView>(null);
+  const scrollRef = React.useRef<FlatList>(null);
   const [showScrollTop, setShowScrollTop] = React.useState(false);
   const grid1Y = React.useRef(0);
-  const grid2Y = React.useRef(0);
 
   const tryReveal = React.useCallback((index: number) => {
     if (!revealedRef.current.has(index)) {
@@ -76,35 +79,6 @@ export default function HomeScreen() {
     if (changed) setRenderTick(t => t + 1);
   }, [WIN_H]);
 
-  const onGrid1Layout = React.useCallback((event: any) => {
-    grid1Y.current = event.nativeEvent.layout.y;
-    if (grid1Y.current > 0) {
-      // Re-check items already registered
-      let changed = false;
-      itemPositions.current.forEach((absY, idx) => {
-        if (idx < 6 && absY < scrollPos.current + WIN_H + 100 && !revealedRef.current.has(idx)) {
-          revealedRef.current.add(idx);
-          changed = true;
-        }
-      });
-      if (changed) setRenderTick(t => t + 1);
-    }
-  }, [WIN_H]);
-
-  const onGrid2Layout = React.useCallback((event: any) => {
-    grid2Y.current = event.nativeEvent.layout.y;
-    if (grid2Y.current > 0) {
-      let changed = false;
-      itemPositions.current.forEach((absY, idx) => {
-        if (idx >= 6 && absY < scrollPos.current + WIN_H + 100 && !revealedRef.current.has(idx)) {
-          revealedRef.current.add(idx);
-          changed = true;
-        }
-      });
-      if (changed) setRenderTick(t => t + 1);
-    }
-  }, [WIN_H]);
-
   const [horizontalReady, setHorizontalReady] = React.useState(false);
   React.useEffect(() => {
     const t = setTimeout(() => setHorizontalReady(true), 80);
@@ -114,8 +88,6 @@ export default function HomeScreen() {
   React.useEffect(() => {
     revealedRef.current.clear();
     itemPositions.current.clear();
-    grid1Y.current = 0;
-    grid2Y.current = 0;
   }, [sectionFilter]);
 
   const filteredProducts = React.useMemo(() => {
@@ -128,11 +100,9 @@ export default function HomeScreen() {
   }, [sectionFilter, filteredPromo, filteredViewed, filteredSold, allFiltered]);
 
   const showSections = sectionFilter === 'all';
-
   const now = new Date();
   const currentHour = now.getHours();
   const isViewableHours = currentHour >= 8 && currentHour <= 23;
-
   const hasPromo = filteredPromo.length > 0;
   const hasViewed = filteredViewed.length > 0;
   const hasSold = filteredSold.length > 0 && isViewableHours;
@@ -149,6 +119,106 @@ export default function HomeScreen() {
   const interstitialProducts = React.useMemo(() => products.slice(0, interstitialCount), [products, interstitialCount]);
 
   const gridProducts = allFiltered;
+
+  const listData = React.useMemo(() => {
+    const data: GridItem[] = [];
+    let currentPair: any[] = [];
+    
+    for (let i = 0; i < gridProducts.length; i++) {
+      currentPair.push(gridProducts[i]);
+      if (currentPair.length === 2 || i === gridProducts.length - 1) {
+        data.push({ type: 'product-row', products: currentPair, offset: i - currentPair.length + 1 });
+        currentPair = [];
+      }
+      
+      if (i === 5) {
+        data.push({ type: 'frete-banner' });
+      } else if (i === 11) {
+        data.push({ type: 'promo-banner' });
+      }
+    }
+    return data;
+  }, [gridProducts]);
+
+  const renderHeader = () => (
+    <View style={{ paddingBottom: 12 }}>
+      {showSections && hasPromo && (
+        <>
+          <SectionSeparator title="Produtos em Promoção" containerStyle={{ marginTop: 12 }} onVerTudo={() => navigation.navigate('VerTudo', { title: 'Produtos em Promoção', products: filteredPromo })} />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ paddingLeft: 16, marginVertical: 10, paddingVertical: 6 }}>
+            {filteredPromo.map((item, idx) => (
+              <SlideInWrapper key={item.id} visible={horizontalReady} delay={idx * 80}>
+                <PromoCard
+                  item={item}
+                  addToCart={addToCart}
+                  onVerItem={(p) => navigation.navigate('ProductDetail', { product: p })}
+                  showDestaque={getShowDestaque(item.id, 'promocao')}
+                  destaqueCount={getDestaqueSections(item.id)}
+                  cardWidth={CARD_WIDTH}
+                />
+              </SlideInWrapper>
+            ))}
+          </ScrollView>
+          <View style={{ marginHorizontal: 16, marginTop: 8, height: 1.5, backgroundColor: isDarkMode ? '#3E3E4A' : '#D0D0D0' }} />
+        </>
+      )}
+
+      {showSections && sectionList.length >= 2 && interstitialProducts.length >= 2 && (
+        <InterstitialRow products={interstitialProducts} addToCart={addToCart} navigation={navigation} horizontalReady={horizontalReady} marginTop={20} />
+      )}
+
+      {showSections && hasViewed && (
+        <SectionRow title="Mais Acessados Hoje" products={filteredViewed} horizontalReady={horizontalReady}
+          onVerTudo={() => navigation.navigate('VerTudo', { title: 'Mais Acessados Hoje', products: filteredViewed })}
+          renderItem={(item) => <SectionProductCard item={item} addToCart={addToCart} onVerItem={(p) => navigation.navigate('ProductDetail', { product: p })} showDestaque={getShowDestaque(item.id, 'acessados')} destaqueCount={getDestaqueSections(item.id)} cardWidth={CARD_WIDTH} />}
+          separatorStyle={{ marginTop: sectionList[0] === 'acessados' ? 12 : 20 }} />
+      )}
+
+      {showSections && sectionList.length >= 3 && interstitialProducts.length >= 4 && (
+        <InterstitialRow products={[interstitialProducts[2], interstitialProducts[3]]} addToCart={addToCart} navigation={navigation} horizontalReady={horizontalReady} marginTop={20} />
+      )}
+
+      {showSections && hasSold && (
+        <SectionRow title="Mais Comprados Hoje" products={filteredSold} horizontalReady={horizontalReady}
+          onVerTudo={() => navigation.navigate('VerTudo', { title: 'Mais Comprados Hoje', products: filteredSold })}
+          renderItem={(item) => <SectionProductCard item={item} addToCart={addToCart} onVerItem={(p) => navigation.navigate('ProductDetail', { product: p })} showDestaque={getShowDestaque(item.id, 'comprados')} destaqueCount={getDestaqueSections(item.id)} cardWidth={CARD_WIDTH} />}
+          separatorStyle={{ marginTop: sectionList[0] === 'comprados' ? 12 : 20 }} />
+      )}
+
+      {showSections && sectionList.length === 0 && interstitialProducts.length >= 2 && (
+        <InterstitialRow products={interstitialProducts} addToCart={addToCart} navigation={navigation} horizontalReady={horizontalReady} marginTop={12} />
+      )}
+    </View>
+  );
+
+  const renderItem = React.useCallback(({ item }: { item: GridItem }) => {
+    if (item.type === 'frete-banner') {
+      return <View style={{ marginVertical: 12 }}><FreteBanner /></View>;
+    }
+    if (item.type === 'promo-banner') {
+      return (
+        <View style={{ marginVertical: 12 }}>
+          <PromoBanner clientName={clientName} onPress={() => navigation.navigate('VerTudo', { title: 'Produtos em Promoção', products: filteredPromo })} />
+        </View>
+      );
+    }
+    
+    const isFirstRow = item.offset === 0;
+    const paddingTop = isFirstRow ? (showSections ? (sectionList.length > 0 ? 32 : 16) : 28) : undefined;
+    
+    return (
+      <ProductGridBlock
+        products={item.products}
+        offset={item.offset}
+        revealedRef={revealedRef}
+        handleGridItemLayout={handleGridItemLayout}
+        gridY={grid1Y}
+        addToCart={addToCart}
+        navigation={navigation}
+        paddingTop={paddingTop}
+      />
+    );
+  }, [clientName, filteredPromo, navigation, revealedRef, handleGridItemLayout, grid1Y, addToCart, showSections, sectionList]);
 
   return (
     <View style={[styles.mainContainer, { backgroundColor: colors.backgroundLight }]}>
@@ -175,115 +245,24 @@ export default function HomeScreen() {
           </Text>
         </ScrollView>
       ) : (
-        <ScrollView
+        <FlatList
           ref={scrollRef}
+          data={listData}
+          keyExtractor={(item, idx) => item.type === 'product-row' ? `row-${item.offset}` : `${item.type}-${idx}`}
+          renderItem={renderItem}
+          ListHeaderComponent={renderHeader}
+          ListFooterComponent={<View style={{ height: 24 }} />}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
           showsVerticalScrollIndicator={false}
-          nestedScrollEnabled
           onScroll={handleMainScroll}
           scrollEventThrottle={16}
           contentContainerStyle={{ paddingBottom: 120 }}
-        >
-          {showSections && hasPromo && (
-            <>
-              <SectionSeparator title="Produtos em Promoção" containerStyle={{ marginTop: 12 }} onVerTudo={() => navigation.navigate('VerTudo', { title: 'Produtos em Promoção', products: filteredPromo })} />
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ paddingLeft: 16, marginVertical: 10, paddingVertical: 6 }}>
-                {filteredPromo.map((item, idx) => (
-                  <SlideInWrapper key={item.id} visible={horizontalReady} delay={idx * 80}>
-                    <PromoCard
-                      item={item}
-                      addToCart={addToCart}
-                      onVerItem={(p) => navigation.navigate('ProductDetail', { product: p })}
-                      showDestaque={getShowDestaque(item.id, 'promocao')}
-                      destaqueCount={getDestaqueSections(item.id)}
-                      cardWidth={CARD_WIDTH}
-                    />
-                  </SlideInWrapper>
-                ))}
-              </ScrollView>
-              <View style={{ marginHorizontal: 16, marginTop: 8, height: 1.5, backgroundColor: isDarkMode ? '#3E3E4A' : '#D0D0D0' }} />
-            </>
-          )}
-
-          {showSections && sectionList.length >= 2 && interstitialProducts.length >= 2 && (
-            <InterstitialRow products={interstitialProducts} addToCart={addToCart} navigation={navigation} horizontalReady={horizontalReady} marginTop={20} />
-          )}
-
-          {showSections && hasViewed && (
-            <SectionRow title="Mais Acessados Hoje" products={filteredViewed} horizontalReady={horizontalReady}
-              onVerTudo={() => navigation.navigate('VerTudo', { title: 'Mais Acessados Hoje', products: filteredViewed })}
-              renderItem={(item) => <SectionProductCard item={item} addToCart={addToCart} onVerItem={(p) => navigation.navigate('ProductDetail', { product: p })} showDestaque={getShowDestaque(item.id, 'acessados')} destaqueCount={getDestaqueSections(item.id)} cardWidth={CARD_WIDTH} />}
-              separatorStyle={{ marginTop: sectionList[0] === 'acessados' ? 12 : 20 }} />
-          )}
-
-          {showSections && sectionList.length >= 3 && interstitialProducts.length >= 4 && (
-            <InterstitialRow products={[interstitialProducts[2], interstitialProducts[3]]} addToCart={addToCart} navigation={navigation} horizontalReady={horizontalReady} marginTop={20} />
-          )}
-
-          {showSections && hasSold && (
-            <SectionRow title="Mais Comprados Hoje" products={filteredSold} horizontalReady={horizontalReady}
-              onVerTudo={() => navigation.navigate('VerTudo', { title: 'Mais Comprados Hoje', products: filteredSold })}
-              renderItem={(item) => <SectionProductCard item={item} addToCart={addToCart} onVerItem={(p) => navigation.navigate('ProductDetail', { product: p })} showDestaque={getShowDestaque(item.id, 'comprados')} destaqueCount={getDestaqueSections(item.id)} cardWidth={CARD_WIDTH} />}
-              separatorStyle={{ marginTop: sectionList[0] === 'comprados' ? 12 : 20 }} />
-          )}
-
-          {showSections && sectionList.length === 0 && interstitialProducts.length >= 2 && (
-            <InterstitialRow products={interstitialProducts} addToCart={addToCart} navigation={navigation} horizontalReady={horizontalReady} marginTop={12} />
-          )}
-
-          <ProductGridBlock
-            products={gridProducts.slice(0, 6)}
-            offset={0}
-            revealedRef={revealedRef}
-            handleGridItemLayout={handleGridItemLayout}
-            gridY={grid1Y}
-            addToCart={addToCart}
-            navigation={navigation}
-            paddingTop={showSections ? (sectionList.length > 0 ? 32 : 16) : 28}
-            onLayout={onGrid1Layout}
-          />
-
-          {gridProducts.length > 6 && (
-            <View style={{ marginVertical: 12 }}>
-              <FreteBanner />
-            </View>
-          )}
-
-          <ProductGridBlock
-            products={gridProducts.slice(6, 12)}
-            offset={6}
-            revealedRef={revealedRef}
-            handleGridItemLayout={handleGridItemLayout}
-            gridY={grid2Y}
-            addToCart={addToCart}
-            navigation={navigation}
-            onLayout={onGrid2Layout}
-          />
-
-          {gridProducts.length > 12 && (
-            <View style={{ marginVertical: 12 }}>
-              <PromoBanner
-                clientName={clientName}
-                onPress={() => navigation.navigate('VerTudo', { title: 'Produtos em Promoção', products: filteredPromo })}
-              />
-            </View>
-          )}
-
-          {gridProducts.length > 12 && (
-            <ProductGridBlock
-              products={gridProducts.slice(12)}
-              offset={12}
-              revealedRef={revealedRef}
-              handleGridItemLayout={handleGridItemLayout}
-              gridY={grid2Y}
-              addToCart={addToCart}
-              navigation={navigation}
-            />
-          )}
-          <View style={{ height: 24 }} />
-        </ScrollView>
+          initialNumToRender={8}
+          maxToRenderPerBatch={8}
+          windowSize={5}
+        />
       )}
-      <ScrollToTopButton scrollRef={scrollRef} visible={showScrollTop} isDarkMode={isDarkMode} />
+      <ScrollToTopButton scrollRef={scrollRef} visible={showScrollTop} isDarkMode={isDarkMode} isFlatList={true} />
     </View>
   );
 }
