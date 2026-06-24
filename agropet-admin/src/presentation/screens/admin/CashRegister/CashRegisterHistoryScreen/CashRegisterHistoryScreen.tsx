@@ -27,14 +27,6 @@ export default function CashRegisterHistoryScreen() {
     }
   }, [h.highlightDate]);
 
-  if (h.loading) {
-    return (
-      <View style={[styles.mainContainer, { backgroundColor: bgColor, justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color="#FF5C00" />
-      </View>
-    );
-  }
-
   const renderItem = useCallback(({ item }: any) => {
     const isHighlighted = item.date === h.highlightDate;
     const cardOpacity = highlightAnim.interpolate({
@@ -78,6 +70,14 @@ export default function CashRegisterHistoryScreen() {
       </Animated.View>
     );
   }, [h.highlightDate, h.handleView, highlightAnim, cardBg, textColor, greenColor, redColor]);
+
+  if (h.loading) {
+    return (
+      <View style={[styles.mainContainer, { backgroundColor: bgColor, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color="#FF5C00" />
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.mainContainer, { backgroundColor: bgColor }]}>

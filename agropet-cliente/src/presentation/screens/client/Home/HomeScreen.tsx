@@ -250,7 +250,7 @@ export default function HomeScreen() {
           data={listData}
           keyExtractor={(item, idx) => item.type === 'product-row' ? `row-${item.offset}` : `${item.type}-${idx}`}
           renderItem={renderItem}
-          ListHeaderComponent={renderHeader}
+          ListHeaderComponent={renderHeader()}
           ListFooterComponent={<View style={{ height: 24 }} />}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
           showsVerticalScrollIndicator={false}
