@@ -53,7 +53,7 @@ export default function SectionProductCard({ item, onVerItem, addToCart, showDes
       {showDestaque && destaqueCount && destaqueCount > 1 && (
         <View style={{
           position: 'absolute', top: -6, right: -6,
-          backgroundColor: '#6A1B9A', borderRadius: 10,
+          backgroundColor: isDarkMode ? '#6A1B9A' : '#E91E63', borderRadius: 10,
           paddingHorizontal: 6, paddingVertical: 2,
           zIndex: 10, elevation: 8,
         }}>
