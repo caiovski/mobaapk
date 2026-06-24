@@ -227,7 +227,33 @@ export default function CashRegisterScreen() {
           </View>
         )}
 
-        {h.isViewMode ? renderViewModeActions() : renderEditModeActions()}
+        {h.isViewMode ? renderViewModeActions() : h.showClosedToday ? (
+          <><View style={{ gap: 10, marginTop: 20 }}>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              {h.hasOpening && (
+                <TouchableOpacity style={[styles.actionBtn, { backgroundColor: blueColor }]} activeOpacity={0.7} onPress={h.handleViewOpening}>
+                  <Text style={styles.actionBtnText}>Ver abertura</Text>
+                </TouchableOpacity>
+              )}
+              {h.hasClosing && (
+                <TouchableOpacity style={[styles.actionBtn, { backgroundColor: blueColor }]} activeOpacity={0.7} onPress={h.handleViewClosing}>
+                  <Text style={styles.actionBtnText}>Ver fechamento</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            {h.hasOpening && h.hasClosing && (
+              <TouchableOpacity style={[styles.actionBtn, { backgroundColor: orangeColor }]} activeOpacity={0.7} onPress={h.handleCompare}>
+                <Text style={styles.actionBtnText}>Comparar</Text>
+              </TouchableOpacity>
+            )}
+            {h.skipMessage && (
+              <Text style={{ color: dimColor, textAlign: 'center', marginTop: 12, fontSize: 13, lineHeight: 18 }}>
+                {h.skipMessage}
+              </Text>
+            )}
+          </View>
+          {renderEditModeActions()}</>
+        ) : renderEditModeActions()}
       </ScrollView>
 
       <ScrollToTopButton scrollRef={scrollRef} visible={showScrollTop} isDarkMode={isDarkMode} />

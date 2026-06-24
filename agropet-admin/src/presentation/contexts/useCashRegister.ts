@@ -36,6 +36,7 @@ export function useCashRegister(selectedDate: string) {
   const isClosed = opening?.closed === true;
   const openingEdited = opening?.edited === true;
   const closingEdited = closing?.edited === true;
+  const showClosedToday = isToday && isClosed && hasOpening && hasClosing;
 
   const checkAutoClose = useCallback(async (result: { opening?: DBCashRegisterEntry; closing?: DBCashRegisterEntry }) => {
     const now = new Date();
@@ -114,6 +115,21 @@ export function useCashRegister(selectedDate: string) {
           coin_010: finalResult.opening.coin_010,
           coin_005: finalResult.opening.coin_005,
         });
+      } else if (finalResult.closing) {
+        setDenominations({
+          bill_200: finalResult.closing.bill_200,
+          bill_100: finalResult.closing.bill_100,
+          bill_50: finalResult.closing.bill_50,
+          bill_20: finalResult.closing.bill_20,
+          bill_10: finalResult.closing.bill_10,
+          bill_5: finalResult.closing.bill_5,
+          bill_2: finalResult.closing.bill_2,
+          coin_100: finalResult.closing.coin_100,
+          coin_050: finalResult.closing.coin_050,
+          coin_025: finalResult.closing.coin_025,
+          coin_010: finalResult.closing.coin_010,
+          coin_005: finalResult.closing.coin_005,
+        });
       } else {
         setDenominations({ ...EMPTY_DENOMINATIONS });
       }
@@ -143,7 +159,7 @@ export function useCashRegister(selectedDate: string) {
     global: calculateTotal(denominations),
   }), [denominations]);
 
-  const isViewMode = isPast || isClosed;
+  const isViewMode = isPast || (isClosed && !isToday);
 
   const canOpenNow = isToday && canOpenCashRegister();
   const canCloseNow = isToday && canCloseCashRegister();
@@ -152,6 +168,9 @@ export function useCashRegister(selectedDate: string) {
 
   const leftButton = useMemo(() => {
     if (isViewMode) return null;
+    if (showClosedToday) {
+      return { label: 'Abrir caixa', color: '#767676', enabled: false, action: null };
+    }
     if (isEditingOpening) {
       return { label: 'Confirmar Abertura', color: '#339914', enabled: true, action: 'confirmOpening' as const };
     }
@@ -162,10 +181,13 @@ export function useCashRegister(selectedDate: string) {
       return { label: 'Editar', color: '#2BE060', enabled: true, action: 'editOpening' as const };
     }
     return { label: 'Caixa aberto', color: '#767676', enabled: false, action: null };
-  }, [isViewMode, isEditingOpening, hasOpening, openingEdited, canOpenNow]);
+  }, [isViewMode, showClosedToday, isEditingOpening, hasOpening, openingEdited, canOpenNow]);
 
   const rightButton = useMemo(() => {
     if (isViewMode) return null;
+    if (showClosedToday) {
+      return { label: 'Fechar caixa', color: '#767676', enabled: false, action: null };
+    }
     if (isEditingClosing) {
       return { label: 'Fechar', color: '#A72424', enabled: true, action: 'confirmClosing' as const };
     }
@@ -179,9 +201,9 @@ export function useCashRegister(selectedDate: string) {
       return { label: 'Fechamento salvo', color: '#767676', enabled: false, action: null };
     }
     /* istanbul ignore next */ return { label: 'Fechar caixa', color: '#767676', enabled: false, action: null };
-  }, [isViewMode, isEditingClosing, hasOpening, hasClosing, isClosed, closingEdited, canCloseNow]);
+  }, [isViewMode, showClosedToday, isEditingClosing, hasOpening, hasClosing, isClosed, closingEdited, canCloseNow]);
 
-  const showEncerrar = hasOpening && hasClosing && !isClosed;
+  const showEncerrar = hasOpening && hasClosing && !isClosed && !showClosedToday;
 
   const handleStartOpening = useCallback(() => {
     setDenominations({ ...EMPTY_DENOMINATIONS });
@@ -343,7 +365,7 @@ export function useCashRegister(selectedDate: string) {
   return {
     opening, closing, denominations, loading, history, totals,
     isToday, isPast, isViewMode, isClosed,
-    hasOpening, hasClosing,
+    hasOpening, hasClosing, showClosedToday,
     increment, decrement, setDenominationQty,
     leftButton, rightButton, showEncerrar, showSteppers,
     skipMessage,

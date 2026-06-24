@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { View } from 'react-native';
 import SlideInWrapper from './SlideInWrapper';
 import ProductCardContent from './ProductCardContent';
@@ -13,9 +13,14 @@ interface ProductGridBlockProps {
   navigation: any;
   paddingTop?: number;
   onLayout?: (event: any) => void;
+  visible?: boolean;
+  enterFrom?: 'left' | 'right';
+  exitTo?: 'left' | 'right';
 }
 
-export default function ProductGridBlock({ products, offset = 0, revealedRef, handleGridItemLayout, gridY, addToCart, navigation, paddingTop, onLayout }: ProductGridBlockProps) {
+function ProductGridBlock({ products, offset = 0, revealedRef, handleGridItemLayout, gridY, addToCart, navigation, paddingTop, onLayout, visible = true, enterFrom = 'left', exitTo = 'right' }: ProductGridBlockProps) {
+  const onNavigate = useCallback((p: any) => navigation.navigate('ProductDetail', { product: p }), [navigation]);
+
   return (
     <View onLayout={onLayout} style={{ flexDirection: 'row', flexWrap: 'wrap', ...(paddingTop !== undefined ? { paddingTop } : {}) }}>
       {products.map((item, idx) => {
@@ -29,8 +34,8 @@ export default function ProductGridBlock({ products, offset = 0, revealedRef, ha
             paddingRight: isSecondInRow ? 16 : 8,
             marginBottom: 6,
           }}>
-            <SlideInWrapper visible={true} delay={adjustedIdx % 2 === 0 ? 0 : 60}>
-              <ProductCardContent product={item} addToCart={addToCart} onNavigate={(p) => navigation.navigate('ProductDetail', { product: p })} />
+            <SlideInWrapper visible={visible} delay={adjustedIdx % 2 === 0 ? 0 : 60} enterFrom={enterFrom} exitTo={exitTo}>
+              <ProductCardContent product={item} addToCart={addToCart} onNavigate={onNavigate} />
             </SlideInWrapper>
           </View>
         );
@@ -38,3 +43,5 @@ export default function ProductGridBlock({ products, offset = 0, revealedRef, ha
     </View>
   );
 }
+
+export default React.memo(ProductGridBlock);

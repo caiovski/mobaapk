@@ -115,11 +115,23 @@ export default function useHomeSubscriptions({
       )
       .subscribe();
 
+    const categoriesChannel = supabase
+      .channel(`categories_home_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'custom_categories' },
+        async () => {
+          reloadCategories();
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(channel);
       supabase.removeChannel(prodChannel);
       supabase.removeChannel(viewsChannel);
       supabase.removeChannel(ordersChannel);
+      supabase.removeChannel(categoriesChannel);
       unsubscribeBlur();
       unsubscribeFocus();
     };

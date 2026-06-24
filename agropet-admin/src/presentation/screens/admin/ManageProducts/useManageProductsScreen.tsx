@@ -106,7 +106,13 @@ export function useManageProductsScreen() {
         /* istanbul ignore next */ () => { fetchProducts(); }
       )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    const catChannel = supabase.channel('categories-changes')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'custom_categories' },
+        /* istanbul ignore next */ () => { reloadCategories(); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); supabase.removeChannel(catChannel); };
   }, []);
 
   const dismissAlert = useCallback((id: string) => setDismissedProductIds(prev => { const n = new Set(prev); n.add(id); return n; }), []);

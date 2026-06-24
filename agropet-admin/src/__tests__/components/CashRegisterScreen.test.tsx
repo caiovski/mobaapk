@@ -447,4 +447,51 @@ describe('CashRegisterScreen', () => {
     fireEvent.press(getByText('Comparar'));
     expect(handleCompare).toHaveBeenCalled();
   });
+
+  it('should render view mode + disabled buttons when showClosedToday is true', () => {
+    mockHook.mockReturnValue({
+      ...baseHookReturn,
+      loading: false,
+      opening: { id: '1' },
+      closing: { id: '2' },
+      hasOpening: true,
+      hasClosing: true,
+      isViewMode: false,
+      showClosedToday: true,
+      leftButton: { label: 'Abrir caixa', color: '#767676', enabled: false, action: null },
+      rightButton: { label: 'Fechar caixa', color: '#767676', enabled: false, action: null },
+    } as any);
+
+    const { getByText, getByTestId, queryByText } = render(React.createElement(CashRegisterScreen));
+
+    expect(getByText('Ver abertura')).toBeTruthy();
+    expect(getByText('Ver fechamento')).toBeTruthy();
+    expect(getByText('Comparar')).toBeTruthy();
+    expect(getByText('Cancelar')).toBeTruthy();
+
+    const glowAbrir = getByTestId('glow-Abrir caixa');
+    expect(glowAbrir.props.accessibilityState?.disabled).toBe(true);
+    const glowFechar = getByTestId('glow-Fechar caixa');
+    expect(glowFechar.props.accessibilityState?.disabled).toBe(true);
+  });
+
+  it('should render skipMessage inside showClosedToday block', () => {
+    mockHook.mockReturnValue({
+      ...baseHookReturn,
+      loading: false,
+      opening: { id: '1' },
+      closing: { id: '2' },
+      hasOpening: true,
+      hasClosing: true,
+      isViewMode: false,
+      showClosedToday: true,
+      skipMessage: 'Caixa encerrado automaticamente.',
+      leftButton: { label: 'Abrir caixa', color: '#767676', enabled: false, action: null },
+      rightButton: { label: 'Fechar caixa', color: '#767676', enabled: false, action: null },
+    } as any);
+
+    const { getByText } = render(React.createElement(CashRegisterScreen));
+
+    expect(getByText('Caixa encerrado automaticamente.')).toBeTruthy();
+  });
 });

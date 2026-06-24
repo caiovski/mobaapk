@@ -439,4 +439,18 @@ describe('useCashRegister', () => {
     expect(service.markDayAsClosed).not.toHaveBeenCalled();
     consoleSpy.mockRestore();
   });
+
+  it('should set showClosedToday when today has both opening and closing with closed=true', async () => {
+    const closedOpening = { ...mockEntry, closed: true };
+    const closedClosing = { ...mockClosingEntry, closed: true };
+    (service.fetchByDate as jest.Mock).mockResolvedValue({ opening: closedOpening, closing: closedClosing });
+    setup('2025-06-10');
+    await waitFor(() => {
+      expect(hookResult?.showClosedToday).toBe(true);
+      expect(hookResult?.isViewMode).toBe(false);
+      expect(hookResult?.showEncerrar).toBe(false);
+    });
+    expect(hookResult.leftButton.enabled).toBe(false);
+    expect(hookResult.rightButton.enabled).toBe(false);
+  });
 });

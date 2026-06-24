@@ -263,5 +263,30 @@ describe('categoryService', () => {
     it('should return false when no keywords match', () => {
       expect(isProductInCategories({ name: 'Gaiola', description: 'Gaiola para pássaros' }, ['Rações'], categories)).toBe(false);
     });
+
+    it('should handle keywords as JSON array string (normalizeKeywords)', () => {
+      const cat = { id: '3', name: 'Higiene', keywords: '["shampoo", "sabonete"]' as any, active: true };
+      expect(isProductInCategories({ name: 'Shampoo para cães' }, ['Higiene'], [cat])).toBe(true);
+    });
+
+    it('should handle keywords as PostgreSQL array literal (normalizeKeywords)', () => {
+      const cat = { id: '4', name: 'Acessórios', keywords: '{coleira, guia}' as any, active: true };
+      expect(isProductInCategories({ name: 'Coleira azul' }, ['Acessórios'], [cat])).toBe(true);
+    });
+
+    it('should handle keywords as plain string (normalizeKeywords)', () => {
+      const cat = { id: '5', name: 'Roupas', keywords: 'roupa' as any, active: true };
+      expect(isProductInCategories({ name: 'Roupa para cachorro' }, ['Roupas'], [cat])).toBe(true);
+    });
+
+    it('should handle keywords as JSON object string (JSON.parse succeeds but not array)', () => {
+      const cat = { id: '6', name: 'Obj', keywords: '{"key": "value"}' as any, active: true };
+      expect(isProductInCategories({ name: 'Qualquer' }, ['Obj'], [cat])).toBe(false);
+    });
+
+    it('should handle keywords as null/undefined (normalizeKeywords returns [])', () => {
+      const cat = { id: '7', name: 'Vazio', keywords: null as any, active: true };
+      expect(isProductInCategories({ name: 'Qualquer coisa' }, ['Vazio'], [cat])).toBe(false);
+    });
   });
 });

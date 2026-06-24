@@ -48,6 +48,33 @@ export default function HomeScreen() {
   const scrollRef = React.useRef<FlatList>(null);
   const [showScrollTop, setShowScrollTop] = React.useState(false);
   const grid1Y = React.useRef(0);
+  const prevScrollY = React.useRef(0);
+  const scrollDirectionRef = React.useRef<'down' | 'up'>('down');
+
+  const visibleRef = React.useRef<Set<number>>(new Set());
+  const [visibleTick, setVisibleTick] = React.useState(0);
+  const viewabilityConfig = React.useMemo(() => ({ itemVisiblePercentThreshold: 10 }), []);
+  const onViewableItemsChanged = React.useCallback(({ changed }: { changed: any[] }) => {
+    let changedFlag = false;
+    changed.forEach((item: any) => {
+      const match = item.key?.match(/^row-(\d+)$/);
+      if (match) {
+        const idx = parseInt(match[1], 10);
+        if (item.isViewable) {
+          if (!visibleRef.current.has(idx)) {
+            visibleRef.current.add(idx);
+            changedFlag = true;
+          }
+        } else {
+          if (visibleRef.current.has(idx)) {
+            visibleRef.current.delete(idx);
+            changedFlag = true;
+          }
+        }
+      }
+    });
+    if (changedFlag) setVisibleTick(t => t + 1);
+  }, []);
 
   const tryReveal = React.useCallback((index: number) => {
     if (!revealedRef.current.has(index)) {
@@ -67,6 +94,8 @@ export default function HomeScreen() {
 
   const handleMainScroll = React.useCallback((event: any) => {
     const y = event.nativeEvent.contentOffset.y;
+    scrollDirectionRef.current = y > prevScrollY.current ? 'down' : 'up';
+    prevScrollY.current = y;
     scrollPos.current = y;
     setShowScrollTop(y > 500);
     let changed = false;
@@ -118,7 +147,10 @@ export default function HomeScreen() {
   const interstitialCount = sectionList.length === 0 ? 2 : Math.max(0, sectionList.length - 1) * 2;
   const interstitialProducts = React.useMemo(() => products.slice(0, interstitialCount), [products, interstitialCount]);
 
-  const gridProducts = allFiltered;
+  const gridProducts = React.useMemo(() => {
+    const interstitialIds = new Set(interstitialProducts.map(p => p.id));
+    return allFiltered.filter(p => !interstitialIds.has(p.id));
+  }, [allFiltered, interstitialProducts]);
 
   const listData = React.useMemo(() => {
     const data: GridItem[] = [];
@@ -205,6 +237,10 @@ export default function HomeScreen() {
     
     const isFirstRow = item.offset === 0;
     const paddingTop = isFirstRow ? (showSections ? (sectionList.length > 0 ? 32 : 16) : 28) : undefined;
+    const isVisible = visibleRef.current.has(item.offset);
+    const scrollingDown = scrollDirectionRef.current === 'down';
+    const enterFrom = scrollingDown ? 'left' : 'right';
+    const exitTo = scrollingDown ? 'right' : 'left';
     
     return (
       <ProductGridBlock
@@ -216,9 +252,12 @@ export default function HomeScreen() {
         addToCart={addToCart}
         navigation={navigation}
         paddingTop={paddingTop}
+        visible={isVisible}
+        enterFrom={enterFrom}
+        exitTo={exitTo}
       />
     );
-  }, [clientName, filteredPromo, navigation, revealedRef, handleGridItemLayout, grid1Y, addToCart, showSections, sectionList]);
+  }, [clientName, filteredPromo, navigation, revealedRef, handleGridItemLayout, grid1Y, addToCart, showSections, sectionList, scrollDirectionRef]);
 
   return (
     <View style={[styles.mainContainer, { backgroundColor: colors.backgroundLight }]}>
@@ -260,6 +299,9 @@ export default function HomeScreen() {
           initialNumToRender={8}
           maxToRenderPerBatch={8}
           windowSize={5}
+          viewabilityConfig={viewabilityConfig}
+          onViewableItemsChanged={onViewableItemsChanged}
+          extraData={visibleTick}
         />
       )}
       <ScrollToTopButton scrollRef={scrollRef} visible={showScrollTop} isDarkMode={isDarkMode} isFlatList={true} />
