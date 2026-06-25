@@ -183,22 +183,18 @@ Novas e inovadoras mecânicas de comportamento visual e de negócios estão cata
 Compilamos abaixo a lista completa de mecânicas de ponta que foram totalmente implementadas e agregadas ao ecossistema do **AgroPet Lambari**:
 
 ### 🧪 1. Maximização de Cobertura de Testes e Limpeza Arquitetural
-*   **100% Test Coverage:** Testes unitários herméticos em Domain Entities e Value Objects (Order, Product, User, etc.).
-*   **Edge Cases:** Testes de timeout assíncrono e tracking com duração nula no AdminMapScreen.
-*   **Limpeza Arquitetural:** Remoção de artefatos obsoletos e arquivos *index.ts* vazios.
-
-### 🎨 2. Unificação Global de Caixa e Sincronização UI/UX
+### 🎨 1. Unificação Global de Caixa e Sincronização UI/UX
 *   **Caixa Global Unificado:** Sincronização contábil completa na tela de Histórico de Vendas com `<CaixaGlobalPanel>`.
 *   **Reversão Atômica de Estoque:** Devolução de produtos ao estoque com expurgação simultânea do Caixa Global.
 *   **Dark Mode Avançado:** SVGs explícitos `*Dark.svg` para forçar cores brancas em interfaces `#000000`.
 *   **Bateria Invicta:** 253/253 testes Cliente e 512/512 Admin.
 
-### 🛠️ 3. Refatoração e Bug Fixes Técnicos — 30/05/2026
+### 🛠️ 2. Refatoração e Bug Fixes Técnicos — 30/05/2026
 *   **Modularização Extrema:** Componentes reduzidos de 2.000+ para menos de 400 linhas.
 *   **Bugfix Crítico:** Resolução de timeouts no Jest e duplicação sintática na TrackingScreen.
 *   **Limpeza Final:** Expurgo de arquivos residuais, logs e scripts locais.
 
-### 🛡️ 4. Patch: Blindagem do projeto, reforma no Banco de Dados e melhorias técnicas — 31/05/2026
+### 🛡️ 3. Patch: Blindagem do projeto, reforma no Banco de Dados e melhorias técnicas — 31/05/2026
 *   **Cobertura 100% Admin:** 14 novos arquivos de teste, 100% Statements/Branches/Functions/Lines em 68 arquivos.
 *   **13 Migrations SQL (22-34):** Idempotência, Rate Limiter, Estoque Atômico, RLS, Auditoria, Índices, PIX, IDOR, Controle de Concorrência, LGPD, Notificações e Dead-Letter Queue.
 *   **Infraestrutura:** Docker multi-estágio, docker-compose, CI/CD GitHub Actions, health check, feature flags.
@@ -207,32 +203,32 @@ Compilamos abaixo a lista completa de mecânicas de ponta que foram totalmente i
 *   **15 OpenSpecs:** Documentação viva de todas as iniciativas técnicas.
 *   **61 arquivos, +1889 linhas, -310 removidas** — 999 testes.
 
-### ⚖️📡 5. LegalPages e Rastreamento GPS em Tempo Real — 07/06/2026
+### ⚖️📡 4. LegalPages e Rastreamento GPS em Tempo Real — 07/06/2026
 *   **LegalPages Compartilhado (Cliente + Admin):** Telas de Política de Privacidade e Termos de Uso em ambos os apps, com roteamento dinâmico na `AuthStack` via parâmetro `documentType` e 6 testes unitários validando privacidade, termos, fallback e fechamento.
 *   **gpsTrackingService (Admin):** Serviço modular com start/stop monitoramento, atualização periódica de coordenadas no Supabase e tratamento de erros com timeouts. Hook `useGpsTracking` gerenciando o ciclo de vida do tracking no `AdminOrderDetail`. 2 suites de teste com cenários de sucesso, falha de permissão e timeout.
 *   **Migration SQL (41):** Script `add_delivery_tracking.sql` para estrutura de persistência do tracking em tempo real.
 
-### 🗺️🐛 6. Delivery Minimap, Correções de UX e Expansão de Testes — 07/06/2026
+### 🗺️🐛 5. Delivery Minimap, Correções de UX e Expansão de Testes — 07/06/2026
 *   **Componente DeliveryMinimap (Cliente):** Mapa customizado com `react-native-maps`, marcador animado da posição do entregador, polígono de rota e centralização dinâmica da câmera. Hook `useDeliveryMinimap` com assinatura Realtime, interpolação suave de coordenadas e fallback para timeline textual.
 *   **Dropdown Fechando ao Tocar Fora:** `onStartShouldSetResponderCapture` no `OrdersScreen` + `closeAllDropdowns()` no botão Detalhes do `OrderCard`.
 *   **Correção hasDeparted:** Lógica expandida para incluir status `completed` no AdminMapScreen.
 *   **Expansão de Testes:** Cobertura adicional em `shopHours.test.ts` (finais de semana/feriados), `database.test.ts` (transação, rollback, concorrência), `ConnectivityContext.test.tsx` e `coverage-edge-cases.test.tsx`.
 *   **58 arquivos modificados, +2726 linhas, -538 removidas** — 363 testes Admin e 145 Cliente, **508 testes automatizados**.
 
-### 🚀📱 7. Configurações Finais, App Icons e Resolução de Crashes Nativos — 08/06/2026
+### 🚀📱 6. Configurações Finais, App Icons e Resolução de Crashes Nativos — 08/06/2026
 *   **Resolução de JNI Crash:** Correção definitiva do erro fatal na inicialização do aplicativo cliente através do downgrade da dependência `expo-sharing` para a versão compatível com a SDK 54.
 *   **Segurança de Navegação:** Implementação de um `<SafeAreaProvider>` global encapsulando o `GestureHandlerRootView` nos dois aplicativos para prevenir falhas silenciosas de renderização do BottomTabs.
 *   **Variáveis de Ambiente Seguras:** Configuração avançada do `app.config.js` para injetar segredos como a `GOOGLE_MAPS_API_KEY` diretamente da nuvem da Expo, removendo chaves codificadas (`hardcoded`) do `app.json`.
 *   **Identidade Visual (Ícones):** Injeção de App Icons vetoriais personalizados na pasta assets (Fundo Laranja Puro no Cliente, Fundo Azul-Marinho no Admin) e adequação dos Nomes de Exibição dos binários finais (Agropet Lambari e Agropet Admin).
 *   **Sucesso no EAS Build:** Geração dos APKs de produção com arquitetura nativa ativada (`newArchEnabled: true`), finalizando a Sprint com sucesso e permitindo o lançamento seguro dos apps nos dispositivos.
 
-### 👑🔐 8. Modo Deus, OTP Nativo e Refatorações de Autenticação — 11/06/2026
+### 👑🔐 7. Modo Deus, OTP Nativo e Refatorações de Autenticação — 11/06/2026
 *   **Modo Deus (Admin):** Login unificado inteligente em `AdminLoginScreen`. Identifica emails normais vs códigos de 8 dígitos gerados aleatoriamente via Supabase Edge Function (`smooth-worker` com Resend). Acesso root concedido via tabela `admin_auth_codes` com elevação automática para role `dev`/`admin`.
 *   **Autenticação OTP Nativa (Cliente):** Substituição do fluxo de confirmação baseada em Magic Links para uma verificação local baseada em códigos OTP de 6 dígitos. Criação da `OTPVerificationScreen` e injeção do componente no Stack Navigator para capturar `signUp` e `recovery`.
 *   **Modificações de Email Templates:** Atualização dos templates de "Confirm Signup" e "Reset Password" para exibição elegante do `{{ .Token }}` em formato HTML injetável.
 *   **Aprimoramento de Build e Dependências:** Atualização silenciosa OTA para `preview` via EAS Update e estabilização de dependências Sentry (`promise` polyfill).
 
-### 🛒📦 9. Suporte a Produtos a Granel, Caixa Registradora, Filtros e Infraestrutura — 13/06/2026
+### 🛒📦 8. Suporte a Produtos a Granel, Caixa Registradora, Filtros e Infraestrutura — 13/06/2026
 *   **Venda Fracionada (Bulk Products):** Implementação completa de produtos vendidos a granel. Toggle interativo com seletor de unidade (`Kg/g`), exibição dinâmica de sufixos de preço ("R$ XX,XX /Kg") no catálogo do cliente, conversão atômica de peso e exibição consistente em todos os pontos (ProductCard, PDV, Detalhes).
 *   **Sistema de Caixa Registradora Persistente:** Criação de arquitetura financeira com quebra detalhada por método de pagamento (Crédito, Débito, PIX, Dinheiro). Painel em tempo real de saldo (vermelho/verde), saques operacionais, tela dedicada de movimentação (`CashRegisterScreen`) e histórico com filtros de período.
 *   **Gestão de Categorias e Frete Dinâmico:** Gerenciamento nativo de Categorias (CRUD completo, filtros e sincronia com o Cliente via `useCategories`). Sistema de entrega bloqueável pelo lojista, ocultando o minimapa e interrompendo educadamente tentativas de checkout na ponta do consumidor.
@@ -240,10 +236,16 @@ Compilamos abaixo a lista completa de mecânicas de ponta que foram totalmente i
 *   **Autenticação OTP de Alto Privilégio:** Construção da `OTPVerificationScreen` para fluxo de login administrador e injeção da nova `Edge Function` de 8-dígitos via infraestrutura Supabase CLI (`config.toml`).
 *   **Cobertura e Organização Refinada:** Recorde de **1003 testes unitários** aprovados abrangendo `formatStock`, ganchos de produto (`useProductEdit`), edge cases, categorias e PDV. Nova arquitetura de pastas limpa na divisão `src/presentation/screens/client/` do AgroPet Cliente.
 
-### 🌟✨ 10. Reforma do Catálogo, UI Sazonal e Extrema Cobertura de Testes (NOVO!!!) — 19/06/2026
+### 🌟✨ 9. Reforma do Catálogo, UI Sazonal e Extrema Cobertura de Testes — 19/06/2026
 *   **Reforma do Catálogo (FreteBanner):** Implementação de Banners Animados ultradinâmicos na Home com animações contínuas (`Animated.loop`), confetes interativos e um sistema inteligente de visibilidade baseada em escala para evitar resets de ciclo de vida do componente React.
 *   **Perfeição Analítica (100% Coverage):** Atingimos 100% absoluto de cobertura nos aplicativos (Stmts, Branch, Funcs, Lines), resolvendo vazamentos de memória (leaks) e timers assíncronos não resolvidos no Jest. Englobando áreas cruciais como PDV, Caixa Global e ProductEdit.
 *   **Ecossistema de Campanhas Sazonais (OpenSpec):** Especificação completa via TDD e DDD (Proposal, Design, Specs) para um futuro Motor Sazonal. Inclui "Modo Preview" administrativo para forçar temas festivos, sincronização SQLite e tagueamento de descontos em lote via "Color Tiers" para datas comemorativas.
+
+### 🛡️ 10. Arquitetura ACID e Centralização de Estoque via Trigger (NOVO!!!) — 24/06/2026
+*   **Trigger `restore_stock_on_cancel`:** Banco de dados assume o controle absoluto da devolução de estoque quando um pedido é cancelado, protegendo o app contra falhas de rede.
+*   **Correção de Granel Automática:** Multiplicação dinâmica de `is_bulk` por 1000g direto na Trigger.
+*   **Expurgo de Duplicações Duplas:** Remoção de loops de estorno paralelos no PIX (`cancel_pix_order`) e no Admin (`useOrderMutations`), garantindo a integridade dos dados e prevenindo estornos fantasmas.
+*   **100% Test Coverage Protegido:** Atualização atômica dos unit tests (`agropet-admin`) para validar e suportar os novos contratos nativos.
 
 ---
 
