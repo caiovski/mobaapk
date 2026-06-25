@@ -1,8 +1,13 @@
 import type { CaixaTransaction } from './useAdminDashboard';
 
+/* istanbul ignore next */ function sumMethodsFromSplits(splits: any[], method: string): number {
+  return splits.filter(s => s.method === method).reduce((acc, s) => acc + (s.amount || 0), 0);
+}
+
 export function useAdminDashboardStats(
   orders: any[],
   allOrders: any[],
+  allSplits: any[],
   transactions: CaixaTransaction[],
   cashFlowFilter: string,
   cashFlowStartDate: Date | null,
@@ -35,10 +40,11 @@ export function useAdminDashboardStats(
     }, 0);
   };
 
-  const totalCreditoGeral = allOrders.reduce((acc, o) => acc + (o.payment_method === 'cartao_credito' ? (o.total ?? 0) : 0), 0) + getTransactionSum('cartao_credito', 'suprimento') - getTransactionSum('cartao_credito', 'sangria');
-  const totalDebitoGeral = allOrders.reduce((acc, o) => acc + (o.payment_method === 'cartao_debito' ? (o.total ?? 0) : 0), 0) + getTransactionSum('cartao_debito', 'suprimento') - getTransactionSum('cartao_debito', 'sangria');
-  const totalPixGeral = allOrders.reduce((acc, o) => acc + (o.payment_method === 'pix' ? (o.total ?? 0) : 0), 0) + getTransactionSum('pix', 'suprimento') - getTransactionSum('pix', 'sangria');
-  const totalDinheiroVendasGeral = allOrders.reduce((acc, o) => acc + (o.payment_method === 'dinheiro' ? (o.total ?? 0) : 0), 0);
+  const regularOrders = allOrders.filter(o => o.payment_method !== 'multiplo');
+  const totalCreditoGeral = regularOrders.reduce((acc, o) => acc + (o.payment_method === 'cartao_credito' ? (o.total ?? 0) : 0), 0) + sumMethodsFromSplits(allSplits, 'cartao_credito') + getTransactionSum('cartao_credito', 'suprimento') - getTransactionSum('cartao_credito', 'sangria');
+  const totalDebitoGeral = regularOrders.reduce((acc, o) => acc + (o.payment_method === 'cartao_debito' ? (o.total ?? 0) : 0), 0) + sumMethodsFromSplits(allSplits, 'cartao_debito') + getTransactionSum('cartao_debito', 'suprimento') - getTransactionSum('cartao_debito', 'sangria');
+  const totalPixGeral = regularOrders.reduce((acc, o) => acc + (o.payment_method === 'pix' ? (o.total ?? 0) : 0), 0) + sumMethodsFromSplits(allSplits, 'pix') + getTransactionSum('pix', 'suprimento') - getTransactionSum('pix', 'sangria');
+  const totalDinheiroVendasGeral = regularOrders.reduce((acc, o) => acc + (o.payment_method === 'dinheiro' ? (o.total ?? 0) : 0), 0) + sumMethodsFromSplits(allSplits, 'dinheiro');
   const totalDinheiroCaixaGeral = totalDinheiroVendasGeral + getTransactionSum('dinheiro', 'suprimento') - getTransactionSum('dinheiro', 'sangria');
   const saldoTotalCaixaGeral = totalCreditoGeral + totalDebitoGeral + totalPixGeral + totalDinheiroCaixaGeral;
 

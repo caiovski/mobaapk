@@ -63,7 +63,7 @@ export default function AdminConsultSalesScreen() {
               <Text style={[styles.originFilterText, { color: h.isDarkMode ? '#FFFFFF' : '#1C2434' }]} numberOfLines={1}>
                 {h.originFilter === 'tudo' ? 'Filtrar vendas' : h.originFilter === 'fisica' ? 'Vendas físicas' : 'Pedidos concluídos'}
               </Text>
-              {h.selectedPayMethods.length < 4 && (
+              {h.selectedPayMethods.length < 5 && (
                 <View style={styles.filterCountBadge}>
                   <Text style={styles.filterCountText}>{h.selectedPayMethods.length}</Text>
                 </View>

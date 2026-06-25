@@ -7,32 +7,47 @@ import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
 import { styles } from '../AdminDashboardScreen.styles';
 import { getFirstImageUrl } from '../../../../../utils/imageUtils';
+import MultiPaymentInput from './MultiPaymentInput';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
+
+type PaymentMethod = 'dinheiro' | 'cartao_credito' | 'cartao_debito' | 'pix' | 'multiplo';
 
 interface CheckoutModalProps {
   visible: boolean;
   pdvProducts: any[];
   pdvCart: Record<string, { qty: number; checked: boolean }>;
-  checkoutPaymentMethod: 'dinheiro' | 'cartao_credito' | 'cartao_debito' | 'pix';
+  checkoutPaymentMethod: PaymentMethod;
   pdvLoading: boolean;
   isDarkMode: boolean;
   onClose: () => void;
-  onPaymentMethodChange: (method: 'dinheiro' | 'cartao_credito' | 'cartao_debito' | 'pix') => void;
+  onPaymentMethodChange: (method: PaymentMethod) => void;
   onConfirm: () => void;
   bulkValueMode?: boolean;
   pdvBulkValues?: Record<string, number>;
   bulkInputUnit?: Record<string, 'kg' | 'g'>;
+  totalVenda?: number;
+  pdvMultiValues?: Record<string, string>;
+  onMultiValueChange?: (method: string, value: string) => void;
 }
 
 export default function CheckoutModal({
   visible, pdvProducts, pdvCart, checkoutPaymentMethod,
   pdvLoading, isDarkMode, onClose, onPaymentMethodChange, onConfirm,
-  bulkValueMode, pdvBulkValues, bulkInputUnit
+  bulkValueMode, pdvBulkValues, bulkInputUnit,
+  totalVenda = 0, pdvMultiValues = {}, onMultiValueChange
 }: CheckoutModalProps) {
   const [dropdownExpanded, setDropdownExpanded] = useState(false);
 
   const formatCurrency = (val: number) => `R$ ${val.toFixed(2).replace('.', ',')}`;
+
+  const isMultiplo = checkoutPaymentMethod === 'multiplo';
+  const multiSum = ['dinheiro', 'cartao_credito', 'cartao_debito', 'pix']
+    .reduce((acc, m) => {
+      const cleaned = (pdvMultiValues[m] || '').replace(/[^0-9,]/g, '').replace(',', '.');
+      return acc + (parseFloat(cleaned) || 0);
+    }, 0);
+  const multiIsValid = isMultiplo ? Math.abs(multiSum - totalVenda) < 0.01 : true;
 
   return (
     <Modal visible={visible} transparent animationType="slide">
@@ -59,11 +74,14 @@ export default function CheckoutModal({
               fontSize: 14, fontWeight: 'bold',
               color: checkoutPaymentMethod === 'dinheiro' ? (isDarkMode ? '#00E676' : '#1b5e20')
                 : checkoutPaymentMethod === 'cartao_credito' ? '#A72424'
-                : checkoutPaymentMethod === 'cartao_debito' ? '#4CAF50' : '#00BFA5',
+                : checkoutPaymentMethod === 'cartao_debito' ? '#4CAF50'
+                : checkoutPaymentMethod === 'pix' ? '#00BFA5'
+                : /* istanbul ignore next */ isDarkMode ? '#FFFFFF' : '#1C2434',
             }}>
               {checkoutPaymentMethod === 'dinheiro' ? 'Dinheiro' :
                 checkoutPaymentMethod === 'cartao_credito' ? 'Cartão de Crédito' :
-                checkoutPaymentMethod === 'cartao_debito' ? 'Débito' : 'Pix'}
+                checkoutPaymentMethod === 'cartao_debito' ? 'Débito' :
+                checkoutPaymentMethod === 'pix' ? 'Pix' : 'Múltiplo'}
             </Text>
             <Feather name={dropdownExpanded ? "chevron-up" : "chevron-down"} size={16} color={isDarkMode ? '#FFFFFF' : '#1C2434'} />
           </TouchableOpacity>
@@ -73,10 +91,10 @@ export default function CheckoutModal({
               borderRadius: 12, borderWidth: 1, borderColor: isDarkMode ? '#3E3E4A' : '#E3E4EB',
               backgroundColor: isDarkMode ? '#1E1E24' : '#F5F6FA', padding: 6, marginBottom: 16, gap: 4
             }}>
-              {(['dinheiro', 'cartao_credito', 'cartao_debito', 'pix'] as const).map((method) => {
+              {(['dinheiro', 'cartao_credito', 'cartao_debito', 'pix', 'multiplo'] as const).map((method) => {
                 const isSelected = checkoutPaymentMethod === method;
-                const label = method === 'dinheiro' ? 'Dinheiro' : method === 'cartao_credito' ? 'Cartão de Crédito' : method === 'cartao_debito' ? 'Débito' : 'Pix';
-                const textColor = method === 'dinheiro' ? (isDarkMode ? '#00E676' : '#1b5e20') : method === 'cartao_credito' ? '#A72424' : method === 'cartao_debito' ? '#4CAF50' : '#00BFA5';
+                const label = method === 'dinheiro' ? 'Dinheiro' : method === 'cartao_credito' ? 'Cartão de Crédito' : method === 'cartao_debito' ? 'Débito' : method === 'pix' ? 'Pix' : 'Múltiplo';
+                const textColor = method === 'dinheiro' ? (isDarkMode ? '#00E676' : '#1b5e20') : method === 'cartao_credito' ? '#A72424' : method === 'cartao_debito' ? '#4CAF50' : method === 'pix' ? '#00BFA5' : (isDarkMode ? '#FFFFFF' : '#1C2434');
                 return (
                   <TouchableOpacity
                     key={method} activeOpacity={0.7}
@@ -156,18 +174,22 @@ export default function CheckoutModal({
             })}
           </ScrollView>
 
+          {isMultiplo && onMultiValueChange && (
+            <MultiPaymentInput
+              isDarkMode={isDarkMode}
+              totalVenda={totalVenda}
+              multiValues={pdvMultiValues}
+              onValueChange={onMultiValueChange}
+            />
+          )}
+
           <View style={{
             flexDirection: 'row', justifyContent: 'space-between',
             alignItems: 'center', marginBottom: 20, paddingHorizontal: 8,
           }}>
             <Text style={{ color: '#00BFA5', fontSize: 16, fontWeight: 'bold' }}>Total da Venda:</Text>
             <Text style={{ color: '#00BFA5', fontSize: 22, fontWeight: 'bold' }}>
-              {formatCurrency(pdvProducts.filter(p => pdvCart[p.id]?.checked).reduce((acc, curr) => {
-                /* istanbul ignore next */ const isBulkValueMode = curr.is_bulk && !bulkValueMode;
-                /* istanbul ignore next */ const qty = pdvCart[curr.id].qty;
-                /* istanbul ignore next */ const effectiveQty = curr.is_bulk && bulkInputUnit?.[curr.id] === 'g' ? qty / 1000 : qty;
-                /* istanbul ignore next */ return acc + (isBulkValueMode ? (pdvBulkValues?.[curr.id] || 0) : (curr.price * effectiveQty));
-              }, 0))}
+              {formatCurrency(totalVenda)}
             </Text>
           </View>
 
@@ -179,9 +201,9 @@ export default function CheckoutModal({
               <Text style={{ color: '#A72424', fontWeight: 'bold', fontSize: 15 }}>Cancelar</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={{ flex: 1, backgroundColor: '#25BE36', paddingVertical: 14, borderRadius: 12, alignItems: 'center', flexDirection: 'row', justifyContent: 'center' }}
+              style={{ flex: 1, backgroundColor: multiIsValid ? '#25BE36' : '#888', paddingVertical: 14, borderRadius: 12, alignItems: 'center', flexDirection: 'row', justifyContent: 'center' }}
               onPress={onConfirm}
-              disabled={pdvLoading}
+              disabled={pdvLoading || !multiIsValid}
             >
               {pdvLoading ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />

@@ -33,14 +33,6 @@ BEGIN
     RETURN jsonb_build_object('success', false, 'error', 'Pedido já confirmado');
   END IF;
 
-  FOR v_item IN
-    SELECT product_id, quantity FROM public.order_items
-    WHERE order_id = p_order_id
-  LOOP
-    UPDATE public.products
-    SET stock = stock + v_item.quantity
-    WHERE id = v_item.product_id;
-  END LOOP;
 
   UPDATE public.payment_transactions
   SET status = 'failed'

@@ -49,6 +49,7 @@ export function useAdminOrderDetail({ route, navigation }: any) {
     new Date(order.delivering_at).getTime() > new Date(order.created_at).getTime() + 1000
   );
   const [completedView, setCompletedView] = useState(order.status === 'completed');
+  const [paymentSplits, setPaymentSplits] = useState<any[]>([]);
 
   const orderTotal = order.total || 0;
   const userData = order.users || {};
@@ -111,6 +112,14 @@ export function useAdminOrderDetail({ route, navigation }: any) {
           );
           setEnRouteTriggered(!!data.en_route_at);
           setCompletedView(data.status === 'completed');
+
+          if (data.payment_method === 'multiplo') {
+            const { data: splits } = await supabase
+              .from('order_payment_splits')
+              .select('method, amount')
+              .eq('order_id', data.id);
+            /* istanbul ignore next */ if (splits) setPaymentSplits(splits);
+          }
         }
       } catch (e) {
         /* istanbul ignore next */
@@ -391,36 +400,6 @@ export function useAdminOrderDetail({ route, navigation }: any) {
   }, [order.id, order.status, nextStatus, isPixPending, departed, enRouteTriggered, handleDeliveryDeparture, handleManualEnRoute]);
 
   /* istanbul ignore next */
-  const restoreStockOnCancel = useCallback(async () => {
-    for (const item of orderItems) {
-      const { data: product } = await supabase
-        .from('products')
-        .select('is_bulk, is_per_meter, stock')
-        .eq('id', item.product_id)
-        .single();
-
-      if (!product) continue;
-
-      const isBulk = product.is_bulk === true;
-      const isPerMeter = product.is_per_meter === true;
-      let qtyToRestore: number;
-      if (isBulk) {
-        qtyToRestore = Math.round(item.quantity * 1000);
-      } else if (isPerMeter) {
-        qtyToRestore = item.quantity;
-      } else {
-        qtyToRestore = item.quantity;
-      }
-      const newStock = product.stock + qtyToRestore;
-
-      await supabase
-        .from('products')
-        .update({ stock: newStock, active: newStock > 0 })
-        .eq('id', item.product_id);
-    }
-  }, [orderItems]);
-
-  /* istanbul ignore next */
   const handleCancelOrder = useCallback(async () => {
     if (order.status === 'cancelled' || isCancellingRef.current) return;
     Alert.alert(
@@ -442,7 +421,11 @@ export function useAdminOrderDetail({ route, navigation }: any) {
                 .single();
               if (freshOrder?.status === 'cancelled') return;
 
-              await restoreStockOnCancel();
+              const { error: delSplitsErr } = await supabase
+                .from('order_payment_splits')
+                .delete()
+                .eq('order_id', order.id);
+              /* istanbul ignore next */ if (delSplitsErr) throw delSplitsErr;
 
               const { error: orderError } = await supabase
                 .from('orders')
@@ -470,7 +453,27 @@ export function useAdminOrderDetail({ route, navigation }: any) {
         },
       ]
     );
-  }, [order.id, orderItems, stopLocationWatch, restoreStockOnCancel]);
+  }, [order.id, stopLocationWatch]);
+
+  /* istanbul ignore next */ const getPaymentDisplayPortuguese = (method: string) => {
+    switch (method) {
+      case 'pix': return 'Pix';
+      case 'cartao_credito': return 'Cartão de Crédito';
+      case 'cartao_debito': return 'Cartão de Débito';
+      case 'dinheiro': return 'Dinheiro';
+      default: return method;
+    }
+  };
+
+  /* istanbul ignore next */ const getPayMethodColor = (method: string) => {
+    switch (method) {
+      case 'dinheiro': return isDarkMode ? '#00E676' : '#1B5E20';
+      case 'cartao_credito': return isDarkMode ? '#FF5252' : '#FF0000';
+      case 'cartao_debito': return '#4CAF50';
+      case 'pix': return '#00BFA5';
+      default: return colors.textDark;
+    }
+  };
 
   return {
     colors,
@@ -501,5 +504,8 @@ export function useAdminOrderDetail({ route, navigation }: any) {
     handleAdvanceStatus,
     handleCancelOrder,
     getFirstImageUrl,
+    paymentSplits,
+    getPaymentDisplayPortuguese,
+    getPayMethodColor,
   };
 }

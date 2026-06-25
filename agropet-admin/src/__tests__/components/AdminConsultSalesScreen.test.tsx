@@ -37,8 +37,8 @@ jest.mock('react', () => {
   return {
     ...originalReact,
     useState: (init: any) => {
-      if ((global as any).injectValerefeicao && Array.isArray(init) && init.includes('dinheiro') && init.includes('pix') && init.length === 4) {
-        return realUseState(['dinheiro', 'cartao_credito', 'cartao_debito', 'pix', 'valerefeicao']);
+      if ((global as any).injectValerefeicao && Array.isArray(init) && init.includes('dinheiro') && init.includes('pix') && init.includes('multiplo') && init.length === 5) {
+        return realUseState(['dinheiro', 'cartao_credito', 'cartao_debito', 'pix', 'multiplo', 'valerefeicao']);
       }
       if ((global as any).injectMockTransactions && Array.isArray(init) && init.length === 0) {
         return realUseState([

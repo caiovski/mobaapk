@@ -8,6 +8,7 @@ jest.mock('../../data/datasources/supabase/client', () => ({
     eq: jest.fn().mockReturnThis(),
     single: jest.fn(),
     update: jest.fn().mockReturnThis(),
+    delete: jest.fn().mockReturnThis(),
   },
 }));
 
@@ -179,6 +180,33 @@ describe('useOrderMutations', () => {
 
       expect(setShowPaymentEditModal).toHaveBeenCalledWith(false);
       expect(setLoading).toHaveBeenCalledWith(true);
+      expect(supabase.from).toHaveBeenCalledWith('orders');
+      expect(alertSpy).toHaveBeenCalledWith('Sucesso', 'Forma de pagamento atualizada!');
+      expect(setSelectedOrder).toHaveBeenCalledWith(null);
+
+      alertSpy.mockRestore();
+    });
+
+    it('should delete order_payment_splits when editing from multiplo', async () => {
+      const { supabase } = require('../../data/datasources/supabase/client');
+      supabase.update.mockReturnThis();
+      supabase.eq.mockReturnThis();
+
+      const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+      const setLoading = jest.fn();
+      const fetchSales = jest.fn().mockResolvedValue(undefined);
+      const fetchCaixaData = jest.fn().mockResolvedValue(undefined);
+      const setSelectedOrder = jest.fn();
+      const setShowPaymentEditModal = jest.fn();
+
+      const { confirmPaymentEdit } = useOrderMutations(
+        setLoading, fetchSales, fetchCaixaData,
+        { id: 'order-multiplo', payment_method: 'multiplo' }, setSelectedOrder, setShowPaymentEditModal
+      );
+
+      await confirmPaymentEdit('pix');
+
+      expect(supabase.from).toHaveBeenCalledWith('order_payment_splits');
       expect(supabase.from).toHaveBeenCalledWith('orders');
       expect(alertSpy).toHaveBeenCalledWith('Sucesso', 'Forma de pagamento atualizada!');
       expect(setSelectedOrder).toHaveBeenCalledWith(null);

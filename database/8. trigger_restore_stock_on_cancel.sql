@@ -9,17 +9,17 @@ RETURNS TRIGGER AS $$
 DECLARE
   v_item RECORD;
 BEGIN
-  -- Verificar se o status mudou para 'cancelled'
   IF NEW.status = 'cancelled' AND OLD.status <> 'cancelled' THEN
-    -- Loop por todos os itens do pedido
+    -- Loop por todos os itens do pedido com informações do produto
     FOR v_item IN 
-      SELECT product_id, quantity 
-      FROM public.order_items 
-      WHERE order_id = NEW.id
+      SELECT oi.product_id, oi.quantity, p.is_bulk
+      FROM public.order_items oi
+      JOIN public.products p ON p.id = oi.product_id
+      WHERE oi.order_id = NEW.id
     LOOP
       -- Devolver a quantidade ao estoque do produto
       UPDATE public.products
-      SET stock = stock + v_item.quantity
+      SET stock = stock + (CASE WHEN v_item.is_bulk THEN v_item.quantity * 1000 ELSE v_item.quantity END)
       WHERE id = v_item.product_id;
     END LOOP;
   END IF;

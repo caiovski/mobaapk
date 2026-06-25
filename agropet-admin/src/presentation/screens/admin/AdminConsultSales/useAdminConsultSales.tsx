@@ -19,6 +19,7 @@ export function useAdminConsultSales() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [orders, setOrders] = useState<any[]>([]);
+  const [splits, setSplits] = useState<any[]>([]);
 
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [endDate, setEndDate] = useState<Date>(new Date());
@@ -73,7 +74,7 @@ export function useAdminConsultSales() {
     totalCreditoGeral, totalDebitoGeral, totalPixGeral,
     totalDinheiroCaixaGeral,
     saldoTotalCaixaGeral, formatCurrency,
-  } = useCaixaCalculations(filteredOrders);
+  } = useCaixaCalculations(filteredOrders, splits);
 
   useEffect(() => {
     const loadPersistedDates = async () => {
@@ -163,6 +164,16 @@ export function useAdminConsultSales() {
       if (ordersError) throw ordersError;
 
       setOrders(ordersData || []);
+      /* istanbul ignore next */ const multiploIds = (ordersData || []).filter(o => o.payment_method === 'multiplo' && o.status === 'completed').map(o => o.id);
+      /* istanbul ignore next */ if (multiploIds.length > 0) {
+        const { data: splitData } = await supabase
+          .from('order_payment_splits')
+          .select('*')
+          .in('order_id', multiploIds);
+        setSplits(splitData || []);
+      } else {
+        setSplits([]);
+      }
     } catch (error: any) {
       console.error('Erro ao buscar vendas:', error);
       /* istanbul ignore next */ Alert.alert('Erro ao carregar', 'Erro ao buscar vendas: ' + (error?.message || error));
@@ -270,6 +281,7 @@ export function useAdminConsultSales() {
       case 'cartao_credito': return <Text style={{ color: '#FF0000', fontWeight: 'bold' }}>Crédito</Text>;
       case 'cartao_debito': return <Text style={{ color: '#4CAF50', fontWeight: 'bold' }}>Débito</Text>;
       case 'dinheiro': return <Text style={{ color: isDarkMode ? '#00E676' : '#1B5E20', fontWeight: 'bold' }}>Dinheiro</Text>;
+      /* istanbul ignore next */ case 'multiplo': return <Text style={{ color: isDarkMode ? '#FFFFFF' : '#1C2434', fontWeight: 'bold' }}>Múltiplo</Text>;
       default: return <Text style={{ color: '#FFFFFF', fontWeight: 'bold' }}>{paymentMethod}</Text>;
     }
   };
@@ -280,6 +292,7 @@ export function useAdminConsultSales() {
       case 'cartao_credito': return 'Cartão de Crédito';
       case 'cartao_debito': return 'Cartão de Débito';
       case 'dinheiro': return 'Dinheiro';
+      case 'multiplo': return 'Múltiplo';
       default: return paymentMethod;
     }
   };
@@ -290,6 +303,7 @@ export function useAdminConsultSales() {
       case 'cartao_credito': return isDarkMode ? '#FF5252' : '#FF0000';
       case 'cartao_debito': return '#4CAF50';
       case 'pix': return '#00BFA5';
+      case 'multiplo': return isDarkMode ? '#FFFFFF' : '#1C2434';
       default: return colors.textDark;
     }
   };

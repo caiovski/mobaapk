@@ -18,7 +18,7 @@ export function useAdminDashboardPdv(onSaleComplete?: () => void) {
   const [pdvCart, setPdvCart] = useState<Record<string, { qty: number; checked: boolean }>>({});
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [dropdownExpanded, setDropdownExpanded] = useState(false);
-  const [checkoutPaymentMethod, setCheckoutPaymentMethod] = useState<'dinheiro' | 'cartao_credito' | 'cartao_debito' | 'pix'>('dinheiro');
+  const [checkoutPaymentMethod, setCheckoutPaymentMethod] = useState<'dinheiro' | 'cartao_credito' | 'cartao_debito' | 'pix' | 'multiplo'>('dinheiro');
   const [pdvLoading, setPdvLoading] = useState(false);
   const [dismissedProductIds, setDismissedProductIds] = useState<Set<string>>(new Set());
   const [cancelOpacity] = useState(new Animated.Value(0));
@@ -31,6 +31,16 @@ export function useAdminDashboardPdv(onSaleComplete?: () => void) {
   const [pdvInputText, setPdvInputText] = useState<Record<string, string>>({});
   const [pdvTypeFilter, setPdvTypeFilter] = useState<'Todos' | 'Granel' | 'PerMeter'>('Todos');
   const [showSortModal, setShowSortModal] = useState(false);
+  const [pdvMultiValues, setPdvMultiValues] = useState<Record<string, string>>({
+    dinheiro: '', cartao_credito: '', cartao_debito: '', pix: '',
+  });
+
+  /* istanbul ignore next */ const pdvTotalVenda = pdvProducts.filter(p => pdvCart[p.id]?.checked).reduce((acc, curr) => {
+    const isBulkValueMode = curr.is_bulk && !bulkValueMode;
+    const qty = pdvCart[curr.id]?.qty || 0;
+    const effectiveQty = curr.is_bulk && bulkInputUnit?.[curr.id] === 'g' ? qty / 1000 : qty;
+    return acc + (isBulkValueMode ? (pdvBulkValues?.[curr.id] || 0) : (curr.price * effectiveQty));
+  }, 0);
 
   const dismissAlert = (id: string) => {
     setDismissedProductIds(prev => {
@@ -273,12 +283,27 @@ export function useAdminDashboardPdv(onSaleComplete?: () => void) {
             .eq('id', item.id);
         }
       }
+      if (checkoutPaymentMethod === 'multiplo') {
+        const methods = ['dinheiro', 'cartao_credito', 'cartao_debito', 'pix'] as const;
+        for (const method of methods) {
+          const cleaned = (pdvMultiValues[method] || '').replace(/[^0-9,]/g, '').replace(',', '.');
+          const amount = parseFloat(cleaned) || 0;
+          if (amount > 0) {
+            const { error: splitError } = await supabase
+              .from('order_payment_splits')
+              .insert({ order_id: orderId, method, amount });
+            /* istanbul ignore next */ if (splitError) throw splitError;
+          }
+        }
+      }
       Alert.alert('Sucesso', 'Venda registrada com sucesso!');
       setPdvSelectMode(false);
       setPdvCart({});
       setPdvBulkValues({});
       setPdvInputText({});
       setBulkValueMode(false);
+      setPdvMultiValues({ dinheiro: '', cartao_credito: '', cartao_debito: '', pix: '' });
+      setCheckoutPaymentMethod('dinheiro');
       setShowCheckoutModal(false);
       fetchPdvProducts();
       if (onSaleComplete) onSaleComplete();
@@ -291,6 +316,10 @@ export function useAdminDashboardPdv(onSaleComplete?: () => void) {
 
   const setPdvBulkValue = (id: string, value: number) => {
     setPdvBulkValues(prev => ({ ...prev, [id]: value }));
+  };
+
+  const setPdvMultiValue = (method: string, value: string) => {
+    setPdvMultiValues(prev => ({ ...prev, [method]: value }));
   };
 
   return {
@@ -311,5 +340,6 @@ export function useAdminDashboardPdv(onSaleComplete?: () => void) {
     dismissAlert,
     togglePdvCart, updatePdvCartQty, setPdvCartQty,
     handleConfirmPdvSale,
+    pdvMultiValues, setPdvMultiValues, setPdvMultiValue, pdvTotalVenda,
   };
 }

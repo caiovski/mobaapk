@@ -23,6 +23,7 @@ export function useAdminSalesHistoryScreen() {
   const navigation = useNavigation<any>();
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<any[]>([]);
+  const [splits, setSplits] = useState<any[]>([]);
 
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [endDate, setEndDate] = useState<Date>(new Date());
@@ -43,11 +44,14 @@ export function useAdminSalesHistoryScreen() {
   const [localEndDate, setLocalEndDate] = useState<Date>(new Date());
   const [refreshing, setRefreshing] = useState(false);
 
+  /* istanbul ignore next */ const sumSplits = (method: string) =>
+    splits.filter(s => s.method === method).reduce((acc, s) => acc + (s.amount || 0), 0);
+  const regularOrders = orders.filter(o => o.payment_method !== 'multiplo');
   const totalGeral = orders.reduce((acc, o) => acc + (o.total ?? 0), 0);
-  const totalCredito = orders.reduce((acc, o) => acc + (o.payment_method === 'cartao_credito' ? (o.total ?? 0) : 0), 0);
-  const totalDebito = orders.reduce((acc, o) => acc + (o.payment_method === 'cartao_debito' ? (o.total ?? 0) : 0), 0);
-  const totalDinheiro = orders.reduce((acc, o) => acc + (o.payment_method === 'dinheiro' ? (o.total ?? 0) : 0), 0);
-  const totalPix = orders.reduce((acc, o) => acc + (o.payment_method === 'pix' ? (o.total ?? 0) : 0), 0);
+  const totalCredito = regularOrders.reduce((acc, o) => acc + (o.payment_method === 'cartao_credito' ? (o.total ?? 0) : 0), 0) + sumSplits('cartao_credito');
+  const totalDebito = regularOrders.reduce((acc, o) => acc + (o.payment_method === 'cartao_debito' ? (o.total ?? 0) : 0), 0) + sumSplits('cartao_debito');
+  const totalDinheiro = regularOrders.reduce((acc, o) => acc + (o.payment_method === 'dinheiro' ? (o.total ?? 0) : 0), 0) + sumSplits('dinheiro');
+  const totalPix = regularOrders.reduce((acc, o) => acc + (o.payment_method === 'pix' ? (o.total ?? 0) : 0), 0) + sumSplits('pix');
 
   const formatCurrency = (val: number) => `R$ ${val.toFixed(2).replace('.', ',')}`;
 
@@ -97,6 +101,16 @@ export function useAdminSalesHistoryScreen() {
       const { data, error } = await query;
       /* istanbul ignore next */ if (error) throw error;
       setOrders(data || []);
+      const multiploIds = (data || []).filter(o => o.payment_method === 'multiplo').map(o => o.id);
+      if (multiploIds.length > 0) {
+        const { data: splitData } = await supabase
+          .from('order_payment_splits')
+          .select('*')
+          .in('order_id', multiploIds);
+        /* istanbul ignore next */ setSplits(splitData || []);
+      } else {
+        setSplits([]);
+      }
     } catch (error) {
       console.error('Erro ao buscar histórico de vendas:', error);
     } finally {
@@ -192,6 +206,7 @@ export function useAdminSalesHistoryScreen() {
       case 'cartao_credito': return <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#FF0000', textAlign: 'center' }}>Cartão/Crédito</Text>;
       case 'cartao_debito': return <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#4CAF50', textAlign: 'center' }}>Cartão/Débito</Text>;
       case 'dinheiro': return <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#1B5E20', textAlign: 'center' }}>Dinheiro</Text>;
+      /* istanbul ignore next */ case 'multiplo': return <Text style={{ fontSize: 13, fontWeight: 'bold', color: isDarkMode ? '#FFFFFF' : '#1C2434', textAlign: 'center' }}>Múltiplo</Text>;
       default: return <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#FFFFFF', textAlign: 'center' }}>{paymentMethod}</Text>;
     }
   };

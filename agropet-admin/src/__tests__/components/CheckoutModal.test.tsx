@@ -207,4 +207,57 @@ describe('CheckoutModal', () => {
     expect(getByText('Coleira')).toBeTruthy();
     expect(getByText('3')).toBeTruthy();
   });
+
+  it('should show Múltiplo as payment method label when selected', () => {
+    const { getByText } = render(
+      <CheckoutModal
+        {...baseProps}
+        checkoutPaymentMethod="multiplo"
+        totalVenda={100}
+        pdvMultiValues={{ dinheiro: '50', cartao_credito: '', cartao_debito: '', pix: '50' }}
+        onMultiValueChange={jest.fn()}
+      />
+    );
+    expect(getByText('Múltiplo')).toBeTruthy();
+  });
+
+  it('should show MultiPaymentInput when multiplo is selected', () => {
+    const { getByText } = render(
+      <CheckoutModal
+        {...baseProps}
+        checkoutPaymentMethod="multiplo"
+        totalVenda={100}
+        pdvMultiValues={{ dinheiro: '50', cartao_credito: '', cartao_debito: '', pix: '50' }}
+        onMultiValueChange={jest.fn()}
+      />
+    );
+    expect(getByText('Total lançado:')).toBeTruthy();
+  });
+
+  it('should disable confirm button when multiplo sum does not match total', () => {
+    const onConfirm = jest.fn();
+    const { getByText } = render(
+      <CheckoutModal
+        {...baseProps}
+        checkoutPaymentMethod="multiplo"
+        totalVenda={100}
+        pdvMultiValues={{ dinheiro: '30', cartao_credito: '', cartao_debito: '', pix: '' }}
+        onMultiValueChange={jest.fn()}
+        onConfirm={onConfirm}
+      />
+    );
+    const confirmBtn = getByText('Confirmar').parent;
+    fireEvent.press(confirmBtn as any);
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  it('should show PIX color and label for pix payment method', () => {
+    const { getByText } = render(
+      <CheckoutModal
+        {...baseProps}
+        checkoutPaymentMethod="pix"
+      />
+    );
+    expect(getByText('Pix')).toBeTruthy();
+  });
 });

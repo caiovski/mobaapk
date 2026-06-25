@@ -105,10 +105,18 @@ export const ConsultFilterModal = ({
             </View>
 
             <Text style={[styles.modalSubsectionHeader, { color: isDarkMode ? '#FFE082' : '#F97D01', marginTop: 20 }]}>Forma de pagamento</Text>
-            {['dinheiro', 'cartao_credito', 'cartao_debito', 'pix'].map((method) => {
+            {['dinheiro', 'cartao_credito', 'cartao_debito', 'pix', 'multiplo'].map((method) => {
               const label = getPaymentDisplayPortuguese(method);
               const isChecked = tempPayMethods.includes(method);
               const themedColor = getPayMethodColor(method);
+              const isMultiplo = method === 'multiplo';
+              const checkboxBg = isChecked
+                ? (isMultiplo ? (isDarkMode ? '#FFFFFF' : '#1C2434') : themedColor)
+                : undefined;
+              const checkboxBorder = isChecked
+                ? (isMultiplo ? (isDarkMode ? '#FFFFFF' : '#1C2434') : themedColor)
+                : undefined;
+              const checkColor = isMultiplo ? (isDarkMode ? '#000000' : '#FFFFFF') : '#FFFFFF';
               return (
                 <TouchableOpacity
                   key={method}
@@ -117,8 +125,8 @@ export const ConsultFilterModal = ({
                   onPress={() => handleToggleTempPayMethod(method)}
                 >
                   <Text style={[styles.modalFilterLabel, { color: themedColor, fontWeight: 'bold' }]}>{label}</Text>
-                  <View style={[styles.checkboxSquare, isChecked && { backgroundColor: themedColor, borderColor: themedColor }]}>
-                    {isChecked && <Feather name="check" size={12} color="#FFFFFF" />}
+                  <View style={[styles.checkboxSquare, isChecked && { backgroundColor: checkboxBg, borderColor: checkboxBorder }]}>
+                    {isChecked && <Feather name="check" size={12} color={checkColor} />}
                   </View>
                 </TouchableOpacity>
               );
@@ -144,7 +152,7 @@ export const ConsultFilterModal = ({
             })}
 
             <View style={styles.modalUtilityRow}>
-              <TouchableOpacity onPress={() => setTempPayMethods(['dinheiro', 'cartao_credito', 'cartao_debito', 'pix'])}>
+              <TouchableOpacity onPress={() => setTempPayMethods(['dinheiro', 'cartao_credito', 'cartao_debito', 'pix', 'multiplo'])}>
                 <Text style={[styles.utilityText, { color: colors.primary }]}>Selecionar Todos</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => setTempPayMethods([])}>

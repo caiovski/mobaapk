@@ -214,7 +214,7 @@ describe('Exported pure functions', () => {
 
   describe('useAdminDashboardStats', () => {
     it('computes ticketMedio as 0 when no orders', () => {
-      const result = useAdminDashboardStats([], [], [], 'all', null, null);
+      const result = useAdminDashboardStats([], [], [], [], 'all', null, null);
       expect(result.volumeVendas).toBe(0);
       expect(result.ticketMedio).toBe(0);
       expect(result.topMethod).toBe('Nenhum');
@@ -225,7 +225,7 @@ describe('Exported pure functions', () => {
         { id: '1', amount: 10, description: 'test', date: new Date().toISOString(), type: 'sangria' as const, paymentMethod: 'dinheiro' as const },
         { id: '2', amount: 20, description: 'test2', date: new Date().toISOString(), type: 'suprimento' as const, paymentMethod: 'dinheiro' as const },
       ];
-      const result = useAdminDashboardStats([], [], transactions as any, 'sangria', null, null);
+      const result = useAdminDashboardStats([], [], [], transactions, 'sangria', null, null);
       expect(result.activeTransactions.length).toBe(1);
       expect(result.activeTransactions[0].amount).toBe(10);
     });
@@ -237,7 +237,7 @@ describe('Exported pure functions', () => {
       const transactions = [
         { id: '1', amount: 10, description: 'test', date: today.toISOString(), type: 'sangria' as const, paymentMethod: 'dinheiro' as const },
       ];
-      const result = useAdminDashboardStats([], [], transactions as any, 'all', today, tomorrow);
+      const result = useAdminDashboardStats([], [], [], transactions, 'all', today, tomorrow);
       expect(result.activeTransactions.length).toBe(1);
     });
 
@@ -247,7 +247,7 @@ describe('Exported pure functions', () => {
         { payment_method: 'pix', total: 20 },
         { payment_method: 'dinheiro', total: 30 },
       ];
-      const result = useAdminDashboardStats(orders as any, [], [], 'all', null, null);
+      const result = useAdminDashboardStats(orders as any, [], [], [], 'all', null, null);
       expect(result.topMethod).toContain('Pix');
     });
 
@@ -257,7 +257,7 @@ describe('Exported pure functions', () => {
         { payment_method: 'cartao_debito', total: 20 },
         { payment_method: 'pix', total: 5 },
       ];
-      const result = useAdminDashboardStats(orders as any, [], [], 'all', null, null);
+      const result = useAdminDashboardStats(orders as any, [], [], [], 'all', null, null);
       expect(result.topMethod).toContain('Débito');
     });
   });
@@ -781,7 +781,7 @@ describe('useAdminDashboardStats - pix sangria branch', () => {
       { id: '1', amount: 10, description: 'Sangria Pix', date: new Date().toISOString(), paymentMethod: 'pix', type: 'sangria' },
       { id: '2', amount: 20, description: 'Venda PDV', date: new Date().toISOString(), paymentMethod: 'pix', type: 'suprimento' },
     ];
-    const result = stats.useAdminDashboardStats([], allOrders as any, transactions as any, 'all', null, null);
+    const result = stats.useAdminDashboardStats([], allOrders as any, [], transactions, 'all', null, null);
     expect(result.totalPixGeral).toBe(100 - 10);
   });
 });
@@ -854,7 +854,7 @@ describe('useAdminDashboardStats - edge cases', () => {
     const orders = [
       { payment_method: 'cartao_debito', total: 100 },
     ];
-    const result = stats.useAdminDashboardStats(orders as any, [], [], 'all', null, null);
+    const result = stats.useAdminDashboardStats(orders as any, [], [], [], 'all', null, null);
     expect(result.topMethod).toContain('Débito');
   });
 
@@ -864,7 +864,7 @@ describe('useAdminDashboardStats - edge cases', () => {
       { id: '1', amount: 10, description: 'Venda PDV', date: new Date().toISOString() },
       { id: '2', amount: 20, description: 'Outro', date: new Date().toISOString() },
     ];
-    const result = stats.useAdminDashboardStats([], [], transactions as any, 'all', null, null);
+    const result = stats.useAdminDashboardStats([], [], [], transactions as any, 'all', null, null);
     expect(result.saldoTotalCaixaGeral).toBeDefined();
   });
 
@@ -884,7 +884,7 @@ describe('useAdminDashboardStats - edge cases', () => {
       { id: '2', amount: 20, description: 'Venda PDV', date: new Date().toISOString() },
     ];
     const result = stats.useAdminDashboardStats(
-      orders as any, allOrders as any, transactions as any,
+      orders as any, allOrders as any, [], transactions as any,
       'sangria', new Date(), new Date()
     );
     expect(result.saldoTotalCaixaGeral).toBe(40);
@@ -935,6 +935,7 @@ describe('useAdminDashboardStats - pix null total branch', () => {
     const result = stats.useAdminDashboardStats(
       [{ payment_method: 'pix', total: null }],
       [{ payment_method: 'pix', total: null }],
+      [],
       [],
       'all',
       null,
@@ -1036,6 +1037,32 @@ describe('useAdminDashboardPdv - remaining branches', () => {
     render(React.createElement(Test));
     act(() => { result.setIsPDVMode(true); });
     await act(async () => {});
+    act(() => { result.setPdvCart({ 'prod-1': { qty: 1, checked: true } }); });
+    await act(async () => { await result.handleConfirmPdvSale(); });
+    fromSpy.mockRestore();
+    getUserSpy.mockRestore();
+  });
+
+  it('covers handleConfirmPdvSale with multiplo payment method', async () => {
+    const { useAdminDashboardPdv } = require('../../presentation/screens/admin/AdminDashboard/useAdminDashboardPdv');
+    const fromSpy = jest.spyOn(supabase, 'from').mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      order: jest.fn().mockReturnThis(),
+      insert: jest.fn().mockReturnThis(),
+      update: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({ data: { id: 'order-multiplo' }, error: null }),
+      then: jest.fn((resolve?: any) => { if (typeof resolve === 'function') resolve({ data: [{ id: 'prod-1', name: 'Prod', price: 10, stock: 5 }], error: null }); }),
+    });
+    const getUserSpy = jest.spyOn(supabase.auth, 'getUser').mockResolvedValue({ data: { user: { id: 'test-id' } } });
+    let result: any;
+    function Test() { result = useAdminDashboardPdv(); return null; }
+    render(React.createElement(Test));
+    act(() => { result.setIsPDVMode(true); });
+    await act(async () => {});
+    act(() => { result.setCheckoutPaymentMethod('multiplo'); });
+    act(() => { result.setPdvMultiValue('dinheiro', '50,00'); });
+    act(() => { result.setPdvMultiValue('pix', '30,00'); });
     act(() => { result.setPdvCart({ 'prod-1': { qty: 1, checked: true } }); });
     await act(async () => { await result.handleConfirmPdvSale(); });
     fromSpy.mockRestore();

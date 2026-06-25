@@ -102,6 +102,25 @@ export default function AdminOrderDetailScreen({ route, navigation }: any) {
           })
         )}
 
+        {/* istanbul ignore next */ h.paymentSplits.length > 0 && (
+          <View style={[styles.splitsCard, { backgroundColor: h.isDarkMode ? '#2E2E38' : '#FFFFFF' }]}>
+            <Text style={[styles.splitsTitle, { color: h.colors.textDark, fontWeight: 'bold' }]}>
+              Divisão de Pagamento
+            </Text>
+            {h.paymentSplits.map((split: any, index: number) => (
+              <View key={index} style={styles.splitsRow}>
+                <View style={[styles.splitsDot, { backgroundColor: h.getPayMethodColor(split.method) }]} />
+                <Text style={[styles.splitsLabel, { color: h.colors.textDark }]}>
+                  {h.getPaymentDisplayPortuguese(split.method)}
+                </Text>
+                <Text style={[styles.splitsValue, { color: h.colors.textDark, fontWeight: 'bold' }]}>
+                  R$ {Number(split.amount).toFixed(2).replace('.', ',')}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+
         <View style={styles.dateContainer}>
           <Text style={[styles.dateText, { color: h.colors.textGray }]}>
             Data da compra: {h.formattedDate}

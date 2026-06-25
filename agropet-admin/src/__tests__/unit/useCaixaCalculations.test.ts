@@ -74,6 +74,58 @@ describe('useCaixaCalculations', () => {
     expect(result.saldoTotalCaixaGeral).toBe(0);
   });
 
+  it('should include multiplo splits in totals when splits are provided', () => {
+    const orders = [
+      { id: 'm1', payment_method: 'multiplo', total: 100, status: 'completed' },
+      { id: 'm2', payment_method: 'multiplo', total: 50, status: 'completed' },
+    ];
+    const splits = [
+      { order_id: 'm1', method: 'dinheiro', amount: 60 },
+      { order_id: 'm1', method: 'cartao_credito', amount: 40 },
+      { order_id: 'm2', method: 'pix', amount: 30 },
+      { order_id: 'm2', method: 'cartao_debito', amount: 20 },
+    ];
+
+    const result = useCaixaCalculations(orders as any, splits as any);
+
+    expect(result.totalDinheiroCaixaGeral).toBe(60);
+    expect(result.totalCreditoGeral).toBe(40);
+    expect(result.totalPixGeral).toBe(30);
+    expect(result.totalDebitoGeral).toBe(20);
+    expect(result.saldoTotalCaixaGeral).toBe(150);
+  });
+
+  it('should handle splits with null or undefined amounts', () => {
+    const orders = [
+      { id: 'm3', payment_method: 'multiplo', total: 100, status: 'completed' },
+    ];
+    const splits = [
+      { order_id: 'm3', method: 'dinheiro', amount: null },
+      { order_id: 'm3', method: 'cartao_credito', amount: undefined },
+      { order_id: 'm3', method: 'pix', amount: 50 },
+    ];
+
+    const result = useCaixaCalculations(orders as any, splits as any);
+
+    expect(result.totalDinheiroCaixaGeral).toBe(0);
+    expect(result.totalCreditoGeral).toBe(0);
+    expect(result.totalPixGeral).toBe(50);
+  });
+
+  it('should exclude splits of cancelled orders', () => {
+    const orders = [
+      { id: 'c1', payment_method: 'multiplo', total: 100, status: 'cancelled' },
+    ];
+    const splits = [
+      { order_id: 'c1', method: 'dinheiro', amount: 100 },
+    ];
+
+    const result = useCaixaCalculations(orders as any, splits as any);
+
+    expect(result.totalDinheiroCaixaGeral).toBe(0);
+    expect(result.saldoTotalCaixaGeral).toBe(0);
+  });
+
   it('should format currency correctly', () => {
     const result = useCaixaCalculations([]);
     expect(result.formatCurrency(1234.5)).toBe('R$ 1234,50');

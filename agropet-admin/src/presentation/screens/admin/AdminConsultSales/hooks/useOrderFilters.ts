@@ -2,11 +2,11 @@ import { useState } from 'react';
 
 export function useOrderFilters(orders: any[]) {
   const [originFilter, setOriginFilter] = useState<'tudo' | 'fisica' | 'concluidos'>('tudo');
-  const [selectedPayMethods, setSelectedPayMethods] = useState<string[]>(['dinheiro', 'cartao_credito', 'cartao_debito', 'pix']);
+  const [selectedPayMethods, setSelectedPayMethods] = useState<string[]>(['dinheiro', 'cartao_credito', 'cartao_debito', 'pix', 'multiplo']);
   const [statusFilter, setStatusFilter] = useState<'todos' | 'completed' | 'cancelled'>('todos');
 
   const [tempOriginFilter, setTempOriginFilter] = useState<'tudo' | 'fisica' | 'concluidos'>('tudo');
-  const [tempPayMethods, setTempPayMethods] = useState<string[]>(['dinheiro', 'cartao_credito', 'cartao_debito', 'pix']);
+  const [tempPayMethods, setTempPayMethods] = useState<string[]>(['dinheiro', 'cartao_credito', 'cartao_debito', 'pix', 'multiplo']);
   const [tempStatusFilter, setTempStatusFilter] = useState<'todos' | 'completed' | 'cancelled'>('todos');
 
   const filteredOrders = orders.filter((order) => {

@@ -55,6 +55,7 @@ export function useAdminDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [orders, setOrders] = useState<any[]>([]);
   const [allOrders, setAllOrders] = useState<any[]>([]);
+  const [allSplits, setAllSplits] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<CaixaTransaction[]>([]);
   const [modalTransactionType, setModalTransactionType] = useState<'sangria' | 'suprimento'>('sangria');
   const [modalPaymentMethod, setModalPaymentMethod] = useState<'dinheiro' | 'cartao_credito' | 'cartao_debito' | 'pix'>('dinheiro');
@@ -72,7 +73,7 @@ export function useAdminDashboard() {
 
   const pdv = useAdminDashboardPdv(/* istanbul ignore next */ () => fetchDashboardData());
   const charts = useAdminDashboardCharts(orders);
-  const stats = useAdminDashboardStats(orders, allOrders, transactions, cashFlowFilter, cashFlowStartDate, cashFlowEndDate);
+  const stats = useAdminDashboardStats(orders, allOrders, allSplits, transactions, cashFlowFilter, cashFlowStartDate, cashFlowEndDate);
   const { categories, allCategories, loading: catLoading } = useCategories();
 
   const fetchDashboardData = async () => {
@@ -80,11 +81,21 @@ export function useAdminDashboard() {
     try {
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
-        .select('total, payment_method, status')
+        .select('id, total, payment_method, status')
         .eq('status', 'completed');
       /* istanbul ignore next */
       if (!ordersError && ordersData) {
         setAllOrders(ordersData);
+        const multiploIds = ordersData.filter(o => o.payment_method === 'multiplo').map(o => o.id);
+        if (multiploIds.length > 0) {
+          const { data: splits } = await supabase
+            .from('order_payment_splits')
+            .select('*')
+            .in('order_id', multiploIds);
+          setAllSplits(splits || []);
+        } else {
+          setAllSplits([]);
+        }
       }
       const rows = await fetchCashFlow();
       const mapped: CaixaTransaction[] = rows.map(r => ({
@@ -129,10 +140,20 @@ export function useAdminDashboard() {
       setOrders(data || []);
       const { data: allData, error: allErr } = await supabase
         .from('orders')
-        .select('total, payment_method')
+        .select('id, total, payment_method')
         .eq('status', 'completed');
       if (allErr) throw allErr;
       setAllOrders(allData || []);
+      const multiploIds = (allData || []).filter(o => o.payment_method === 'multiplo').map(o => o.id);
+      if (multiploIds.length > 0) {
+        const { data: splits } = await supabase
+          .from('order_payment_splits')
+          .select('*')
+          .in('order_id', multiploIds);
+        setAllSplits(splits || []);
+      } else {
+        setAllSplits([]);
+      }
     } catch (error) {
       console.error('Erro ao buscar dados do painel:', error);
     } finally {

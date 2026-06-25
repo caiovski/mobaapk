@@ -386,6 +386,9 @@ export default function AdminDashboardScreen() {
         bulkValueMode={d.bulkValueMode}
         pdvBulkValues={d.pdvBulkValues}
         bulkInputUnit={d.bulkInputUnit}
+        totalVenda={d.pdvTotalVenda}
+        pdvMultiValues={d.pdvMultiValues}
+        onMultiValueChange={d.setPdvMultiValue}
       />
 
       {/* istanbul ignore next */ d.isPDVMode && d.showSortModal && (

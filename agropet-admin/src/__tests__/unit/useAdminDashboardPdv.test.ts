@@ -79,4 +79,22 @@ describe('useAdminDashboardPdv', () => {
     expect(AsyncStorage.setItem).toHaveBeenCalledWith('admin_pdv_sort_option', 'most_stock');
     expect(hookResult.pdvSortOption).toBe('most_stock');
   });
+
+  it('should setPdvMultiValue update correct method', () => {
+    render(React.createElement(TestComponent));
+    act(() => {
+      hookResult.setPdvMultiValue('dinheiro', '50');
+    });
+    expect(hookResult.pdvMultiValues).toEqual({ dinheiro: '50', cartao_credito: '', cartao_debito: '', pix: '' });
+  });
+
+  it('should setPdvMultiValue update multiple methods', () => {
+    render(React.createElement(TestComponent));
+    act(() => {
+      hookResult.setPdvMultiValue('dinheiro', '30');
+      hookResult.setPdvMultiValue('pix', '70');
+    });
+    expect(hookResult.pdvMultiValues.dinheiro).toBe('30');
+    expect(hookResult.pdvMultiValues.pix).toBe('70');
+  });
 });

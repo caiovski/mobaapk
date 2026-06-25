@@ -457,4 +457,43 @@ describe('AdminOrderDetailScreen - Deep Coverage', () => {
     expect(getByText('Osso')).toBeTruthy();
     expect(getByText('Beatriz')).toBeTruthy();
   });
+
+  it('should render multiplo payment splits card when splits exist', async () => {
+    const orderData = {
+      id: 'order-multiplo-001',
+      created_at: '2026-05-27T10:00:00.000Z',
+      total: 100,
+      status: 'completed',
+      payment_method: 'multiplo',
+      delivery_address: 'Venda Física PDV',
+      order_items: [
+        { product_id: 'p-mp', quantity: 1, unit_price: 100, products: { name: 'Produto Multiplo', image_url: null } }
+      ],
+      users: { name: 'Cliente' },
+    };
+    const splitsData = [
+      { method: 'dinheiro', amount: 40 },
+      { method: 'pix', amount: 60 },
+    ];
+
+    const fromSpy = jest.spyOn(supabase, 'from')
+      .mockImplementationOnce(() => createMockChain({ data: [] }))
+      .mockImplementationOnce(() => createMockChain({ singleData: orderData, data: [] }))
+      .mockImplementationOnce(() => createMockChain({ data: splitsData }));
+
+    const { getByText } = renderScreen(AdminOrderDetailScreen, {
+      route: { params: { order: orderData } },
+      navigation: { goBack: mockGoBack },
+    });
+
+    await waitFor(() => {
+      expect(getByText('Divisão de Pagamento')).toBeTruthy();
+      expect(getByText('Dinheiro')).toBeTruthy();
+      expect(getByText('Pix')).toBeTruthy();
+      expect(getByText('R$ 40,00')).toBeTruthy();
+      expect(getByText('R$ 60,00')).toBeTruthy();
+    });
+
+    fromSpy.mockRestore();
+  });
 });

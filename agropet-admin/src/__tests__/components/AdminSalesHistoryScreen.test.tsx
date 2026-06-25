@@ -677,6 +677,89 @@ describe('AdminSalesHistoryScreen - Deep Coverage', () => {
     delete (global as any).mockPickerMode;
   });
 
+  it('should handle multiplo payment method with split fetching', async () => {
+    const mockMultiploOrders = [
+      {
+        id: 'multiplo-1',
+        total: 100,
+        payment_method: 'multiplo',
+        created_at: new Date().toISOString(),
+        status: 'completed',
+        order_items: [
+          { products: { image_url: null } }
+        ],
+      },
+      {
+        id: 'normal-1',
+        total: 50,
+        payment_method: 'dinheiro',
+        created_at: new Date().toISOString(),
+        status: 'completed',
+        order_items: [],
+      },
+    ];
+
+    const mockSplits = [
+      { order_id: 'multiplo-1', method: 'dinheiro', amount: 40 },
+      { order_id: 'multiplo-1', method: 'pix', amount: 60 },
+    ];
+
+    const orderChain = createMockChain({ data: mockMultiploOrders });
+    const splitChain = createMockChain({ data: mockSplits });
+
+    const fromSpy = jest.spyOn(supabase, 'from')
+      .mockImplementationOnce(() => orderChain)
+      .mockImplementationOnce(() => splitChain);
+
+    const { getByText } = renderScreen(AdminSalesHistoryScreen);
+
+    await act(async () => {
+      if (focusListener) {
+        focusListener();
+      }
+    });
+
+    await waitFor(() => {
+      expect(getByText('Múltiplo')).toBeTruthy();
+    });
+
+    fromSpy.mockRestore();
+  });
+
+  it('should handle multiplo orders with no splits (empty fetch)', async () => {
+    const mockOrders = [
+      {
+        id: 'multiplo-2',
+        total: 100,
+        payment_method: 'multiplo',
+        created_at: new Date().toISOString(),
+        status: 'completed',
+        order_items: [],
+      },
+    ];
+
+    const orderChain = createMockChain({ data: mockOrders });
+    const splitChain = createMockChain({ data: [] });
+
+    const fromSpy = jest.spyOn(supabase, 'from')
+      .mockImplementationOnce(() => orderChain)
+      .mockImplementationOnce(() => splitChain);
+
+    renderScreen(AdminSalesHistoryScreen);
+
+    await act(async () => {
+      if (focusListener) {
+        focusListener();
+      }
+    });
+
+    await waitFor(() => {
+      expect(supabase.from).toHaveBeenCalledWith('order_payment_splits');
+    });
+
+    fromSpy.mockRestore();
+  });
+
   it('should cover Platform.OS ios and android branches for styles in AdminSalesHistoryScreen', () => {
     jest.isolateModules(() => {
       const rn = require('react-native');
